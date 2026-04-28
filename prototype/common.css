@@ -1,0 +1,354 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap");
+
+:root {
+  --canvas-w: 1440px;
+  --canvas-h: 2560px;
+  --ink: #0b0f1a;
+  --navy: #0f172a;
+  --navy-2: #101a2b;
+  --aqua: #38d5c1;
+  --lime: #b7f171;
+  --amber: #f6b355;
+  --mist: #e9eef5;
+  --soft: #cdd6e5;
+  --glass: rgba(255, 255, 255, 0.08);
+  --glass-strong: rgba(255, 255, 255, 0.12);
+  --shadow: rgba(5, 12, 24, 0.45);
+
+  /* 新增：动画与加载专用变量 */
+  --stage-active: var(--aqua);
+  --stage-done: #2ea898;
+  --stage-pending: rgba(255, 255, 255, 0.12);
+  --transition-ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  width: var(--canvas-w);
+  height: var(--canvas-h);
+  margin: 0;
+  padding: 0;
+  background: #eceff4;
+  font-family: "Space Grotesk", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  color: #e8edf4;
+}
+
+/* ── 加载动效页面容器覆盖 ──────────────────────────────── */
+.loader-page {
+  width: 100vw;
+  height: 100vh;
+  background: var(--navy);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.loader-page .canvas {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+}
+
+.loader-page .bg {
+  display: none; /* 加载页不需要画布背景 */
+}
+
+.loader-page .phone {
+  position: relative;
+  left: auto;
+  top: auto;
+  width: 390px;
+  height: 780px;
+  padding: 14px;
+  border-radius: 44px;
+  background: linear-gradient(165deg, #151b2a 0%, #0c111f 100%);
+  box-shadow:
+    0 0 0 2px rgba(255,255,255,0.08),
+    0 20px 60px rgba(0,0,0,0.6),
+    inset 0 -8px 30px rgba(0,0,0,0.35);
+}
+
+.loader-page .phone::before {
+  border-radius: 36px;
+  inset: 8px;
+}
+
+.loader-page .screen {
+  border-radius: 32px;
+}
+
+.loader-page .notch {
+  top: 14px;
+  width: 100px;
+  height: 28px;
+  border-radius: 20px;
+  background: #0b0f1a;
+}
+
+.loader-page .content {
+  padding: 56px 24px 28px;
+  justify-content: center; /* 内容垂直居中 */
+  gap: 16px;
+}
+
+/* ── 分子结构容器与粒子 ──────────────────────────────── */
+.molecule-container {
+  position: relative;
+  width: 220px;
+  height: 200px;
+  margin: 0 auto 16px;
+}
+
+.molecule-stroke {
+  width: 100%;
+  height: 100%;
+  filter: drop-shadow(0 0 8px rgba(56, 213, 193, 0.35));
+  animation: molFloat 4s ease-in-out infinite;
+}
+
+@keyframes molFloat {
+  0%, 100% { transform: translateY(0); }
+  25% { transform: translateY(-6px); }
+  50% { transform: translateY(0); }
+  75% { transform: translateY(4px); }
+}
+
+/* 六边形描边动画 */
+.hex-path {
+  fill: none;
+  stroke: var(--aqua);
+  stroke-width: 2.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 560;
+  stroke-dashoffset: 560;
+  animation: drawHex 2.5s ease forwards infinite;
+}
+
+@keyframes drawHex {
+  0% { stroke-dashoffset: 560; opacity: 0.3; }
+  15% { opacity: 1; }
+  60% { stroke-dashoffset: 0; opacity: 1; }
+  80% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 560; opacity: 0.3; }
+}
+
+.db-line {
+  fill: none;
+  stroke: #7ec8e3;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-dasharray: 35;
+  stroke-dashoffset: 35;
+  animation: drawDB 2.5s ease forwards infinite;
+  animation-delay: 0.4s;
+}
+.db-line:nth-child(2) { animation-delay: 0.7s; }
+.db-line:nth-child(3) { animation-delay: 1.0s; }
+
+@keyframes drawDB {
+  0% { stroke-dashoffset: 35; opacity: 0; }
+  25% { opacity: 0.7; }
+  55% { stroke-dashoffset: 0; opacity: 0.7; }
+  70% { stroke-dashoffset: 0; opacity: 0.7; }
+  90% { stroke-dashoffset: 35; opacity: 0; }
+  100% { stroke-dashoffset: 35; opacity: 0; }
+}
+
+.side-chain {
+  fill: none;
+  stroke: #a0d2f0;
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-dasharray: 40;
+  stroke-dashoffset: 40;
+  animation: drawChain 2.5s ease forwards infinite;
+  animation-delay: 0.9s;
+}
+
+@keyframes drawChain {
+  0% { stroke-dashoffset: 40; opacity: 0; }
+  30% { opacity: 0.8; }
+  65% { stroke-dashoffset: 0; opacity: 0.8; }
+  80% { stroke-dashoffset: 0; opacity: 0.8; }
+  95% { stroke-dashoffset: 40; opacity: 0; }
+  100% { stroke-dashoffset: 40; opacity: 0; }
+}
+
+.node-circle {
+  fill: #b8dbf8;
+  stroke: var(--aqua);
+  stroke-width: 2;
+  animation: nodePulse 2.5s ease-in-out infinite;
+  filter: drop-shadow(0 0 4px rgba(56,213,193,0.7));
+}
+.node-circle:nth-child(6) { animation-delay: 0.3s; }
+.node-circle:nth-child(7) { animation-delay: 0.6s; }
+.node-circle:nth-child(8) { animation-delay: 1.0s; }
+.node-circle:nth-child(9) { animation-delay: 1.3s; }
+.node-circle:nth-child(10) { animation-delay: 1.5s; }
+
+@keyframes nodePulse {
+  0%, 100% { r: 6; opacity: 0.7; }
+  30% { r: 9; opacity: 1; }
+  60% { r: 6; opacity: 0.7; }
+}
+
+.electron-flow {
+  fill: none;
+  stroke: #9dd8f8;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-dasharray: 8 16;
+  animation: electronMove 1.2s linear infinite;
+}
+@keyframes electronMove {
+  0% { stroke-dashoffset: 0; }
+  100% { stroke-dashoffset: -48; }
+}
+
+.glow-ring {
+  fill: none;
+  stroke: rgba(56,213,193,0.2);
+  stroke-width: 8;
+  animation: glowPulse 3s ease-in-out infinite;
+}
+@keyframes glowPulse {
+  0%, 100% { stroke-opacity: 0.08; stroke-width: 8; }
+  50% { stroke-opacity: 0.22; stroke-width: 14; }
+}
+
+/* 漂浮粒子 */
+.particles-layer {
+  position: absolute;
+  inset: -20px;
+  pointer-events: none;
+}
+.particle {
+  position: absolute;
+  font-size: 13px;
+  font-weight: 700;
+  color: rgba(160,210,240,0.7);
+  animation: particleFloat 5s ease-in-out infinite;
+  text-shadow: 0 0 6px rgba(56,213,193,0.5);
+}
+.particle:nth-child(1) { top: 15%; left: 5%; animation-delay: 0s; font-size: 11px; }
+.particle:nth-child(2) { top: 5%; right: 10%; animation-delay: 1.2s; font-size: 14px; }
+.particle:nth-child(3) { bottom: 20%; left: 8%; animation-delay: 2.4s; font-size: 10px; }
+.particle:nth-child(4) { bottom: 8%; right: 12%; animation-delay: 3.6s; font-size: 12px; }
+.particle:nth-child(5) { top: 40%; right: 2%; animation-delay: 1.8s; font-size: 9px; }
+.particle:nth-child(6) { top: 55%; left: 2%; animation-delay: 3.0s; font-size: 11px; }
+
+@keyframes particleFloat {
+  0%, 100% { transform: translateY(0) translateX(0) scale(1); opacity: 0.35; }
+  20% { transform: translateY(-18px) translateX(6px) scale(1.25); opacity: 0.75; }
+  40% { transform: translateY(-8px) translateX(-8px) scale(0.9); opacity: 0.45; }
+  60% { transform: translateY(-22px) translateX(3px) scale(1.15); opacity: 0.7; }
+  80% { transform: translateY(-5px) translateX(-5px) scale(1.05); opacity: 0.5; }
+}
+
+/* ── 阶段指示器 ────────────────────────────────────── */
+.stage-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0;
+}
+.stage-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--stage-pending);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: #8899B4;
+  transition: all 0.5s var(--transition-ease);
+}
+.stage-dot.active {
+  background: var(--stage-active);
+  color: #fff;
+  box-shadow: 0 0 16px rgba(56,213,193,0.55);
+  animation: stagePulse 0.9s ease-in-out infinite;
+  transform: scale(1.15);
+}
+.stage-dot.done {
+  background: var(--stage-done);
+  color: #fff;
+  box-shadow: 0 0 8px rgba(46,168,152,0.3);
+}
+@keyframes stagePulse {
+  0%,100% { box-shadow: 0 0 16px rgba(56,213,193,0.55); }
+  50% { box-shadow: 0 0 28px rgba(56,213,193,0.8); }
+}
+.stage-connector {
+  width: 16px;
+  height: 2px;
+  background: var(--stage-pending);
+  border-radius: 1px;
+  transition: background 0.5s ease;
+}
+.stage-connector.done {
+  background: var(--stage-done);
+}
+.stage-labels {
+  display: flex;
+  gap: 6px;
+  font-size: 10px;
+  color: #9fb1c9;
+  text-align: center;
+}
+.stage-labels span {
+  opacity: 0.5;
+  transition: all 0.4s ease;
+}
+.stage-labels span.highlight {
+  opacity: 1;
+  color: #b8dbf8;
+  font-weight: 600;
+}
+
+/* SMILES 显示 */
+.smiles-display {
+  min-height: 22px;
+  font-family: 'Space Grotesk', 'Courier New', monospace;
+  font-size: 13px;
+  color: var(--aqua);
+  letter-spacing: 0.6px;
+  text-align: center;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: all 0.35s ease;
+  word-break: break-all;
+}
+.smiles-display.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* 调整通用组件以适配加载页 */
+.loader-page .brand-small {
+  font-size: 16px;
+}
+.loader-page .pill {
+  font-size: 12px;
+  padding: 6px 14px;
+}
+.loader-page .loading-text {
+  font-size: 21px;
+  margin-bottom: 2px;
+}
+.loader-page .subtle {
+  font-size: 13px;
+  color: #8493a8;
+  margin-bottom: 4px;
+}

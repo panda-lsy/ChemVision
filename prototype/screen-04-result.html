@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ChemVISION - 结果卡片</title>
+  <link rel="stylesheet" href="common.css" />
+</head>
+<body>
+  <div class="canvas">
+    <div class="bg"></div>
+    <div class="phone">
+      <div class="side-btn top"></div>
+      <div class="side-btn bottom"></div>
+      <div class="screen">
+        <div class="notch"></div>
+        <div class="content">
+          <div class="top-bar">
+            <div class="brand-small">ChemVISION</div>
+            <div class="pill">结构已生成</div>
+          </div>
+          <h1>苯甲酸</h1>
+          <div class="result-card">
+            <div class="structure">
+              <svg class="molecule-stroke" viewBox="0 0 240 200" aria-hidden="true">
+                <polygon points="120,20 200,65 200,135 120,180 40,135 40,65" />
+                <line x1="120" y1="20" x2="120" y2="180" />
+                <line x1="40" y1="65" x2="200" y2="135" />
+                <line x1="200" y1="65" x2="40" y2="135" />
+                <line x1="200" y1="65" x2="230" y2="50" class="accent" />
+                <line x1="230" y1="50" x2="240" y2="24" class="accent" />
+                <line x1="230" y1="50" x2="248" y2="74" class="accent" />
+              </svg>
+            </div>
+            <div>
+              <div class="formula">C7H6O2</div>
+              <div class="meta-row">分子量 122.12</div>
+              <div class="meta-row">SMILES: c1ccc(cc1)C(=O)O</div>
+            </div>
+            <div class="card-actions">
+              <button class="btn primary">收藏</button>
+              <button class="btn outline">导出 SVG</button>
+            </div>
+          </div>
+          <div class="chip-row">
+            <div class="chip">芳香族</div>
+            <div class="chip">羧酸</div>
+            <div class="chip">常见有机酸</div>
+            <div class="chip">课程重点</div>
+          </div>
+          <div class="card">
+            <div class="subtle">已完成结构校验，合法率 98%。可加入错题本进行复习。</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

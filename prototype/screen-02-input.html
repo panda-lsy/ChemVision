@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>ChemVISION - 输入页</title>
+    <style>
+        /* ── 设计变量（与 common.css 统一） ──────── */
+        :root {
+            --ink: #0b0f1a;
+            --navy: #0f172a;
+            --navy-2: #101a2b;
+            --aqua: #38d5c1;
+            --lime: #b7f171;
+            --amber: #f6b355;
+            --mist: #e9eef5;
+            --soft: #cdd6e5;
+            --glass: rgba(255, 255, 255, 0.08);
+            --glass-strong: rgba(255, 255, 255, 0.12);
+            --shadow: rgba(5, 12, 24, 0.45);
+            --transition-ease: cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background:
+                radial-gradient(circle at 25% 25%, rgba(56, 213, 193, 0.08), transparent 50%),
+                radial-gradient(circle at 75% 75%, rgba(246, 179, 85, 0.06), transparent 55%),
+                var(--navy);
+            font-family: 'Space Grotesk', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            overflow: hidden;
+        }
+
+        /* ── 手机模型 ──────────────────────────────── */
+        .phone {
+            position: relative;
+            width: 390px;
+            height: 780px;
+            padding: 14px;
+            border-radius: 44px;
+            background: linear-gradient(165deg, #151b2a 0%, #0c111f 100%);
+            box-shadow:
+                0 0 0 2px rgba(255, 255, 255, 0.08),
+                0 25px 60px rgba(0, 0, 0, 0.6),
+                inset 0 -10px 40px rgba(0, 0, 0, 0.35);
+            animation: phone-float 5s ease-in-out infinite;
+        }
+
+        @keyframes phone-float {
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+            50% {
+                transform: translateY(-5px);
+            }
+        }
+
+        .phone::before {
+            content: "";
+            position: absolute;
+            inset: 8px;
+            border-radius: 38px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            pointer-events: none;
+        }
+
+        .side-btn {
+            position: absolute;
+            left: -8px;
+            width: 6px;
+            border-radius: 6px;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.15), rgba(0, 0, 0, 0.3));
+            z-index: 2;
+        }
+        .side-btn.top {
+            top: 140px;
+            height: 100px;
+        }
+        .side-btn.bottom {
+            top: 280px;
+            height: 70px;
+        }
+
+        .screen {
+            width: 100%;
+            height: 100%;
+            border-radius: 32px;
+            background: linear-gradient(180deg, #0d1627 0%, #0f1a30 100%);
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+        }
+
+        .notch {
+            position: absolute;
+            top: 14px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100px;
+            height: 28px;
+            background: #0b0f1a;
+            border-radius: 20px;
+            z-index: 3;
+        }
+
+        .content {
+            position: relative;
+            z-index: 2;
+            height: 100%;
+            padding: 56px 24px 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 22px;
+            animation: content-fade-in 0.6s var(--transition-ease) both;
+        }
+
+        @keyframes content-fade-in {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ── 顶部栏 ──────────────────────────────────── */
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .brand-small {
+            font-size: 16px;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--mist);
+        }
+
+        .pill {
+            padding: 8px 16px;
+            border-radius: 999px;
+            background: rgba(56, 213, 193, 0.15);
+            color: #bff7ef;
+            font-size: 12px;
+            font-weight: 500;
+            letter-spacing: 0.04em;
+            border: 1px solid rgba(56, 213, 193, 0.3);
+            box-shadow: 0 0 12px rgba(56, 213, 193, 0.15);
+            animation: pill-glow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes pill-glow {
+            from {
+                box-shadow: 0 0 8px rgba(56, 213, 193, 0.1);
+            }
+            to {
+                box-shadow: 0 0 18px rgba(56, 213, 193, 0.3);
+            }
+        }
+
+        /* ── 标题 ────────────────────────────────────── */
+        h1 {
+            font-size: 34px;
+            font-weight: 600;
+            letter-spacing: 0.03em;
+            color: #f3f6fb;
+            margin: 0;
+            text-shadow: 0 0 20px rgba(56, 213, 193, 0.3);
+        }
+
+        /* ── 输入框 ──────────────────────────────────── */
+        .input-box {
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 24px;
+            padding: 18px 20px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+            box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.2);
+        }
+
+        .input-box:focus-within {
+            border-color: var(--aqua);
+            box-shadow: 0 0 0 2px rgba(56, 213, 193, 0.2);
+        }
+
+        .input-label {
+            font-size: 13px;
+            font-weight: 500;
+            letter-spacing: 0.04em;
+            color: #9fb1c9;
+            margin-bottom: 8px;
+        }
+
+        .input-field {
+            font-size: 18px;
+            color: #e5edf7;
+            min-height: 28px;
+            position: relative;
+        }
+
+        .input-field::after {
+            content: "";
+            display: inline-block;
+            width: 2px;
+            height: 18px;
+            background: var(--aqua);
+            margin-left: 2px;
+            vertical-align: text-bottom;
+            animation: cursor-blink 1s step-end infinite;
+        }
+
+        @keyframes cursor-blink {
+            0%,
+            100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0;
+            }
+        }
+
+        /* ── 功能按钮行 ──────────────────────────────── */
+        .action-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+        }
+
+        .icon-btn {
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 18px;
+            padding: 14px 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #e7edf7;
+            font-size: 13px;
+            font-weight: 500;
+            transition: all 0.25s ease;
+            cursor: pointer;
+        }
+
+        .icon-btn:hover {
+            background: rgba(56, 213, 193, 0.12);
+            border-color: rgba(56, 213, 193, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+        }
+
+        .icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(56, 213, 193, 0.18);
+        }
+
+        .icon svg {
+            stroke: #e7f9f4;
+        }
+
+        /* ── 提示卡片 ────────────────────────────────── */
+        .hint-card {
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: 22px;
+            padding: 16px 18px;
+            border: 1px dashed rgba(255, 255, 255, 0.15);
+            color: #b6c5da;
+            font-size: 14px;
+            line-height: 1.6;
+            letter-spacing: 0.3px;
+            transition: border-color 0.3s ease;
+        }
+
+        .hint-card:hover {
+            border-color: var(--aqua);
+        }
+
+        /* ── 底部说明卡片 ────────────────────────────── */
+        .card {
+            background: var(--glass);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 22px;
+            padding: 16px 18px;
+            box-shadow: 0 10px 24px rgba(4, 12, 24, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .subtle {
+            font-size: 13px;
+            color: #a9b6cb;
+            line-height: 1.5;
+        }
+
+        /* ── 响应式 ──────────────────────────────────── */
+        @media (max-width: 440px) {
+            .phone {
+                width: 92vw;
+                height: auto;
+                aspect-ratio: 390 / 780;
+                border-radius: 32px;
+                padding: 10px;
+            }
+            .screen {
+                border-radius: 24px;
+            }
+            h1 {
+                font-size: 28px;
+            }
+            .input-field {
+                font-size: 16px;
+            }
+            .action-row {
+                gap: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="phone">
+        <div class="side-btn top"></div>
+        <div class="side-btn bottom"></div>
+        <div class="screen">
+            <div class="notch"></div>
+            <div class="content">
+                <div class="top-bar">
+                    <div class="brand-small">ChemVISION</div>
+                    <div class="pill">端侧意图识别</div>
+                </div>
+
+                <h1>输入化学名称</h1>
+
+                <div class="input-box">
+                    <div class="input-label">文本输入</div>
+                    <div class="input-field" contenteditable="true">苯甲酸</div>
+                </div>
+
+                <div class="action-row">
+                    <div class="icon-btn">
+                        <div class="icon">
+                            <svg viewBox="0 0 24 24" width="20" height="20">
+                                <rect x="9" y="3" width="6" height="12" rx="3" fill="none" stroke="currentColor" stroke-width="2" />
+                                <path d="M6 11c0 3.3 2.7 6 6 6s6-2.7 6-6" fill="none" stroke="currentColor" stroke-width="2" />
+                                <path d="M12 17v4" stroke="currentColor" stroke-width="2" />
+                            </svg>
+                        </div>
+                        语音输入
+                    </div>
+                    <div class="icon-btn">
+                        <div class="icon">
+                            <svg viewBox="0 0 24 24" width="20" height="20">
+                                <rect x="4" y="7" width="16" height="12" rx="3" fill="none" stroke="currentColor" stroke-width="2" />
+                                <circle cx="12" cy="13" r="3" fill="none" stroke="currentColor" stroke-width="2" />
+                                <path d="M8 7l2-3h4l2 3" stroke="currentColor" stroke-width="2" />
+                            </svg>
+                        </div>
+                        拍照识别
+                    </div>
+                    <div class="icon-btn">
+                        <div class="icon">
+                            <svg viewBox="0 0 24 24" width="20" height="20">
+                                <path d="M12 3l2.5 5 5.5.7-4 3.7 1.2 5.4L12 15.5 6.8 17.8 8 12.4 4 8.7 9.5 8z" fill="none" stroke="currentColor" stroke-width="2" />
+                            </svg>
+                        </div>
+                        示例提示
+                    </div>
+                </div>
+
+                <div class="hint-card">
+                    支持中文 IUPAC、俗名、分子式三种输入方式。<br />
+                    推荐输入：苯甲酸、乙酸乙酯、C₆H₅COOH
+                </div>
+
+                <div class="card">
+                    <div class="subtle">输入后将自动进行命名解析与结构推理，生成可编辑 SVG 结构图。</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>ChemVISION - 加载动效</title>
+  <link rel="stylesheet" href="common.css" />
+</head>
+<body class="loader-page">
+  <div class="canvas">
+    <!-- 移除原来的 bg 层，由 loader-page 背景覆盖 -->
+    <div class="phone">
+      <div class="side-btn top"></div>
+      <div class="side-btn bottom"></div>
+      <div class="screen">
+        <div class="notch"></div>
+        <div class="content">
+          <!-- 顶部栏 -->
+          <div class="top-bar">
+            <div class="brand-small">ChemVISION</div>
+            <div class="pill ghost" id="statusPill">结构推理中</div>
+          </div>
+
+          <!-- 加载主体 -->
+          <div class="loader">
+            <!-- 分子结构 SVG -->
+            <div class="molecule-container">
+              <div class="particles-layer">
+                <span class="particle">C</span>
+                <span class="particle">H</span>
+                <span class="particle">O</span>
+                <span class="particle">N</span>
+                <span class="particle">≡</span>
+                <span class="particle">=</span>
+              </div>
+              <svg class="molecule-stroke" viewBox="0 0 240 200" aria-hidden="true">
+                <circle cx="120" cy="100" r="75" class="glow-ring" />
+                <polygon points="120,20 200,65 200,135 120,180 40,135 40,65" class="hex-path" />
+                <polygon points="120,20 200,65 200,135 120,180 40,135 40,65" class="electron-flow" />
+                <line x1="155" y1="48" x2="178" y2="58" class="db-line" />
+                <line x1="178" y1="142" x2="155" y2="152" class="db-line" />
+                <line x1="55" y1="108" x2="82" y2="98" class="db-line" />
+                <polyline points="120,180 120,210 145,198" class="side-chain" />
+                <line x1="120" y1="210" x2="98" y2="222" class="side-chain" stroke-dasharray="40" />
+                <circle cx="120" cy="20" r="6" class="node-circle" />
+                <circle cx="200" cy="65" r="6" class="node-circle" />
+                <circle cx="200" cy="135" r="6" class="node-circle" />
+                <circle cx="120" cy="180" r="6" class="node-circle" />
+                <circle cx="40" cy="135" r="6" class="node-circle" />
+                <circle cx="40" cy="65" r="6" class="node-circle" />
+                <circle cx="145" cy="198" r="5" class="node-circle" />
+                <circle cx="98" cy="222" r="5" class="node-circle" />
+              </svg>
+            </div>
+
+            <div class="loading-text" id="loadingText">正在解析…</div>
+            <div class="subtle" id="subtleText">分子结构描边动画 · 规则校验进行中</div>
+
+            <!-- 阶段指示器 -->
+            <div class="stage-indicator" id="stageIndicator">
+              <div class="stage-dot active" data-stage="0">①</div>
+              <div class="stage-connector" data-conn="0"></div>
+              <div class="stage-dot" data-stage="1">②</div>
+              <div class="stage-connector" data-conn="1"></div>
+              <div class="stage-dot" data-stage="2">③</div>
+              <div class="stage-connector" data-conn="2"></div>
+              <div class="stage-dot" data-stage="3">④</div>
+            </div>
+            <div class="stage-labels" id="stageLabels">
+              <span data-label="0">意图识别</span>
+              <span data-label="1">结构推理</span>
+              <span data-label="2">规则校验</span>
+              <span data-label="3">渲染输出</span>
+            </div>
+
+            <div class="smiles-display" id="smilesDisplay"></div>
+
+            <div class="progress-dots">
+              <div class="dot"></div>
+              <div class="dot"></div>
+              <div class="dot"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const stages = [
+        { label: '意图识别', statusText: '意图识别中…', pillText: '端侧 BlueLM', subtle: '端侧路由 · 延迟 <100ms' },
+        { label: '结构推理', statusText: 'SMILES 生成中…', pillText: '结构推理中', subtle: '云端 BlueLM API · 命名解析 → SMILES' },
+        { label: '规则校验', statusText: '规则校验中…', pillText: '规则校验中', subtle: 'RDKit 校验层 · 价态/键合法性验证' },
+        { label: '渲染输出', statusText: '渲染输出中…', pillText: '渲染输出中', subtle: 'SVG 键线式图 · 分子属性计算' }
+      ];
+
+      const smilesString = 'c1ccc(cc1)C(=O)O';
+      let currentStage = 0;
+      const stageDuration = 2000;
+      let smilesTimer = null;
+      let charIndex = 0;
+
+      const statusPill = document.getElementById('statusPill');
+      const loadingText = document.getElementById('loadingText');
+      const subtleText = document.getElementById('subtleText');
+      const smilesDisplay = document.getElementById('smilesDisplay');
+      const stageDots = document.querySelectorAll('.stage-dot');
+      const stageConnectors = document.querySelectorAll('.stage-connector');
+      const stageLabelSpans = document.querySelectorAll('#stageLabels span');
+
+      function updateStageIndicator(stage) {
+        stageDots.forEach((dot, i) => {
+          dot.classList.remove('active', 'done');
+          if (i < stage) dot.classList.add('done');
+          if (i === stage) dot.classList.add('active');
+        });
+        stageConnectors.forEach((conn, i) => {
+          if (i < stage) conn.classList.add('done');
+          else conn.classList.remove('done');
+        });
+        stageLabelSpans.forEach((span, i) => {
+          span.classList.remove('highlight');
+          if (i === stage) span.classList.add('highlight');
+        });
+      }
+
+      function clearSmiles() {
+        if (smilesTimer) clearInterval(smilesTimer);
+        smilesTimer = null;
+        charIndex = 0;
+        smilesDisplay.textContent = '';
+        smilesDisplay.classList.remove('visible');
+      }
+
+      function startSmilesTyping() {
+        clearSmiles();
+        charIndex = 0;
+        smilesDisplay.textContent = '';
+        smilesDisplay.classList.add('visible');
+        smilesTimer = setInterval(() => {
+          if (charIndex < smilesString.length) {
+            charIndex++;
+            smilesDisplay.textContent = smilesString.substring(0, charIndex);
+          } else {
+            clearInterval(smilesTimer);
+            smilesTimer = null;
+          }
+        }, 55);
+      }
+
+      function switchToStage(stage) {
+        currentStage = stage;
+        const s = stages[stage];
+        loadingText.textContent = s.statusText;
+        subtleText.textContent = s.subtle;
+        statusPill.textContent = s.pillText;
+        updateStageIndicator(stage);
+
+        if (stage === 1) {
+          startSmilesTyping();
+        } else if (stage === 0) {
+          clearSmiles();
+        } else if (stage >= 2) {
+          if (smilesTimer) {
+            clearInterval(smilesTimer);
+            smilesTimer = null;
+          }
+          smilesDisplay.textContent = smilesString;
+          smilesDisplay.classList.add('visible');
+        }
+      }
+
+      function nextStage() {
+        const next = (currentStage + 1) % stages.length;
+        switchToStage(next);
+      }
+
+      switchToStage(0);
+      setInterval(nextStage, stageDuration);
+
+      // 点击屏幕手动切换
+      document.querySelector('.screen').addEventListener('click', nextStage);
+    })();
+  </script>
+</body>
+</html>
