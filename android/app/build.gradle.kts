@@ -8,10 +8,16 @@ plugins {
 }
 
 val flutterVersionCode: Int by lazy {
-    (project.property("FLUTTER_VERSION_CODE") as String).toInt()
+    (
+        providers.gradleProperty("FLUTTER_VERSION_CODE").orNull
+            ?: providers.gradleProperty("flutter.versionCode").orNull
+            ?: "1"
+    ).toInt()
 }
 val flutterVersionName: String by lazy {
-    project.property("FLUTTER_VERSION_NAME") as String
+    providers.gradleProperty("FLUTTER_VERSION_NAME").orNull
+        ?: providers.gradleProperty("flutter.versionName").orNull
+        ?: "1.0.0"
 }
 
 android {
