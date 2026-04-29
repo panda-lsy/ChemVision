@@ -32,7 +32,7 @@ html, body {
   margin: 0;
   padding: 0;
   background: #eceff4;
-  font-family: "Space Grotesk", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+  font-family: "Space Grotesk", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
   color: #e8edf4;
 }
 
@@ -40,11 +40,12 @@ html, body {
 .loader-page {
   width: 100vw;
   height: 100vh;
-  background: var(--navy);
+  background: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  font-family: 'Space Grotesk', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
 }
 
 .loader-page .canvas {
@@ -73,6 +74,7 @@ html, body {
     0 0 0 2px rgba(255,255,255,0.08),
     0 20px 60px rgba(0,0,0,0.6),
     inset 0 -8px 30px rgba(0,0,0,0.35);
+  animation: none;
 }
 
 .loader-page .phone::before {

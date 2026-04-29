@@ -1,89 +1,193 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ChemVISION - 收藏与错题本</title>
-  <link rel="stylesheet" href="common.css" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>ChemVISION · 收藏与错题本</title>
+    <style>
+        :root {
+            --ink:#0b0f1a; --navy:#0f172a; --navy-2:#101a2b;
+            --aqua:#38d5c1; --lime:#b7f171; --amber:#f6b355;
+            --mist:#e9eef5; --soft:#cdd6e5;
+            --glass:rgba(255,255,255,0.08); --glass-strong:rgba(255,255,255,0.12);
+            --shadow:rgba(5,12,24,0.45); --transition-ease:cubic-bezier(0.4,0,0.2,1);
+            --card-bg:rgba(255,255,255,0.04); --card-border:rgba(255,255,255,0.08);
+            --card-hover-border:rgba(56,213,193,0.3);
+        }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{width:100vw;height:100vh;display:flex;align-items:center;justify-content:center;background:#fff;font-family:'Space Grotesk','Noto Sans SC','PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden}
+
+        .phone{position:relative;width:390px;height:780px;padding:14px;border-radius:44px;background:linear-gradient(165deg,#151b2a 0%,#0c111f 100%);box-shadow:0 0 0 2px rgba(255,255,255,0.08),0 25px 60px rgba(0,0,0,0.6),inset 0 -10px 40px rgba(0,0,0,0.35)}
+                .phone::before{content:"";position:absolute;inset:8px;border-radius:38px;border:1px solid rgba(255,255,255,0.06);pointer-events:none}
+        .side-btn{position:absolute;left:-8px;width:6px;border-radius:6px;background:linear-gradient(180deg,rgba(255,255,255,0.15),rgba(0,0,0,0.3));z-index:2}
+        .side-btn.top{top:140px;height:100px}
+        .side-btn.bottom{top:280px;height:70px}
+        .screen{width:100%;height:100%;border-radius:32px;background:linear-gradient(180deg,#0d1627 0%,#0f1a30 100%);overflow:hidden;position:relative;box-shadow:inset 0 0 0 1px rgba(255,255,255,0.04)}
+        .notch{position:absolute;top:14px;left:50%;transform:translateX(-50%);width:100px;height:28px;background:#0b0f1a;border-radius:20px;z-index:3}
+        .content{position:relative;z-index:2;height:100%;padding:56px 24px 32px;display:flex;flex-direction:column;gap:18px;animation:content-fade-in 0.6s var(--transition-ease) both;overflow-y:auto}
+        @keyframes content-fade-in{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+        .content::-webkit-scrollbar{width:4px}
+        .content::-webkit-scrollbar-track{background:transparent}
+        .content::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.1);border-radius:4px}
+
+        .top-bar{display:flex;align-items:center;justify-content:space-between}
+        .brand-small{font-size:16px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:var(--mist)}
+        .pill{padding:8px 18px;border-radius:999px;background:rgba(56,213,193,0.18);color:#bff7ef;font-size:12px;font-weight:600;letter-spacing:0.04em;border:1px solid rgba(56,213,193,0.35);box-shadow:0 0 14px rgba(56,213,193,0.2);animation:pill-glow 2.4s ease-in-out infinite alternate}
+        @keyframes pill-glow{from{box-shadow:0 0 10px rgba(56,213,193,0.15)}to{box-shadow:0 0 22px rgba(56,213,193,0.45)}}
+
+        h1{font-size:32px;font-weight:700;letter-spacing:0.02em;color:#f3f6fb;margin:0;text-shadow:0 0 18px rgba(56,213,193,0.2)}
+
+        .chip-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:-4px}
+        .chip{padding:8px 16px;border-radius:999px;background:rgba(255,255,255,0.05);font-size:13px;font-weight:500;color:#b9c7de;border:1px solid rgba(255,255,255,0.08);transition:all 0.25s ease;cursor:pointer;letter-spacing:0.03em}
+        .chip:hover{background:rgba(56,213,193,0.12);border-color:rgba(56,213,193,0.35);color:#ddf7f0}
+        .chip.active{background:rgba(56,213,193,0.2);border-color:var(--aqua);color:#e0f7f2;box-shadow:0 0 14px rgba(56,213,193,0.25);font-weight:600}
+
+        .list{display:flex;flex-direction:column;gap:14px;flex:1}
+        .list-card{display:grid;grid-template-columns:100px 1fr;gap:14px;padding:16px;border-radius:22px;background:var(--card-bg);border:1px solid var(--card-border);backdrop-filter:blur(10px);transition:all 0.3s ease;cursor:pointer;animation:card-enter 0.5s var(--transition-ease) backwards;position:relative;overflow:hidden}
+        .list-card:nth-child(1){animation-delay:0.1s}
+        .list-card:nth-child(2){animation-delay:0.2s}
+        .list-card:nth-child(3){animation-delay:0.3s}
+        @keyframes card-enter{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+        .list-card:hover{background:rgba(255,255,255,0.07);border-color:var(--card-hover-border);transform:translateY(-2px);box-shadow:0 12px 28px rgba(0,0,0,0.3)}
+
+        .structure{display:flex;align-items:center;justify-content:center;background:rgba(11,15,26,0.5);border-radius:16px;padding:8px}
+        .molecule-card{width:80px;height:70px;filter:drop-shadow(0 0 6px rgba(56,213,193,0.3))}
+        .list-card h3{font-size:18px;font-weight:600;color:#e8edf4;margin:0 0 6px;letter-spacing:0.02em}
+        .meta-row{font-size:12px;color:#a0b3cc;margin-bottom:8px}
+        .card-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+        .card-chips .chip{font-size:11px;padding:4px 10px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1)}
+        .card-chips .chip.warning{background:rgba(246,179,85,0.15);border-color:rgba(246,179,85,0.4);color:#fce5b1}
+
+        .card{background:var(--glass);border:1px solid rgba(255,255,255,0.1);border-radius:18px;padding:14px 18px;backdrop-filter:blur(12px);box-shadow:0 8px 20px rgba(4,12,24,0.3);margin-top:auto}
+        .subtle{font-size:13px;color:#a9b6cb;display:flex;align-items:center;gap:8px}
+        .subtle::before{content:"";display:inline-block;width:16px;height:16px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23f6b355' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5'/%3E%3Cpath d='M9 18h6'/%3E%3Cpath d='M10 22h4'/%3E%3C/svg%3E");background-size:contain;background-repeat:no-repeat;flex-shrink:0}
+
+        /* ── 逐个悬停态自动循环（GIF 演示） ────────────── */
+        .hl-active{animation:hl-glow 2s ease-in-out forwards}
+        @keyframes hl-glow{0%{border-color:rgba(56,213,193,0.5);box-shadow:0 0 16px rgba(56,213,193,0.35)}100%{border-color:rgba(56,213,193,0.5);box-shadow:0 0 16px rgba(56,213,193,0.35)}}
+        .hl-active.chip{animation:hl-glow-chip 2s ease-in-out forwards}
+        @keyframes hl-glow-chip{0%{background:rgba(56,213,193,0.12);border-color:rgba(56,213,193,0.35);color:#ddf7f0}100%{background:rgba(56,213,193,0.12);border-color:rgba(56,213,193,0.35);color:#ddf7f0}}
+        .hl-active.list-card{animation:hl-glow-card 2s ease-in-out forwards}
+        @keyframes hl-glow-card{0%{background:rgba(255,255,255,0.07);border-color:var(--card-hover-border);box-shadow:0 12px 28px rgba(0,0,0,0.3)}100%{background:rgba(255,255,255,0.07);border-color:var(--card-hover-border);box-shadow:0 12px 28px rgba(0,0,0,0.3)}}
+
+        @media (max-width:440px){
+            .phone{width:92vw;height:auto;aspect-ratio:390/780;border-radius:32px;padding:10px}
+            .screen{border-radius:24px}h1{font-size:28px}
+            .list-card{grid-template-columns:80px 1fr;padding:12px}
+            .molecule-card{width:65px;height:60px}
+        }
+    </style>
 </head>
 <body>
-  <div class="canvas">
-    <div class="bg"></div>
     <div class="phone">
-      <div class="side-btn top"></div>
-      <div class="side-btn bottom"></div>
-      <div class="screen">
-        <div class="notch"></div>
-        <div class="content">
-          <div class="top-bar">
-            <div class="brand-small">ChemVISION</div>
-            <div class="pill">收藏 / 错题本</div>
-          </div>
-          <h1>我的结构卡片</h1>
-          <div class="chip-row">
-            <div class="chip active">全部</div>
-            <div class="chip">错题</div>
-            <div class="chip">芳香族</div>
-            <div class="chip">羧酸</div>
-          </div>
-          <div class="list">
-            <div class="list-card">
-              <div class="structure">
-                <svg class="molecule-card" viewBox="0 0 200 160" aria-hidden="true">
-                  <polygon points="100,18 168,58 168,122 100,152 32,122 32,58" />
-                  <line x1="100" y1="18" x2="100" y2="152" />
-                  <line x1="32" y1="58" x2="168" y2="122" />
-                </svg>
-              </div>
-              <div>
-                <h3>苯甲酸</h3>
-                <div class="meta-row">C7H6O2 · 分子量 122.12</div>
-                <div class="chip-row">
-                  <div class="chip">芳香族</div>
-                  <div class="chip">羧酸</div>
+        <div class="side-btn top"></div>
+        <div class="side-btn bottom"></div>
+        <div class="screen">
+            <div class="notch"></div>
+            <div class="content">
+                <div class="top-bar">
+                    <div class="brand-small">ChemVISION</div>
+                    <div class="pill">收藏 / 错题本</div>
                 </div>
-              </div>
-            </div>
-            <div class="list-card">
-              <div class="structure">
-                <svg class="molecule-card" viewBox="0 0 200 160" aria-hidden="true">
-                  <line x1="30" y1="80" x2="170" y2="80" />
-                  <line x1="60" y1="50" x2="140" y2="110" />
-                </svg>
-              </div>
-              <div>
-                <h3>2-甲基-3-乙基戊烷</h3>
-                <div class="meta-row">C8H18 · 分子量 114.23</div>
+
+                <h1>我的结构卡片</h1>
+
                 <div class="chip-row">
-                  <div class="chip">烷烃</div>
-                  <div class="chip">错题</div>
+                    <div class="chip active hl">全部</div>
+                    <div class="chip hl">错题</div>
+                    <div class="chip hl">芳香族</div>
+                    <div class="chip hl">羧酸</div>
+                    <div class="chip hl">烷烃</div>
                 </div>
-              </div>
-            </div>
-            <div class="list-card">
-              <div class="structure">
-                <svg class="molecule-card" viewBox="0 0 200 160" aria-hidden="true">
-                  <polygon points="100,18 168,58 168,122 100,152 32,122 32,58" />
-                  <line x1="168" y1="58" x2="190" y2="40" />
-                  <line x1="190" y1="40" x2="196" y2="14" />
-                </svg>
-              </div>
-              <div>
-                <h3>对硝基苯胺</h3>
-                <div class="meta-row">C6H6N2O2 · 分子量 138.12</div>
-                <div class="chip-row">
-                  <div class="chip">芳香族</div>
-                  <div class="chip">考试重点</div>
+
+                <div class="list">
+                    <div class="list-card hl">
+                        <div class="structure">
+                            <svg id="fav-1" class="molecule-card" viewBox="0 0 200 160" aria-hidden="true"></svg>
+                        </div>
+                        <div>
+                            <h3>苯甲酸</h3>
+                            <div class="meta-row">C₇H₆O₂ · 分子量 122.12</div>
+                            <div class="card-chips">
+                                <div class="chip">芳香族</div>
+                                <div class="chip">羧酸</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="list-card hl">
+                        <div class="structure">
+                            <svg id="fav-2" class="molecule-card" viewBox="0 0 200 160" aria-hidden="true"></svg>
+                        </div>
+                        <div>
+                            <h3>2-甲基-3-乙基戊烷</h3>
+                            <div class="meta-row">C₈H₁₈ · 分子量 114.23</div>
+                            <div class="card-chips">
+                                <div class="chip">烷烃</div>
+                                <div class="chip warning">错题</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="list-card hl">
+                        <div class="structure">
+                            <svg id="fav-3" class="molecule-card" viewBox="0 0 200 160" aria-hidden="true"></svg>
+                        </div>
+                        <div>
+                            <h3>对硝基苯胺</h3>
+                            <div class="meta-row">C₆H₆N₂O₂ · 分子量 138.12</div>
+                            <div class="card-chips">
+                                <div class="chip">芳香族</div>
+                                <div class="chip">考试重点</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-              </div>
+
+                <div class="card">
+                    <div class="subtle">长按卡片可添加笔记与知识点标签。</div>
+                </div>
             </div>
-          </div>
-          <div class="card">
-            <div class="subtle">长按卡片可添加笔记与知识点标签。</div>
-          </div>
         </div>
-      </div>
     </div>
-  </div>
+    <script src="https://cdn.jsdelivr.net/npm/smiles-drawer@2.0.1/dist/smiles-drawer.min.js"></script>
+    <script>
+        (function() {
+            if (!window.SmilesDrawer) return;
+            const theme = {
+                C:"#e8f6f3",O:"#f6b355",N:"#9bc4ff",S:"#ffd166",
+                F:"#b7f171",Cl:"#9cd1ff",Br:"#f4a6c8",I:"#cda2ff",
+                P:"#f6d365",B:"#9ee493",Si:"#c5d1ff"
+            };
+            const drawer = new SmilesDrawer.SvgDrawer({
+                width:90,height:70,padding:10,
+                bondThickness:2,bondLength:14,
+                atomVisualization:"default",
+                themes:{custom:theme}
+            });
+            const items = [
+                {id:"fav-1",smiles:"O=C(O)c1ccccc1"},
+                {id:"fav-2",smiles:"CC(C)C(CC)C"},
+                {id:"fav-3",smiles:"Nc1ccc(cc1)[N+](=O)[O-]"}
+            ];
+            items.forEach(item => {
+                SmilesDrawer.parse(item.smiles, tree => {
+                    drawer.draw(tree, item.id, "custom", false);
+                }, () => {});
+            });
+        })();
+    </script>
+    <script>
+    (function(){
+        var items=document.querySelectorAll('.hl');
+        var i=0;var DURATION=2000;var INTERVAL=3000;
+        function tick(){
+            items.forEach(function(el){el.classList.remove('hl-active')});
+            items[i].classList.add('hl-active');
+            i=(i+1)%items.length;
+        }
+        tick();setInterval(tick,INTERVAL);
+    })();
+    </script>
 </body>
 </html>
