@@ -15,13 +15,6 @@ class AppTheme {
         onPrimary: AppColors.ink,
         onSurface: AppColors.textPrimary,
       ),
-      fontFamily: 'Space Grotesk',
-      fontFamilyFallback: const [
-        'Noto Sans SC',
-        'PingFang SC',
-        'Microsoft YaHei',
-        'Noto Sans CJK SC',
-      ],
       textTheme: base.textTheme.copyWith(
         headlineMedium: const TextStyle(
           fontSize: 30,
