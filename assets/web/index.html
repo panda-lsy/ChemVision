@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ChemVISION Renderer</title>
+    <link rel="stylesheet" href="app.css" />
+  </head>
+  <body>
+    <div id="container">
+      <div id="render-area">
+        <div id="smiles-text">SMILES: -</div>
+        <div id="atom-list" aria-label="Atom list"></div>
+        <div id="hint">Tap atoms to highlight, drag to move.</div>
+      </div>
+      <div id="engine-label">Render Engine: WebView + smiles-drawer</div>
+    </div>
+    <script src="../js/openchemlib.js"></script>
+    <script src="../js/smiles-drawer.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

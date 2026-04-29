@@ -1,2 +1,24 @@
 node_modules/
 doc/
+
+# Flutter / Dart
+.dart_tool/
+.android/
+.ios/
+.pub-cache/
+.pub/
+build/
+flutter_*.log
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Android
+android/.gradle/
+android/app/build/
+android/local.properties
+
+# Misc
+.DS_Store

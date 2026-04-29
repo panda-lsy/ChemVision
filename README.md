@@ -72,6 +72,14 @@
 └─────────────────────────────────────────────────────┘
 ```
 
+## Web 渲染依赖（本地 assets）
+
+- openchemlib.js v9.22.0 (BSD-3-Clause)
+  - 来源: https://cdn.jsdelivr.net/npm/openchemlib@9.22.0/dist/openchemlib.js
+- smiles-drawer.js v2.0.1 (MIT)
+  - 来源: https://cdn.jsdelivr.net/npm/smiles-drawer@2.0.1/dist/smiles-drawer.js
+  - 本地文件已追加 ChemVISION Bridge patch 标记
+
 ### 技术栈
 
 | 层级 | 技术 |

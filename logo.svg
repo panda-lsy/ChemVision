@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="130" height="130">
+  <defs>
+    <linearGradient id="logoGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#38d5c1" />
+      <stop offset="100%" stop-color="#b7f171" />
+    </linearGradient>
+  </defs>
+  <!-- 六边形（苯环） -->
+  <polygon points="60,8 108,34 108,86 60,112 12,86 12,34"
+           fill="none" stroke="url(#logoGrad)" stroke-width="5"
+           stroke-linejoin="round" />
+  <!-- 内部双键（中心圆） -->
+  <circle cx="60" cy="60" r="18"
+          fill="none" stroke="#f6b355" stroke-width="4" />
+  <!-- 左下方支链 -->
+  <path d="M38 68 L20 82" stroke="#b7f171" stroke-width="4"
+        stroke-linecap="round" />
+  <!-- 右上方支链 -->
+  <path d="M82 52 L102 40" stroke="#38d5c1" stroke-width="4"
+        stroke-linecap="round" />
+</svg>

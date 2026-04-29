@@ -1,0 +1,91 @@
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  --ink: #0b0f1a;
+  --navy: #0f172a;
+  --navy-2: #101a2b;
+  --aqua: #38d5c1;
+  --lime: #b7f171;
+  --amber: #f6b355;
+  --mist: #e9eef5;
+  --soft: #cdd6e5;
+  --glass: rgba(255, 255, 255, 0.08);
+  --glass-strong: rgba(255, 255, 255, 0.12);
+  --shadow: rgba(5, 12, 24, 0.45);
+}
+
+body {
+  margin: 0;
+  font-family: "Space Grotesk", "Noto Sans SC", "PingFang SC", "Microsoft YaHei",
+    sans-serif;
+  background: transparent;
+  color: #f3f6fb;
+}
+
+#container {
+  padding: 12px;
+}
+
+#render-area {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 20px;
+  padding: 16px;
+  min-height: 200px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(12px);
+}
+
+#smiles-text {
+  font-size: 13px;
+  color: var(--aqua);
+  margin-bottom: 12px;
+  letter-spacing: 0.4px;
+}
+
+#atom-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-height: 56px;
+}
+
+.atom {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  color: #e8edf4;
+  transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
+}
+
+.atom.selected {
+  background: rgba(56, 213, 193, 0.2);
+  border-color: rgba(56, 213, 193, 0.5);
+  box-shadow: 0 0 12px rgba(56, 213, 193, 0.35);
+}
+
+.atom.dragging {
+  opacity: 0.85;
+  transform: scale(1.03);
+}
+
+#hint {
+  margin-top: 12px;
+  font-size: 12px;
+  color: #9fb1c9;
+}
+
+#engine-label {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #9fb1c9;
+}
