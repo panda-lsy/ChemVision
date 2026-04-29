@@ -112,6 +112,8 @@ SmilesDrawer.parseReaction = function (reactionSmiles, successCallback, errorCal
 if (canUseDOM) {
   window.SmilesDrawer = SmilesDrawer;
   window.SmiDrawer = SmiDrawer;
+  // ChemVISION Bridge patch: expose drawer instance for WebView integration.
+  window.ChemVisionSmilesDrawer = SmilesDrawer;
 } // There be dragons (polyfills)
 
 
@@ -12627,12 +12629,4 @@ class Vertex {
 module.exports = Vertex;
 
 },{"./ArrayHelper":2,"./Atom":3,"./MathHelper":11,"./Vector2":25}]},{},[1])
-
-// ChemVISION patch: expose a lightweight hook marker for custom integrations.
-if (typeof window !== 'undefined') {
-  window.__CHEMVISION_SMILES_DRAWER_PATCH__ = {
-    enabled: true,
-    note: 'Bridge hooks injected by ChemVISION',
-  };
-}
 

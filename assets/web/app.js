@@ -11,6 +11,24 @@
 
   const atomList = document.getElementById('atom-list');
   const smilesText = document.getElementById('smiles-text');
+  const structureCanvas = document.getElementById('smiles-canvas');
+  let svgDrawer = null;
+
+  const drawerTheme = {
+    C: '#e8f6f3',
+    O: '#f6b355',
+    N: '#9bc4ff',
+    S: '#ffd166',
+    F: '#b7f171',
+    Cl: '#9cd1ff',
+    Br: '#f4a6c8',
+    I: '#cda2ff',
+    P: '#f6d365',
+    B: '#9ee493',
+    Si: '#c5d1ff',
+    H: '#aab4c8',
+    BACKGROUND: '#0b0f1a',
+  };
 
   const fallbackAtomicNo = {
     H: 1,
@@ -112,6 +130,53 @@
     smilesText.textContent = `SMILES: ${state.smiles || '-'}`;
   }
 
+  function getSvgDrawer() {
+    if (!structureCanvas || !window.SmilesDrawer || !window.SmilesDrawer.SvgDrawer) {
+      return null;
+    }
+    if (!svgDrawer) {
+      svgDrawer = new window.SmilesDrawer.SvgDrawer({
+        width: 320,
+        height: 180,
+        padding: 12,
+        bondThickness: 2,
+        bondLength: 18,
+        atomVisualization: 'default',
+        themes: {
+          custom: drawerTheme,
+        },
+      });
+    }
+    return svgDrawer;
+  }
+
+  function clearSvg() {
+    if (!structureCanvas) {
+      return;
+    }
+    while (structureCanvas.firstChild) {
+      structureCanvas.removeChild(structureCanvas.firstChild);
+    }
+  }
+
+  function drawSmiles(smiles) {
+    const drawer = getSvgDrawer();
+    if (!drawer || !smiles) {
+      clearSvg();
+      return;
+    }
+    window.SmilesDrawer.parse(
+      smiles,
+      (tree) => {
+        clearSvg();
+        drawer.draw(tree, structureCanvas, 'custom', false);
+      },
+      () => {
+        clearSvg();
+      }
+    );
+  }
+
   function updateSelection() {
     const nodes = atomList.querySelectorAll('.atom');
     nodes.forEach((node) => {
@@ -131,6 +196,7 @@
     try {
       state.smiles = state.molecule.toSmiles();
       updateSmilesDisplay();
+      drawSmiles(state.smiles);
       callBridge('onSmilesUpdated', {
         smiles: state.smiles,
         source,
@@ -234,6 +300,7 @@
     }
     updateSmilesDisplay();
     renderAtoms();
+    drawSmiles(state.smiles);
   }
 
   function updateAtomElement(atomId, element) {
