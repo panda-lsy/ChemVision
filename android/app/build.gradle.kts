@@ -7,6 +7,13 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+val flutterVersionCode: Int by lazy {
+    (project.property("FLUTTER_VERSION_CODE") as String).toInt()
+}
+val flutterVersionName: String by lazy {
+    project.property("FLUTTER_VERSION_NAME") as String
+}
+
 android {
     namespace = "com.chemvision.chemvision"
     compileSdk = flutter.compileSdkVersion
@@ -24,8 +31,8 @@ android {
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
-        versionCode = flutter.versionCode.toInt()
-        versionName = flutter.versionName.toString()
+        versionCode = flutterVersionCode
+        versionName = flutterVersionName
     }
 
     buildTypes {
