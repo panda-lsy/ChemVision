@@ -9,6 +9,7 @@ import '../widgets/glass_panel.dart';
 import '../widgets/primary_button.dart';
 import '../widgets/quick_tag.dart';
 import 'loading_page.dart';
+import 'settings_page.dart';
 
 class InputPage extends ConsumerStatefulWidget {
   const InputPage({super.key});
@@ -60,6 +61,16 @@ class _InputPageState extends ConsumerState<InputPage> {
             children: [
               Text('ChemVISION', style: Theme.of(context).textTheme.labelLarge),
               const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.settings, size: 20),
+                color: AppColors.textMuted,
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const SettingsPage()),
+                  );
+                },
+              ),
+              const SizedBox(width: 6),
               const AccentPill(label: '端侧意图识别'),
             ],
           ),

@@ -10,6 +10,7 @@ import '../widgets/app_scaffold.dart';
 import '../widgets/glass_panel.dart';
 import '../widgets/primary_button.dart';
 import '../widgets/structure_webview.dart';
+import 'settings_page.dart';
 
 class ResultPage extends StatefulWidget {
   const ResultPage({super.key, required this.query, required this.result});
@@ -117,6 +118,16 @@ class _ResultPageState extends State<ResultPage> {
             children: [
               Text('ChemVISION', style: Theme.of(context).textTheme.labelLarge),
               const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.settings, size: 20),
+                color: AppColors.textMuted,
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const SettingsPage()),
+                  );
+                },
+              ),
+              const SizedBox(width: 6),
               const AccentPill(label: '结构已生成'),
             ],
           ),
