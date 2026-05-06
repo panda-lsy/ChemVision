@@ -22,48 +22,50 @@ class AppScaffold extends StatelessWidget {
     );
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Container(
-        decoration: const BoxDecoration(gradient: AppColors.screenGradient),
-        child: Stack(
-          children: [
-            Positioned(
-              top: -120,
-              right: -80,
-              child: Container(
-                width: 260,
-                height: 260,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      AppColors.aqua.withOpacity(0.2),
-                      Colors.transparent,
-                    ],
-                  ),
+      backgroundColor: AppColors.navyDeep,
+      body: Stack(
+        children: [
+          const Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(gradient: AppColors.screenGradient),
+            ),
+          ),
+          Positioned(
+            top: -120,
+            right: -80,
+            child: Container(
+              width: 260,
+              height: 260,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    AppColors.aqua.withOpacity(0.2),
+                    Colors.transparent,
+                  ],
                 ),
               ),
             ),
-            Positioned(
-              bottom: -140,
-              left: -120,
-              child: Container(
-                width: 300,
-                height: 300,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      AppColors.lime.withOpacity(0.12),
-                      Colors.transparent,
-                    ],
-                  ),
+          ),
+          Positioned(
+            bottom: -140,
+            left: -120,
+            child: Container(
+              width: 300,
+              height: 300,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    AppColors.lime.withOpacity(0.12),
+                    Colors.transparent,
+                  ],
                 ),
               ),
             ),
-            SafeArea(child: content),
-          ],
-        ),
+          ),
+          SafeArea(child: content),
+        ],
       ),
     );
   }

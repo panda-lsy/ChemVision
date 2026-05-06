@@ -1,4 +1,6 @@
 (function () {
+  const params = new URLSearchParams(window.location.search);
+  const channel = params.get('channel') || 'chemvision';
   const state = {
     smiles: '',
     atoms: [],
@@ -53,10 +55,15 @@
     {}
   );
 
-  function callBridge(name, payload) {
+  function postToHost(type, payload) {
     if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
-      window.flutter_inappwebview.callHandler(name, payload);
+      window.flutter_inappwebview.callHandler(type, payload);
+      return;
     }
+    if (!window.parent) {
+      return;
+    }
+    window.parent.postMessage({ channel, type, payload }, '*');
   }
 
   function isOclReady() {
@@ -197,7 +204,7 @@
       state.smiles = state.molecule.toSmiles();
       updateSmilesDisplay();
       drawSmiles(state.smiles);
-      callBridge('onSmilesUpdated', {
+      postToHost('onSmilesUpdated', {
         smiles: state.smiles,
         source,
       });
@@ -209,7 +216,7 @@
   function selectAtom(atom) {
     state.selectedId = atom.id;
     updateSelection();
-    callBridge('onAtomSelected', {
+    postToHost('onAtomSelected', {
       atomId: atom.id,
       element: atom.element,
     });
@@ -247,7 +254,7 @@
     node.classList.remove('dragging');
     node.style.transform = '';
 
-    callBridge('onAtomDragEnd', {
+    postToHost('onAtomDragEnd', {
       atomId: state.drag.atomId,
       element: state.drag.element,
       dx,
@@ -348,7 +355,28 @@
   };
   window.updateAtomElement = updateAtomElement;
 
+  window.addEventListener('message', (event) => {
+    const data = event.data;
+    if (!data || data.channel !== channel) {
+      return;
+    }
+    const payload = data.payload || {};
+    switch (data.type) {
+      case 'renderSmiles':
+        renderSmiles(payload.smiles);
+        break;
+      case 'updateAtomElement':
+        updateAtomElement(payload.atomId, payload.element);
+        break;
+      case 'setMoleculeJson':
+        window.setMoleculeJson(payload);
+        break;
+      default:
+        break;
+    }
+  });
+
   document.addEventListener('DOMContentLoaded', function () {
-    callBridge('onBridgeReady', {});
+    postToHost('onBridgeReady', {});
   });
 })();

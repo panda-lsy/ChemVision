@@ -1,6 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/ai_models.dart';
+import '../config/app_config.dart';
 
 class AiSettings {
   final String apiKey;
@@ -44,10 +45,20 @@ class AiSettingsStore {
   Future<AiSettings> load() async {
     final prefs = await SharedPreferences.getInstance();
     final apiKey = prefs.getString(_apiKeyKey) ?? '';
-    final textModel = prefs.getString(_textModelKey) ?? '';
+    final rawTextModel = prefs.getString(_textModelKey) ?? '';
     final embeddingModel = prefs.getString(_embeddingModelKey);
     final rerankModel = prefs.getString(_rerankModelKey);
-    final baseUrl = prefs.getString(_baseUrlKey) ?? defaultAigcBaseUrl;
+    final rawBaseUrl = prefs.getString(_baseUrlKey) ?? defaultAigcBaseUrl;
+
+    final textModel = _migrateTextModel(rawTextModel);
+    final baseUrl = _migrateBaseUrl(rawBaseUrl);
+
+    if (textModel != rawTextModel) {
+      await prefs.setString(_textModelKey, textModel);
+    }
+    if (baseUrl != rawBaseUrl) {
+      await prefs.setString(_baseUrlKey, baseUrl);
+    }
 
     return AiSettings(
       apiKey: apiKey,
@@ -72,6 +83,33 @@ class AiSettingsStore {
       return null;
     }
     return value;
+  }
+
+  String _migrateTextModel(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty || trimmed == 'Doubao-Seedream-4.5') {
+      return textGenerationModels.isNotEmpty
+          ? textGenerationModels.first.name
+          : trimmed;
+    }
+    return trimmed;
+  }
+
+  String _migrateBaseUrl(String value) {
+    var trimmed = value.trim();
+    if (trimmed.isEmpty) {
+      return defaultAigcBaseUrl;
+    }
+    if (trimmed.contains('/api/v1')) {
+      return AppConfig.vivoAigcBaseUrl;
+    }
+    if (trimmed == 'https://api-ai.vivo.com.cn') {
+      return AppConfig.vivoAigcBaseUrl;
+    }
+    if (!trimmed.contains('://') && trimmed.startsWith('localhost')) {
+      trimmed = 'http://$trimmed';
+    }
+    return trimmed;
   }
 
   Future<void> _setOptional(

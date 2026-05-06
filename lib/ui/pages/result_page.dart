@@ -1,15 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-
 import '../../config/app_config.dart';
 import '../../models/structure_result.dart';
 import '../../theme/app_colors.dart';
-import '../../utils/js_utils.dart';
 import '../widgets/accent_pill.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/glass_panel.dart';
 import '../widgets/primary_button.dart';
-import '../widgets/structure_webview.dart';
+import '../widgets/structure_view.dart';
+import '../widgets/structure_view_controller.dart';
 import 'settings_page.dart';
 
 class ResultPage extends StatefulWidget {
@@ -23,7 +21,7 @@ class ResultPage extends StatefulWidget {
 }
 
 class _ResultPageState extends State<ResultPage> {
-  InAppWebViewController? _controller;
+  StructureViewController? _controller;
   String _currentSmiles = '';
   String? _selectedAtomId;
   String? _selectedElement;
@@ -99,11 +97,7 @@ class _ResultPageState extends State<ResultPage> {
     if (controller == null) {
       return;
     }
-    final safeId = escapeForSingleQuotedJs(atomId);
-    final safeElement = escapeForSingleQuotedJs(element);
-    controller.evaluateJavascript(
-      source: "updateAtomElement('$safeId', '$safeElement');",
-    );
+    controller.updateAtomElement(atomId, element);
     Navigator.of(context).pop();
   }
 
@@ -144,9 +138,9 @@ class _ResultPageState extends State<ResultPage> {
                   borderRadius: BorderRadius.circular(20),
                   child: SizedBox(
                     height: 260,
-                    child: StructureWebView(
+                    child: StructureView(
                       smiles: widget.result.smiles,
-                      onWebViewReady: (controller) {
+                      onControllerReady: (controller) {
                         _controller = controller;
                       },
                       onAtomSelected: (atomId, element) {
