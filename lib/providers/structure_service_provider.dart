@@ -19,7 +19,7 @@ final structureServiceProvider = Provider<StructureService>((ref) {
   if (AppConfig.useMockService) {
     return MockStructureService();
   }
-  return RealStructureService(
+  return NameToStructureService(
     settingsStore: ref.read(aiSettingsStoreProvider),
     client: ref.read(vivoAigcClientProvider),
   );

@@ -7,4 +7,5 @@ class AppConfig {
   static const String vivoTextGenerationPath = '/chat/completions';
   static const String vivoTextGenerationUrl =
       '$vivoAigcBaseUrl$vivoTextGenerationPath';
+  static const String nameResolverBaseUrl = 'http://localhost:9001';
 }

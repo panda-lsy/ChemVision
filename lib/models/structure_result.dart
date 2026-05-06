@@ -1,5 +1,6 @@
 class StructureResult {
   final String smiles;
+  final String? resolvedName;
   final String? svgString;
   final String molecularFormula;
   final double molecularWeight;
@@ -9,6 +10,7 @@ class StructureResult {
 
   const StructureResult({
     required this.smiles,
+    this.resolvedName,
     required this.molecularFormula,
     required this.molecularWeight,
     required this.isValid,
@@ -20,6 +22,7 @@ class StructureResult {
   factory StructureResult.invalid({String? message}) {
     return StructureResult(
       smiles: '',
+      resolvedName: null,
       molecularFormula: '',
       molecularWeight: 0,
       isValid: false,
@@ -31,6 +34,7 @@ class StructureResult {
   Map<String, dynamic> toJson() {
     return {
       'smiles': smiles,
+      'resolvedName': resolvedName,
       'svgString': svgString,
       'molecularFormula': molecularFormula,
       'molecularWeight': molecularWeight,

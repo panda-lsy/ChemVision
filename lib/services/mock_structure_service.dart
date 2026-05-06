@@ -5,6 +5,7 @@ class MockStructureService implements StructureService {
   final Map<String, StructureResult> _presets = {
     '苯甲酸': const StructureResult(
       smiles: 'c1ccc(cc1)C(=O)O',
+      resolvedName: 'benzoic acid',
       molecularFormula: 'C7H6O2',
       molecularWeight: 122.12,
       isValid: true,
@@ -12,6 +13,7 @@ class MockStructureService implements StructureService {
     ),
     '乙醇': const StructureResult(
       smiles: 'CCO',
+      resolvedName: 'ethanol',
       molecularFormula: 'C2H6O',
       molecularWeight: 46.07,
       isValid: true,
@@ -19,6 +21,7 @@ class MockStructureService implements StructureService {
     ),
     '2-甲基戊烷': const StructureResult(
       smiles: 'CC(C)CCC',
+      resolvedName: '2-methylpentane',
       molecularFormula: 'C6H14',
       molecularWeight: 86.18,
       isValid: true,
@@ -26,6 +29,7 @@ class MockStructureService implements StructureService {
     ),
     '丙酮': const StructureResult(
       smiles: 'CC(=O)C',
+      resolvedName: 'propan-2-one',
       molecularFormula: 'C3H6O',
       molecularWeight: 58.08,
       isValid: true,
@@ -33,6 +37,7 @@ class MockStructureService implements StructureService {
     ),
     '甲苯': const StructureResult(
       smiles: 'Cc1ccccc1',
+      resolvedName: 'methylbenzene',
       molecularFormula: 'C7H8',
       molecularWeight: 92.14,
       isValid: true,

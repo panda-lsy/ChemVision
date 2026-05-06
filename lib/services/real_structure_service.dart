@@ -3,19 +3,26 @@ import 'package:flutter/services.dart';
 
 import '../models/structure_result.dart';
 import 'ai_settings_store.dart';
+import 'name_resolver_client.dart';
 import 'structure_service.dart';
 import 'vivo_aigc_client.dart';
 
-class RealStructureService implements StructureService {
-  RealStructureService({AiSettingsStore? settingsStore, VivoAigcClient? client})
-      : _settingsStore = settingsStore ?? AiSettingsStore(),
-        _client = client ?? VivoAigcClient();
+class NameToStructureService implements StructureService {
+  NameToStructureService({
+    AiSettingsStore? settingsStore,
+    VivoAigcClient? client,
+    NameResolverClient? resolver,
+  })  : _settingsStore = settingsStore ?? AiSettingsStore(),
+        _client = client ?? VivoAigcClient(),
+        _resolver = resolver ?? NameResolverClient();
 
   final AiSettingsStore _settingsStore;
   final VivoAigcClient _client;
-  static const String _promptAssetPath =
-      'assets/prompts/structure_generation.txt';
-  static Future<String>? _promptCache;
+  final NameResolverClient _resolver;
+
+  static const String _normalizationPromptPath =
+      'assets/prompts/name_normalization.txt';
+  static Future<String>? _normalizationPromptCache;
 
   @override
   Future<StructureResult> generateStructure(String query) async {
@@ -31,26 +38,21 @@ class RealStructureService implements StructureService {
       return StructureResult.invalid(message: '请先在设置中配置 API Key 与模型');
     }
 
-    final prompt = await _buildPrompt(trimmed);
-
     try {
-      final text = await _client.generateText(
-        apiKey: apiKey,
-        model: model,
-        prompt: prompt,
-        baseUrl: settings.baseUrl,
-      );
-      final smiles = _extractSmiles(text);
-      if (smiles == null) {
-        return StructureResult.invalid(message: '模型返回格式不正确');
+      final normalizedName =
+          await _normalizeName(trimmed, apiKey, model, settings.baseUrl);
+      if (normalizedName.isEmpty) {
+        return StructureResult.invalid(message: '名称标准化失败');
       }
 
+      final result = await _resolver.resolve(normalizedName);
       return StructureResult(
-        smiles: smiles,
-        molecularFormula: 'N/A',
-        molecularWeight: 0,
+        smiles: result.canonicalSmiles,
+        resolvedName: result.resolvedName ?? normalizedName,
+        molecularFormula: result.molecularFormula ?? '',
+        molecularWeight: result.molecularWeight ?? 0,
         isValid: true,
-        confidence: 0.6,
+        confidence: 0.9,
       );
     } on DioException catch (error) {
       return StructureResult.invalid(message: _formatDioError(error));
@@ -59,36 +61,48 @@ class RealStructureService implements StructureService {
     }
   }
 
-  Future<String> _buildPrompt(String query) async {
-    final template = await _loadPromptTemplate();
-    if (template.contains('{{query}}')) {
-      return template.replaceAll('{{query}}', query);
-    }
-    return '$template\nChemical name: $query';
+  Future<String> _normalizeName(
+    String query,
+    String apiKey,
+    String model,
+    String baseUrl,
+  ) async {
+    final template = await _loadNormalizationPrompt();
+    final prompt = template.contains('{{query}}')
+        ? template.replaceAll('{{query}}', query)
+        : '$template\nChinese name: $query';
+
+    final text = await _client.generateText(
+      apiKey: apiKey,
+      model: model,
+      prompt: prompt,
+      baseUrl: baseUrl,
+    );
+    return _extractSingleLine(text) ?? query;
   }
 
-  Future<String> _loadPromptTemplate() async {
-    _promptCache ??= rootBundle.loadString(_promptAssetPath);
+  Future<String> _loadNormalizationPrompt() async {
+    _normalizationPromptCache ??=
+        rootBundle.loadString(_normalizationPromptPath);
     try {
-      return await _promptCache!;
+      return await _normalizationPromptCache!;
     } catch (_) {
-      return 'Convert the given chemical name to a standard SMILES string. '
-          'Output exactly one line with the SMILES only.';
+      return 'Translate the given Chinese chemical name into an English IUPAC '
+          'name. Output only one line.';
     }
   }
 
-  String? _extractSmiles(String text) {
+  String? _extractSingleLine(String text) {
     var cleaned = text.trim();
     if (cleaned.isEmpty) {
       return null;
     }
-    cleaned = cleaned.replaceAll('```', '');
-    cleaned = cleaned.replaceAll('SMILES:', '').replaceAll('smiles:', '');
-    final firstLine = cleaned.split(RegExp(r'\r?\n')).first.trim();
-    if (firstLine.isEmpty) {
-      return null;
+    cleaned = cleaned.replaceAll('```', '').replaceAll('"', '');
+    final line = cleaned.split(RegExp(r'\r?\n')).first.trim();
+    if (line.startsWith('-')) {
+      return line.substring(1).trim();
     }
-    return firstLine;
+    return line;
   }
 
   String _formatDioError(DioException error) {
@@ -101,4 +115,16 @@ class RealStructureService implements StructureService {
     }
     return error.message ?? '连接失败';
   }
+}
+
+class RealStructureService extends NameToStructureService {
+  RealStructureService({
+    AiSettingsStore? settingsStore,
+    VivoAigcClient? client,
+    NameResolverClient? resolver,
+  }) : super(
+          settingsStore: settingsStore,
+          client: client,
+          resolver: resolver,
+        );
 }

@@ -127,6 +127,14 @@ class _ResultPageState extends State<ResultPage> {
           ),
           const SizedBox(height: 18),
           Text(widget.query, style: Theme.of(context).textTheme.headlineMedium),
+          if (widget.result.resolvedName != null &&
+              widget.result.resolvedName!.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              '标准名称 ${widget.result.resolvedName}',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
           const SizedBox(height: 16),
           GlassPanel(
             padding: const EdgeInsets.all(16),
@@ -162,18 +170,21 @@ class _ResultPageState extends State<ResultPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                Text(
-                  widget.result.molecularFormula,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: const Color(0xFFF9F3DD),
-                        fontWeight: FontWeight.w700,
-                      ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '分子量 ${widget.result.molecularWeight.toStringAsFixed(2)}',
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
+                if (widget.result.molecularFormula.isNotEmpty)
+                  Text(
+                    widget.result.molecularFormula,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: const Color(0xFFF9F3DD),
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                if (widget.result.molecularFormula.isNotEmpty)
+                  const SizedBox(height: 6),
+                if (widget.result.molecularWeight > 0)
+                  Text(
+                    '分子量 ${widget.result.molecularWeight.toStringAsFixed(2)}',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
                 const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
