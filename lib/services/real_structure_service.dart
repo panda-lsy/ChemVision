@@ -1,6 +1,5 @@
-import 'dart:convert';
-
 import 'package:dio/dio.dart';
+import 'package:flutter/services.dart';
 
 import '../models/structure_result.dart';
 import 'ai_settings_store.dart';
@@ -14,6 +13,9 @@ class RealStructureService implements StructureService {
 
   final AiSettingsStore _settingsStore;
   final VivoAigcClient _client;
+  static const String _promptAssetPath =
+      'assets/prompts/structure_generation.txt';
+  static Future<String>? _promptCache;
 
   @override
   Future<StructureResult> generateStructure(String query) async {
@@ -29,7 +31,7 @@ class RealStructureService implements StructureService {
       return StructureResult.invalid(message: '请先在设置中配置 API Key 与模型');
     }
 
-    final prompt = _buildPrompt(trimmed);
+    final prompt = await _buildPrompt(trimmed);
 
     try {
       final text = await _client.generateText(
@@ -38,26 +40,17 @@ class RealStructureService implements StructureService {
         prompt: prompt,
         baseUrl: settings.baseUrl,
       );
-      final payload = _extractJson(text);
-      if (payload == null) {
+      final smiles = _extractSmiles(text);
+      if (smiles == null) {
         return StructureResult.invalid(message: '模型返回格式不正确');
-      }
-
-      final smiles = _asString(payload['smiles']);
-      final formula = _asString(payload['molecularFormula']);
-      final weight = _asDouble(payload['molecularWeight']);
-      final confidence = _asDouble(payload['confidence']) ?? 0.6;
-
-      if (smiles == null || formula == null || weight == null) {
-        return StructureResult.invalid(message: '模型返回字段缺失');
       }
 
       return StructureResult(
         smiles: smiles,
-        molecularFormula: formula,
-        molecularWeight: weight,
+        molecularFormula: 'N/A',
+        molecularWeight: 0,
         isValid: true,
-        confidence: confidence,
+        confidence: 0.6,
       );
     } on DioException catch (error) {
       return StructureResult.invalid(message: _formatDioError(error));
@@ -66,43 +59,36 @@ class RealStructureService implements StructureService {
     }
   }
 
-  String _buildPrompt(String query) {
-    return '你是化学结构解析助手。请根据给定化学名称输出 JSON，格式为：'
-        '{"smiles":"...","molecularFormula":"...","molecularWeight":123.45,'
-        '"confidence":0.9}。只输出 JSON，不要额外解释。化学名称：$query';
+  Future<String> _buildPrompt(String query) async {
+    final template = await _loadPromptTemplate();
+    if (template.contains('{{query}}')) {
+      return template.replaceAll('{{query}}', query);
+    }
+    return '$template\nChemical name: $query';
   }
 
-  Map<String, dynamic>? _extractJson(String text) {
-    final match = RegExp(r'\{[\s\S]*\}').firstMatch(text);
-    if (match == null) {
-      return null;
-    }
+  Future<String> _loadPromptTemplate() async {
+    _promptCache ??= rootBundle.loadString(_promptAssetPath);
     try {
-      final decoded = jsonDecode(match.group(0)!);
-      if (decoded is Map<String, dynamic>) {
-        return decoded;
-      }
+      return await _promptCache!;
     } catch (_) {
+      return 'Convert the given chemical name to a standard SMILES string. '
+          'Output exactly one line with the SMILES only.';
+    }
+  }
+
+  String? _extractSmiles(String text) {
+    var cleaned = text.trim();
+    if (cleaned.isEmpty) {
       return null;
     }
-    return null;
-  }
-
-  String? _asString(dynamic value) {
-    if (value is String && value.trim().isNotEmpty) {
-      return value.trim();
+    cleaned = cleaned.replaceAll('```', '');
+    cleaned = cleaned.replaceAll('SMILES:', '').replaceAll('smiles:', '');
+    final firstLine = cleaned.split(RegExp(r'\r?\n')).first.trim();
+    if (firstLine.isEmpty) {
+      return null;
     }
-    return null;
-  }
-
-  double? _asDouble(dynamic value) {
-    if (value is num) {
-      return value.toDouble();
-    }
-    if (value is String) {
-      return double.tryParse(value);
-    }
-    return null;
+    return firstLine;
   }
 
   String _formatDioError(DioException error) {
