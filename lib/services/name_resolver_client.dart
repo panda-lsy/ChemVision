@@ -29,12 +29,15 @@ class NameResolverClient {
   Future<NameResolutionResult> resolve(
     String iupacName, {
     String? baseUrl,
+    String? originalName,
   }) async {
     final resolvedBaseUrl = baseUrl ?? _baseUrl;
     final response = await _dio.post(
       _normalizeBaseUrl(resolvedBaseUrl) + '/resolve_smiles',
       data: {
         'iupac_name': iupacName,
+        if (originalName != null && originalName.trim().isNotEmpty)
+          'original_name': originalName.trim(),
       },
       options: Options(validateStatus: (_) => true),
     );

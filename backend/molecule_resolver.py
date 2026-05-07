@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 from pathlib import Path
 from threading import Lock
 from typing import Any, Dict, Optional, Tuple
@@ -67,19 +68,47 @@ def _set_cached(name: str, payload: Dict[str, Any]) -> None:
             LOGGER.warning("Cache write failed: %s", exc)
 
 
-def _pubchem_smiles(iupac_name: str) -> Optional[str]:
-    try:
-        compounds = pcp.get_compounds(iupac_name, "name")
-    except Exception as exc:
-        LOGGER.warning("PubChem lookup failed: %s", exc)
-        return None
-    if not compounds:
-        return None
-    compound = compounds[0]
-    return compound.canonical_smiles or compound.isomeric_smiles
+def _clean_name(name: Optional[str]) -> str:
+    if not name:
+        return ""
+    cleaned = name.strip().strip('"').strip("'").strip("`")
+    cleaned = re.sub(
+        r"^(IUPAC|IUPAC name|Name|English name|英文名|标准名称|标准名)[:：]\s*",
+        "",
+        cleaned,
+        flags=re.IGNORECASE,
+    )
+    cleaned = cleaned.strip().strip("。：;，,")
+    return cleaned
+
+
+def _looks_chinese(text: str) -> bool:
+    return bool(re.search(r"[\u4e00-\u9fff]", text))
+
+
+def _pubchem_smiles(names: list[str]) -> tuple[Optional[str], Optional[str]]:
+    for raw in names:
+        name = _clean_name(raw)
+        if not name:
+            continue
+        try:
+            compounds = pcp.get_compounds(name, "name")
+        except Exception as exc:
+            LOGGER.warning("PubChem lookup failed (%s): %s", name, exc)
+            continue
+        if not compounds:
+            continue
+        compound = compounds[0]
+        smiles = compound.canonical_smiles or compound.isomeric_smiles
+        if smiles:
+            return smiles, name
+    return None, None
 
 
 def _opsin_smiles(iupac_name: str) -> Optional[str]:
+    cleaned = _clean_name(iupac_name)
+    if not cleaned or _looks_chinese(cleaned):
+        return None
     try:
         import pyopsin
     except Exception as exc:
@@ -88,11 +117,11 @@ def _opsin_smiles(iupac_name: str) -> Optional[str]:
 
     try:
         if hasattr(pyopsin, "name_to_smiles"):
-            return pyopsin.name_to_smiles(iupac_name)
+            return pyopsin.name_to_smiles(cleaned)
         if hasattr(pyopsin, "opsin"):
-            return pyopsin.opsin(iupac_name)
+            return pyopsin.opsin(cleaned)
         if hasattr(pyopsin, "OPSIN"):
-            return pyopsin.OPSIN().name_to_smiles(iupac_name)
+            return pyopsin.OPSIN().name_to_smiles(cleaned)
     except Exception as exc:
         LOGGER.warning("OPSIN parse failed: %s", exc)
         return None
@@ -125,13 +154,17 @@ def _calc_props(smiles: str) -> Tuple[Optional[float], Optional[str]]:
     return weight, formula
 
 
-def resolve_smiles_from_name(iupac_name: str) -> Dict[str, Any]:
-    cached = _get_cached(iupac_name)
+def resolve_smiles_from_name(
+    iupac_name: str,
+    original_name: Optional[str] = None,
+) -> Dict[str, Any]:
+    primary_key = _clean_name(iupac_name) or _clean_name(original_name)
+    cached = _get_cached(primary_key)
     if cached is not None:
         return {
             "status": "ok",
             "source": "cache",
-            "iupac_name": iupac_name,
+            "iupac_name": primary_key or iupac_name,
             **cached,
         }
 
@@ -141,7 +174,13 @@ def resolve_smiles_from_name(iupac_name: str) -> Dict[str, Any]:
             "error": f"RDKit unavailable: {_rdkit_error}",
         }
 
-    pubchem_smiles = _pubchem_smiles(iupac_name)
+    candidates: list[str] = []
+    if iupac_name:
+        candidates.append(iupac_name)
+    if original_name and original_name not in candidates:
+        candidates.append(original_name)
+
+    pubchem_smiles, pubchem_query = _pubchem_smiles(candidates)
     opsin_smiles = _opsin_smiles(iupac_name)
 
     canonical_pubchem = _canonicalize(pubchem_smiles)
@@ -180,23 +219,26 @@ def resolve_smiles_from_name(iupac_name: str) -> Dict[str, Any]:
 
     weight, formula = _calc_props(chosen)
 
+    resolved_name = _clean_name(iupac_name) or _clean_name(original_name)
     result = {
         "status": "ok",
-        "iupac_name": iupac_name,
+        "iupac_name": resolved_name,
         "canonical_smiles": chosen,
         "source": source,
         "molecular_weight": weight,
         "molecular_formula": formula,
         "pubchem_smiles": pubchem_smiles,
+        "pubchem_query": pubchem_query,
         "opsin_smiles": opsin_smiles,
         "mismatch": mismatch,
     }
-    _set_cached(iupac_name, {
+    _set_cached(resolved_name or iupac_name, {
         "canonical_smiles": chosen,
         "source": source,
         "molecular_weight": weight,
         "molecular_formula": formula,
         "pubchem_smiles": pubchem_smiles,
+        "pubchem_query": pubchem_query,
         "opsin_smiles": opsin_smiles,
         "mismatch": mismatch,
     })

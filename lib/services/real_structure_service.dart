@@ -50,17 +50,17 @@ class NameToStructureService implements StructureService {
     try {
       final normalizedName =
           await _normalizeName(trimmed, apiKey, model, settings.baseUrl);
-      if (normalizedName.isEmpty) {
-        return StructureResult.invalid(message: '名称标准化失败');
-      }
+      final iupacName = _sanitizeName(normalizedName);
+      final resolverInput = iupacName.isEmpty ? trimmed : iupacName;
 
       final result = await _resolver.resolve(
-        normalizedName,
+        resolverInput,
         baseUrl: settings.nameResolverBaseUrl,
+        originalName: trimmed,
       );
       final structureResult = StructureResult(
         smiles: result.canonicalSmiles,
-        resolvedName: result.resolvedName ?? normalizedName,
+        resolvedName: result.resolvedName ?? resolverInput,
         molecularFormula: result.molecularFormula ?? '',
         molecularWeight: result.molecularWeight ?? 0,
         isValid: true,
@@ -117,6 +117,20 @@ class NameToStructureService implements StructureService {
       return line.substring(1).trim();
     }
     return line;
+  }
+
+  String _sanitizeName(String value) {
+    var cleaned = value.trim();
+    cleaned = cleaned.replaceAll(RegExp(r"^[\"'`]+|[\"'`]+$"), '');
+    cleaned = cleaned.replaceAll(
+      RegExp(
+        r'^(IUPAC|IUPAC name|Name|English name|英文名|标准名称|标准名)[:：]\s*',
+        caseSensitive: false,
+      ),
+      '',
+    );
+    cleaned = cleaned.trim().replaceAll(RegExp(r'[。．，,;；]+$'), '');
+    return cleaned.trim();
   }
 
   String _formatDioError(DioException error) {

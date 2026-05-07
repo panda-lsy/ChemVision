@@ -15,11 +15,15 @@ app.add_middleware(
 
 class ResolveRequest(BaseModel):
     iupac_name: str
+    original_name: str | None = None
 
 
 @app.post("/resolve_smiles")
 def resolve_smiles(request: ResolveRequest):
-    result = resolve_smiles_from_name(request.iupac_name)
+    result = resolve_smiles_from_name(
+        request.iupac_name,
+        original_name=request.original_name,
+    )
     if result.get("status") != "ok":
         raise HTTPException(status_code=400, detail=result.get("error"))
     return result
