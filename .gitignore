@@ -16,6 +16,7 @@ flutter_*.log
 # IDE
 .idea/
 .vscode/
+!.vscode/tasks.json
 *.iml
 
 # Android

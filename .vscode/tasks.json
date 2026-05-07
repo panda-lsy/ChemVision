@@ -1,0 +1,35 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start Vivo Proxy",
+      "type": "shell",
+      "command": "node tools/vivo_proxy.js",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Start Name Resolver",
+      "type": "shell",
+      "command": "py -m uvicorn server:app --host 0.0.0.0 --port 9001 --app-dir backend",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Flutter Run Web",
+      "type": "shell",
+      "command": "flutter run -d chrome --web-port=8080",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "Start Web Dev",
+      "dependsOn": [
+        "Start Vivo Proxy",
+        "Start Name Resolver",
+        "Flutter Run Web"
+      ],
+      "dependsOrder": "parallel"
+    }
+  ]
+}
