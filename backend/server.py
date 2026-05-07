@@ -1,9 +1,16 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from molecule_resolver import resolve_smiles_from_name
 
 app = FastAPI(title="ChemVISION Resolver")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class ResolveRequest(BaseModel):
