@@ -26,9 +26,13 @@ class NameResolverClient {
   final Dio _dio;
   final String _baseUrl;
 
-  Future<NameResolutionResult> resolve(String iupacName) async {
+  Future<NameResolutionResult> resolve(
+    String iupacName, {
+    String? baseUrl,
+  }) async {
+    final resolvedBaseUrl = baseUrl ?? _baseUrl;
     final response = await _dio.post(
-      _normalizeBaseUrl(_baseUrl) + '/resolve_smiles',
+      _normalizeBaseUrl(resolvedBaseUrl) + '/resolve_smiles',
       data: {
         'iupac_name': iupacName,
       },

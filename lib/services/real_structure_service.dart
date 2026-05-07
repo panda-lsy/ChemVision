@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../models/structure_result.dart';
 import 'ai_settings_store.dart';
 import 'name_resolver_client.dart';
+import 'structure_cache_store.dart';
 import 'structure_service.dart';
 import 'vivo_aigc_client.dart';
 
@@ -12,13 +13,16 @@ class NameToStructureService implements StructureService {
     AiSettingsStore? settingsStore,
     VivoAigcClient? client,
     NameResolverClient? resolver,
+    StructureCacheStore? cacheStore,
   })  : _settingsStore = settingsStore ?? AiSettingsStore(),
         _client = client ?? VivoAigcClient(),
-        _resolver = resolver ?? NameResolverClient();
+        _resolver = resolver ?? NameResolverClient(),
+        _cacheStore = cacheStore ?? StructureCacheStore();
 
   final AiSettingsStore _settingsStore;
   final VivoAigcClient _client;
   final NameResolverClient _resolver;
+  final StructureCacheStore _cacheStore;
 
   static const String _normalizationPromptPath =
       'assets/prompts/name_normalization.txt';
@@ -38,6 +42,11 @@ class NameToStructureService implements StructureService {
       return StructureResult.invalid(message: '请先在设置中配置 API Key 与模型');
     }
 
+    final cached = await _cacheStore.get(trimmed);
+    if (cached != null) {
+      return cached;
+    }
+
     try {
       final normalizedName =
           await _normalizeName(trimmed, apiKey, model, settings.baseUrl);
@@ -45,8 +54,11 @@ class NameToStructureService implements StructureService {
         return StructureResult.invalid(message: '名称标准化失败');
       }
 
-      final result = await _resolver.resolve(normalizedName);
-      return StructureResult(
+      final result = await _resolver.resolve(
+        normalizedName,
+        baseUrl: settings.nameResolverBaseUrl,
+      );
+      final structureResult = StructureResult(
         smiles: result.canonicalSmiles,
         resolvedName: result.resolvedName ?? normalizedName,
         molecularFormula: result.molecularFormula ?? '',
@@ -54,6 +66,8 @@ class NameToStructureService implements StructureService {
         isValid: true,
         confidence: 0.9,
       );
+      await _cacheStore.set(trimmed, structureResult);
+      return structureResult;
     } on DioException catch (error) {
       return StructureResult.invalid(message: _formatDioError(error));
     } catch (error) {

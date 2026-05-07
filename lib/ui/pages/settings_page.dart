@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../config/ai_models.dart';
+import '../../config/app_config.dart';
 import '../../services/ai_settings_store.dart';
 import '../../services/vivo_aigc_client.dart';
 import '../../theme/app_colors.dart';
@@ -24,6 +25,7 @@ class _SettingsPageState extends State<SettingsPage> {
   final TextEditingController _apiKeyController = TextEditingController();
   final TextEditingController _customModelController = TextEditingController();
   final TextEditingController _baseUrlController = TextEditingController();
+  final TextEditingController _resolverUrlController = TextEditingController();
 
   final AiSettingsStore _settingsStore = AiSettingsStore();
   final VivoAigcClient _client = VivoAigcClient();
@@ -51,6 +53,7 @@ class _SettingsPageState extends State<SettingsPage> {
     _apiKeyController.dispose();
     _customModelController.dispose();
     _baseUrlController.dispose();
+    _resolverUrlController.dispose();
     super.dispose();
   }
 
@@ -64,6 +67,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
     _apiKeyController.text = settings.apiKey;
     _baseUrlController.text = settings.baseUrl;
+    _resolverUrlController.text = settings.nameResolverBaseUrl;
     _selectedEmbeddingModel = settings.embeddingModel;
     _selectedRerankModel = settings.rerankModel;
 
@@ -102,12 +106,14 @@ class _SettingsPageState extends State<SettingsPage> {
     final apiKey = _apiKeyController.text.trim();
     final textModel = _resolveTextModel();
     final baseUrl = _resolveBaseUrl();
+    final resolverUrl = _resolveResolverUrl();
 
     await _settingsStore.save(
       AiSettings(
         apiKey: apiKey,
         textModel: textModel,
         baseUrl: baseUrl,
+        nameResolverBaseUrl: resolverUrl,
         embeddingModel: _selectedEmbeddingModel,
         rerankModel: _selectedRerankModel,
       ),
@@ -124,6 +130,11 @@ class _SettingsPageState extends State<SettingsPage> {
   String _resolveBaseUrl() {
     final raw = _baseUrlController.text.trim();
     return raw.isEmpty ? defaultAigcBaseUrl : raw;
+  }
+
+  String _resolveResolverUrl() {
+    final raw = _resolverUrlController.text.trim();
+    return raw.isEmpty ? AppConfig.nameResolverBaseUrl : raw;
   }
 
   Future<void> _runConnectionTest() async {
@@ -338,6 +349,18 @@ class _SettingsPageState extends State<SettingsPage> {
                   keyboardType: TextInputType.url,
                   decoration: const InputDecoration(
                     hintText: 'https://api-ai.vivo.com.cn',
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text('名称解析后端',
+                    style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _resolverUrlController,
+                  onChanged: (_) => _scheduleSave(),
+                  keyboardType: TextInputType.url,
+                  decoration: const InputDecoration(
+                    hintText: 'http://localhost:9001',
                   ),
                 ),
               ],

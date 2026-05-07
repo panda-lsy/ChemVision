@@ -31,6 +31,19 @@ class StructureResult {
     );
   }
 
+  factory StructureResult.fromJson(Map<String, dynamic> json) {
+    return StructureResult(
+      smiles: (json['smiles'] as String?)?.trim() ?? '',
+      resolvedName: (json['resolvedName'] as String?)?.trim(),
+      svgString: json['svgString'] as String?,
+      molecularFormula: (json['molecularFormula'] as String?)?.trim() ?? '',
+      molecularWeight: _asDouble(json['molecularWeight']) ?? 0,
+      isValid: json['isValid'] as bool? ?? false,
+      confidence: _asDouble(json['confidence']) ?? 0,
+      message: json['message'] as String?,
+    );
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'smiles': smiles,
@@ -42,5 +55,15 @@ class StructureResult {
       'confidence': confidence,
       'message': message,
     };
+  }
+
+  static double? _asDouble(dynamic value) {
+    if (value is num) {
+      return value.toDouble();
+    }
+    if (value is String) {
+      return double.tryParse(value);
+    }
+    return null;
   }
 }

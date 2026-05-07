@@ -1,4 +1,7 @@
+import json
 import logging
+from pathlib import Path
+from threading import Lock
 from typing import Any, Dict, Optional, Tuple
 
 import pubchempy as pcp
@@ -16,6 +19,52 @@ else:
 
 logging.basicConfig(level=logging.INFO)
 LOGGER = logging.getLogger(__name__)
+CACHE_PATH = Path(__file__).resolve().with_name("resolver_cache.json")
+_CACHE_LOCK = Lock()
+_CACHE: Optional[Dict[str, Any]] = None
+
+
+def _normalize_key(name: str) -> str:
+    return name.strip().lower()
+
+
+def _load_cache() -> Dict[str, Any]:
+    global _CACHE
+    if _CACHE is not None:
+        return _CACHE
+    if CACHE_PATH.exists():
+        try:
+            _CACHE = json.loads(CACHE_PATH.read_text(encoding="utf-8"))
+        except Exception as exc:
+            LOGGER.warning("Cache load failed: %s", exc)
+            _CACHE = {}
+    else:
+        _CACHE = {}
+    return _CACHE
+
+
+def _get_cached(name: str) -> Optional[Dict[str, Any]]:
+    key = _normalize_key(name)
+    with _CACHE_LOCK:
+        cache = _load_cache()
+        cached = cache.get(key)
+        if isinstance(cached, dict):
+            return cached
+    return None
+
+
+def _set_cached(name: str, payload: Dict[str, Any]) -> None:
+    key = _normalize_key(name)
+    with _CACHE_LOCK:
+        cache = _load_cache()
+        cache[key] = payload
+        try:
+            CACHE_PATH.write_text(
+                json.dumps(cache, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+        except Exception as exc:
+            LOGGER.warning("Cache write failed: %s", exc)
 
 
 def _pubchem_smiles(iupac_name: str) -> Optional[str]:
@@ -77,6 +126,15 @@ def _calc_props(smiles: str) -> Tuple[Optional[float], Optional[str]]:
 
 
 def resolve_smiles_from_name(iupac_name: str) -> Dict[str, Any]:
+    cached = _get_cached(iupac_name)
+    if cached is not None:
+        return {
+            "status": "ok",
+            "source": "cache",
+            "iupac_name": iupac_name,
+            **cached,
+        }
+
     if _rdkit_error is not None:
         return {
             "status": "error",
@@ -122,7 +180,7 @@ def resolve_smiles_from_name(iupac_name: str) -> Dict[str, Any]:
 
     weight, formula = _calc_props(chosen)
 
-    return {
+    result = {
         "status": "ok",
         "iupac_name": iupac_name,
         "canonical_smiles": chosen,
@@ -133,3 +191,13 @@ def resolve_smiles_from_name(iupac_name: str) -> Dict[str, Any]:
         "opsin_smiles": opsin_smiles,
         "mismatch": mismatch,
     }
+    _set_cached(iupac_name, {
+        "canonical_smiles": chosen,
+        "source": source,
+        "molecular_weight": weight,
+        "molecular_formula": formula,
+        "pubchem_smiles": pubchem_smiles,
+        "opsin_smiles": opsin_smiles,
+        "mismatch": mismatch,
+    })
+    return result

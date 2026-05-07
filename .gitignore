@@ -1,5 +1,8 @@
 node_modules/
 doc/
+.venv/
+backend/resolver_cache.json
+backend/__pycache__/
 
 # Flutter / Dart
 .dart_tool/
