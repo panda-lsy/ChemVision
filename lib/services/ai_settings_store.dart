@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/ai_models.dart';
@@ -53,13 +54,19 @@ class AiSettingsStore {
     final rawTextModel = prefs.getString(_textModelKey) ?? '';
     final embeddingModel = prefs.getString(_embeddingModelKey);
     final rerankModel = prefs.getString(_rerankModelKey);
+    final hasBaseUrl = prefs.containsKey(_baseUrlKey);
     final rawBaseUrl = prefs.getString(_baseUrlKey) ?? defaultAigcBaseUrl;
     final rawResolverUrl =
       prefs.getString(_resolverBaseUrlKey) ?? AppConfig.nameResolverBaseUrl;
+    final hasResolverUrl = prefs.containsKey(_resolverBaseUrlKey);
 
     final textModel = _migrateTextModel(rawTextModel);
-    final baseUrl = _migrateBaseUrl(rawBaseUrl);
-    final resolverBaseUrl = _migrateResolverUrl(rawResolverUrl);
+    final baseUrl = hasBaseUrl
+      ? _migrateBaseUrl(rawBaseUrl)
+      : _defaultAigcBaseUrl();
+    final resolverBaseUrl = hasResolverUrl
+      ? _migrateResolverUrl(rawResolverUrl)
+      : _defaultResolverBaseUrl();
 
     if (textModel != rawTextModel) {
       await prefs.setString(_textModelKey, textModel);
@@ -136,6 +143,26 @@ class AiSettingsStore {
       trimmed = 'http://$trimmed';
     }
     return trimmed;
+  }
+
+  String _defaultAigcBaseUrl() {
+    if (kIsWeb) {
+      return 'http://localhost:8787';
+    }
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return 'http://10.0.2.2:8787';
+    }
+    return defaultAigcBaseUrl;
+  }
+
+  String _defaultResolverBaseUrl() {
+    if (kIsWeb) {
+      return 'http://localhost:9001';
+    }
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      return 'http://10.0.2.2:9001';
+    }
+    return AppConfig.nameResolverBaseUrl;
   }
 
   Future<void> _setOptional(
