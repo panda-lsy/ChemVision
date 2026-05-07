@@ -105,27 +105,27 @@ def _pubchem_smiles(names: list[str]) -> tuple[Optional[str], Optional[str]]:
     return None, None
 
 
-def _opsin_smiles(iupac_name: str) -> Optional[str]:
+def _opsin_smiles(iupac_name: str) -> tuple[Optional[str], Optional[str]]:
     cleaned = _clean_name(iupac_name)
     if not cleaned or _looks_chinese(cleaned):
-        return None
+        return None, "skip"
     try:
         import pyopsin
     except Exception as exc:
         LOGGER.warning("OPSIN import failed: %s", exc)
-        return None
+        return None, f"import failed: {exc}"
 
     try:
         if hasattr(pyopsin, "name_to_smiles"):
-            return pyopsin.name_to_smiles(cleaned)
+            return pyopsin.name_to_smiles(cleaned), None
         if hasattr(pyopsin, "opsin"):
-            return pyopsin.opsin(cleaned)
+            return pyopsin.opsin(cleaned), None
         if hasattr(pyopsin, "OPSIN"):
-            return pyopsin.OPSIN().name_to_smiles(cleaned)
+            return pyopsin.OPSIN().name_to_smiles(cleaned), None
     except Exception as exc:
         LOGGER.warning("OPSIN parse failed: %s", exc)
-        return None
-    return None
+        return None, f"parse failed: {exc}"
+    return None, "unsupported"
 
 
 def _canonicalize(smiles: Optional[str]) -> Optional[str]:
@@ -179,9 +179,10 @@ def resolve_smiles_from_name(
         candidates.append(iupac_name)
     if original_name and original_name not in candidates:
         candidates.append(original_name)
+    LOGGER.info("Resolver candidates: %s", candidates)
 
     pubchem_smiles, pubchem_query = _pubchem_smiles(candidates)
-    opsin_smiles = _opsin_smiles(iupac_name)
+    opsin_smiles, opsin_error = _opsin_smiles(iupac_name)
 
     canonical_pubchem = _canonicalize(pubchem_smiles)
     canonical_opsin = _canonicalize(opsin_smiles)
@@ -210,11 +211,18 @@ def resolve_smiles_from_name(
         source = "opsin"
 
     if not chosen:
+        LOGGER.warning(
+            "Resolve failed. PubChem query=%s, OPSIN error=%s",
+            pubchem_query,
+            opsin_error,
+        )
         return {
             "status": "error",
             "error": "No valid SMILES from PubChem or OPSIN",
             "pubchem_smiles": pubchem_smiles,
+            "pubchem_query": pubchem_query,
             "opsin_smiles": opsin_smiles,
+            "opsin_error": opsin_error,
         }
 
     weight, formula = _calc_props(chosen)
