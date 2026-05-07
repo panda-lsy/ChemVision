@@ -12,12 +12,14 @@ class StructureView extends StatefulWidget {
     this.onAtomSelected,
     this.onSmilesUpdated,
     this.onControllerReady,
+    this.compact = false,
   });
 
   final String smiles;
   final void Function(String atomId, String? element)? onAtomSelected;
   final ValueChanged<String>? onSmilesUpdated;
   final ValueChanged<StructureViewController>? onControllerReady;
+  final bool compact;
 
   @override
   State<StructureView> createState() => _StructureViewState();
@@ -103,6 +105,16 @@ class _StructureViewState extends State<StructureView> {
           source: "updateAtomElement('$safeId', '$safeElement');",
         );
       },
+      exportSvg: () async {
+        try {
+          final result = await controller.evaluateJavascript(
+            source: 'window.exportSvg && window.exportSvg();',
+          );
+          return result is String ? result : null;
+        } catch (e) {
+          return null;
+        }
+      },
     );
     widget.onControllerReady?.call(_viewController!);
   }
@@ -124,6 +136,9 @@ class _StructureViewState extends State<StructureView> {
       },
       onLoadStop: (controller, url) {
         _pageReady = true;
+        controller.evaluateJavascript(
+          source: 'window.setCompactMode && window.setCompactMode(${widget.compact ? 'true' : 'false'});',
+        );
         _sendSmiles(widget.smiles);
       },
     );

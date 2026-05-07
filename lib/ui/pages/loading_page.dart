@@ -10,9 +10,10 @@ import '../widgets/pulse_dots.dart';
 import 'result_page.dart';
 
 class LoadingPage extends ConsumerStatefulWidget {
-  const LoadingPage({super.key, required this.query});
+  const LoadingPage({super.key, required this.query, this.mode});
 
   final String query;
+  final String? mode;
 
   @override
   ConsumerState<LoadingPage> createState() => _LoadingPageState();
@@ -23,7 +24,9 @@ class _LoadingPageState extends ConsumerState<LoadingPage> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(structureControllerProvider.notifier).generate(widget.query);
+      ref
+          .read(structureControllerProvider.notifier)
+          .generate(widget.query, mode: widget.mode);
     });
   }
 

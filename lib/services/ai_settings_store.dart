@@ -10,13 +10,11 @@ class AiSettings {
   final String? embeddingModel;
   final String? rerankModel;
   final String baseUrl;
-  final String nameResolverBaseUrl;
 
   const AiSettings({
     required this.apiKey,
     required this.textModel,
     required this.baseUrl,
-    required this.nameResolverBaseUrl,
     this.embeddingModel,
     this.rerankModel,
   });
@@ -25,7 +23,6 @@ class AiSettings {
     String? apiKey,
     String? textModel,
     String? baseUrl,
-    String? nameResolverBaseUrl,
     String? embeddingModel,
     String? rerankModel,
   }) {
@@ -33,7 +30,6 @@ class AiSettings {
       apiKey: apiKey ?? this.apiKey,
       textModel: textModel ?? this.textModel,
       baseUrl: baseUrl ?? this.baseUrl,
-      nameResolverBaseUrl: nameResolverBaseUrl ?? this.nameResolverBaseUrl,
       embeddingModel: embeddingModel ?? this.embeddingModel,
       rerankModel: rerankModel ?? this.rerankModel,
     );
@@ -46,7 +42,6 @@ class AiSettingsStore {
   static const String _embeddingModelKey = 'vivo_embedding_model';
   static const String _rerankModelKey = 'vivo_rerank_model';
   static const String _baseUrlKey = 'vivo_base_url';
-  static const String _resolverBaseUrlKey = 'vivo_resolver_base_url';
 
   Future<AiSettings> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -56,26 +51,17 @@ class AiSettingsStore {
     final rerankModel = prefs.getString(_rerankModelKey);
     final hasBaseUrl = prefs.containsKey(_baseUrlKey);
     final rawBaseUrl = prefs.getString(_baseUrlKey) ?? defaultAigcBaseUrl;
-    final rawResolverUrl =
-      prefs.getString(_resolverBaseUrlKey) ?? AppConfig.nameResolverBaseUrl;
-    final hasResolverUrl = prefs.containsKey(_resolverBaseUrlKey);
 
     final textModel = _migrateTextModel(rawTextModel);
     final baseUrl = hasBaseUrl
       ? _migrateBaseUrl(rawBaseUrl)
       : _defaultAigcBaseUrl();
-    final resolverBaseUrl = hasResolverUrl
-      ? _migrateResolverUrl(rawResolverUrl)
-      : _defaultResolverBaseUrl();
 
     if (textModel != rawTextModel) {
       await prefs.setString(_textModelKey, textModel);
     }
     if (baseUrl != rawBaseUrl) {
       await prefs.setString(_baseUrlKey, baseUrl);
-    }
-    if (resolverBaseUrl != rawResolverUrl) {
-      await prefs.setString(_resolverBaseUrlKey, resolverBaseUrl);
     }
 
     return AiSettings(
@@ -84,7 +70,6 @@ class AiSettingsStore {
       embeddingModel: _normalizeOptional(embeddingModel),
       rerankModel: _normalizeOptional(rerankModel),
       baseUrl: baseUrl,
-      nameResolverBaseUrl: resolverBaseUrl,
     );
   }
 
@@ -95,7 +80,6 @@ class AiSettingsStore {
     await _setOptional(prefs, _embeddingModelKey, settings.embeddingModel);
     await _setOptional(prefs, _rerankModelKey, settings.rerankModel);
     await prefs.setString(_baseUrlKey, settings.baseUrl);
-    await prefs.setString(_resolverBaseUrlKey, settings.nameResolverBaseUrl);
   }
 
   String? _normalizeOptional(String? value) {
@@ -132,18 +116,6 @@ class AiSettingsStore {
     return trimmed;
   }
 
-  String _migrateResolverUrl(String value) {
-    var trimmed = value.trim();
-    if (trimmed.isEmpty) {
-      return AppConfig.nameResolverBaseUrl;
-    }
-    if (!trimmed.contains('://') &&
-        (trimmed.startsWith('localhost') ||
-            trimmed.startsWith('127.0.0.1'))) {
-      trimmed = 'http://$trimmed';
-    }
-    return trimmed;
-  }
 
   String _defaultAigcBaseUrl() {
     if (kIsWeb) {
@@ -153,16 +125,6 @@ class AiSettingsStore {
       return 'http://10.0.2.2:8787';
     }
     return defaultAigcBaseUrl;
-  }
-
-  String _defaultResolverBaseUrl() {
-    if (kIsWeb) {
-      return 'http://localhost:9001';
-    }
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:9001';
-    }
-    return AppConfig.nameResolverBaseUrl;
   }
 
   Future<void> _setOptional(

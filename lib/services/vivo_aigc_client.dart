@@ -65,6 +65,7 @@ class VivoAigcClient {
     if (data is Map<String, dynamic>) {
       final extracted = _extractChatContent(data);
       if (extracted != null) {
+        _logResponse(extracted);
         return extracted;
       }
       final error = data['error'];
@@ -127,6 +128,13 @@ class VivoAigcClient {
     debugPrint('[VivoAigc] URL: $uri');
     debugPrint('[VivoAigc] Headers: ${jsonEncode(safeHeaders)}');
     debugPrint('[VivoAigc] Body: ${jsonEncode(body)}');
+  }
+
+  void _logResponse(String content) {
+    if (!kDebugMode) {
+      return;
+    }
+    debugPrint('[VivoAigc] Response: $content');
   }
 
   String _maskAuthorization(String value) {

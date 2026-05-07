@@ -16,16 +16,22 @@
   --shadow: rgba(5, 12, 24, 0.45);
 }
 
+html,
 body {
   margin: 0;
   font-family: "Space Grotesk", "Noto Sans SC", "PingFang SC", "Microsoft YaHei",
     sans-serif;
   background: transparent;
   color: #f3f6fb;
+  height: 100%;
+  overflow: hidden;
 }
 
 #container {
   padding: 12px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
 }
 
 #render-area {
@@ -33,13 +39,25 @@ body {
   border-radius: 20px;
   padding: 16px;
   min-height: 200px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.12);
   box-shadow: 0 16px 32px rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(12px);
 }
 
+#render-area.compact-mode {
+  padding: 10px;
+}
+
 #structure-view {
-  height: 180px;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  min-height: 200px;
+  max-height: 360px;
   border-radius: 16px;
   background: rgba(11, 15, 26, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -47,11 +65,25 @@ body {
   align-items: center;
   justify-content: center;
   margin-bottom: 12px;
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+}
+
+#render-area.compact-mode #structure-view {
+  min-height: 124px;
+  max-height: 160px;
+  aspect-ratio: 3.2 / 1;
+}
+
+#structure-view.panning {
+  cursor: grabbing;
 }
 
 #smiles-canvas {
   width: 100%;
   height: 100%;
+  transform-origin: center center;
 }
 
 #smiles-text {
@@ -104,4 +136,12 @@ body {
   margin-top: 10px;
   font-size: 12px;
   color: #9fb1c9;
+  word-break: break-word;
+}
+
+.compact-mode #smiles-text,
+.compact-mode #atom-list,
+.compact-mode #hint,
+.compact-mode #engine-label {
+  display: none !important;
 }

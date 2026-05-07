@@ -13,12 +13,14 @@ class StructureView extends StatefulWidget {
     this.onAtomSelected,
     this.onSmilesUpdated,
     this.onControllerReady,
+    this.compact = false,
   });
 
   final String smiles;
   final void Function(String atomId, String? element)? onAtomSelected;
   final ValueChanged<String>? onSmilesUpdated;
   final ValueChanged<StructureViewController>? onControllerReady;
+  final bool compact;
 
   @override
   State<StructureView> createState() => _StructureViewState();
@@ -58,7 +60,7 @@ class _StructureViewState extends State<StructureView> {
   void _registerViewFactory() {
     ui.platformViewRegistry.registerViewFactory(_viewType, (int viewId) {
       final iframe = html.IFrameElement()
-        ..src = 'assets/web/index.html?channel=$_channel'
+        ..src = 'assets/web/index.html?channel=$_channel&compact=${widget.compact ? 1 : 0}'
         ..style.border = 'none'
         ..style.width = '100%'
         ..style.height = '100%'
@@ -67,6 +69,9 @@ class _StructureViewState extends State<StructureView> {
       iframe.onLoad.listen((_) {
         _pageReady = true;
         _ensureController();
+        if (widget.compact) {
+          _postMessage('setCompactMode', {'compact': true});
+        }
         _sendSmiles(widget.smiles);
       });
 
@@ -85,6 +90,32 @@ class _StructureViewState extends State<StructureView> {
           'atomId': atomId,
           'element': element,
         });
+      },
+      exportSvg: () async {
+        final iframe = _iframe;
+        if (iframe == null) {
+          return null;
+        }
+        try {
+          // Use postMessage to request SVG export from iframe
+          final completer = Completer<String?>();
+          late StreamSubscription sub;
+          sub = html.window.onMessage.listen((event) {
+            final data = event.data;
+            if (data is Map && data['channel'] == _channel && data['type'] == 'exportSvgResult') {
+              final result = data['payload']?['svgString'] as String?;
+              completer.complete(result);
+              sub.cancel();
+            }
+          });
+          _postMessage('exportSvg', {});
+          return await completer.future.timeout(
+            const Duration(seconds: 2),
+            onTimeout: () => null,
+          );
+        } catch (e) {
+          return null;
+        }
       },
     );
     widget.onControllerReady?.call(_controller!);

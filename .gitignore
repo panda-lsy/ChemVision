@@ -1,6 +1,7 @@
 node_modules/
 doc/
 .venv/
+backend/.pytest_cache/
 backend/resolver_cache.json
 backend/__pycache__/
 

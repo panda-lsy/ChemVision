@@ -46,7 +46,7 @@ class MockStructureService implements StructureService {
   };
 
   @override
-  Future<StructureResult> generateStructure(String query) async {
+  Future<StructureResult> generateStructure(String query, {String? mode}) async {
     final normalized = query.trim();
     if (normalized.isEmpty) {
       return StructureResult.invalid(message: '请输入化学名称');

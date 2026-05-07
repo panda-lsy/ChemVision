@@ -9,13 +9,6 @@
       "problemMatcher": []
     },
     {
-      "label": "Start Name Resolver",
-      "type": "shell",
-      "command": "py -m uvicorn server:app --host 0.0.0.0 --port 9001 --app-dir backend",
-      "isBackground": true,
-      "problemMatcher": []
-    },
-    {
       "label": "Flutter Run Web",
       "type": "shell",
       "command": "flutter run -d chrome --web-port=8080",
@@ -26,10 +19,13 @@
       "label": "Start Web Dev",
       "dependsOn": [
         "Start Vivo Proxy",
-        "Start Name Resolver",
         "Flutter Run Web"
       ],
-      "dependsOrder": "parallel"
+      "dependsOrder": "parallel",
+      "problemMatcher": [
+        "$dart-build_runner"
+      ],
+      "isBackground": true
     }
   ]
 }

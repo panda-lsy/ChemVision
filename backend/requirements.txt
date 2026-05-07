@@ -1,6 +1,0 @@
-fastapi==0.115.0
-uvicorn==0.30.6
-pubchempy==1.0.4
-pyopsin==0.2.4
-rdkit
-setuptools<82.0.0

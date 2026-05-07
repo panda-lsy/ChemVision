@@ -1,6 +1,7 @@
 (function () {
   const params = new URLSearchParams(window.location.search);
   const channel = params.get('channel') || 'chemvision';
+  let compactMode = params.get('compact') === '1';
   const state = {
     smiles: '',
     atoms: [],
@@ -14,7 +15,32 @@
   const atomList = document.getElementById('atom-list');
   const smilesText = document.getElementById('smiles-text');
   const structureCanvas = document.getElementById('smiles-canvas');
+  const engineLabel = document.getElementById('engine-label');
+  const hint = document.getElementById('hint');
   let svgDrawer = null;
+  let _drawerSize = { w: 0, h: 0 };
+
+  function setCompactMode(enabled) {
+    compactMode = Boolean(enabled);
+    document.body.classList.toggle('compact-mode', compactMode);
+    const renderArea = document.getElementById('render-area');
+    if (renderArea) {
+      renderArea.classList.toggle('compact-mode', compactMode);
+    }
+    if (smilesText) {
+      smilesText.style.display = compactMode ? 'none' : '';
+    }
+    if (atomList) {
+      atomList.style.display = compactMode ? 'none' : '';
+    }
+    if (hint) {
+      hint.style.display = compactMode ? 'none' : '';
+    }
+    if (engineLabel) {
+      engineLabel.style.display = compactMode ? 'none' : '';
+    }
+    drawSmiles(state.smiles);
+  }
 
   const drawerTheme = {
     C: '#e8f6f3',
@@ -134,25 +160,37 @@
   }
 
   function updateSmilesDisplay() {
-    smilesText.textContent = `SMILES: ${state.smiles || '-'}`;
+    if (smilesText) {
+      smilesText.textContent = `SMILES: ${state.smiles || '-'}`;
+    }
   }
 
   function getSvgDrawer() {
     if (!structureCanvas || !window.SmilesDrawer || !window.SmilesDrawer.SvgDrawer) {
       return null;
     }
-    if (!svgDrawer) {
+    const w = Math.max(80, Math.floor(structureCanvas.clientWidth || 320));
+    const h = Math.max(72, Math.floor(w * (compactMode ? 0.62 : 0.7)));
+    const padding = compactMode
+        ? Math.max(4, Math.floor(Math.min(w, h) * 0.03))
+        : Math.max(10, Math.floor(Math.min(w, h) * 0.08));
+    const bondLength = compactMode
+        ? Math.max(6, Math.floor(Math.min(w, h) * 0.05))
+        : Math.max(12, Math.floor(Math.min(w, h) * 0.1));
+    if (!svgDrawer || _drawerSize.w !== w || _drawerSize.h !== h) {
+      // recreate drawer to match current canvas size
       svgDrawer = new window.SmilesDrawer.SvgDrawer({
-        width: 320,
-        height: 180,
-        padding: 12,
+        width: w,
+        height: h,
+        padding: padding,
         bondThickness: 2,
-        bondLength: 18,
+        bondLength: bondLength,
         atomVisualization: 'default',
         themes: {
           custom: drawerTheme,
         },
       });
+      _drawerSize = { w, h };
     }
     return svgDrawer;
   }
@@ -168,20 +206,72 @@
 
   function drawSmiles(smiles) {
     const drawer = getSvgDrawer();
-    if (!drawer || !smiles) {
+    if (!drawer) {
       clearSvg();
       return;
     }
+    if (!smiles) {
+      clearSvg();
+      return;
+    }
+    // ensure drawer matches current canvas size before parsing
+    // parse and draw, then fit by using drawer dimensions
     window.SmilesDrawer.parse(
       smiles,
       (tree) => {
         clearSvg();
-        drawer.draw(tree, structureCanvas, 'custom', false);
+        try {
+          drawer.draw(tree, structureCanvas, 'custom', false);
+          fitDrawingToViewport();
+        } catch (err) {
+          // fallback: clear and no-op
+          clearSvg();
+        }
       },
       () => {
         clearSvg();
       }
     );
+  }
+
+  function fitDrawingToViewport() {
+    if (!structureCanvas) {
+      return;
+    }
+    const svg = structureCanvas.querySelector('svg');
+    if (!svg) {
+      return;
+    }
+    try {
+      const bbox = svg.getBBox();
+      if (!bbox.width || !bbox.height) {
+        return;
+      }
+      const margin = compactMode ? 12 : 18;
+      const viewWidth = structureCanvas.clientWidth || bbox.width;
+      const viewHeight = structureCanvas.clientHeight || bbox.height;
+      const contentWidth = Math.max(1, bbox.width + margin * 2);
+      const contentHeight = Math.max(1, bbox.height + margin * 2);
+      svg.setAttribute('viewBox', `${bbox.x - margin} ${bbox.y - margin} ${contentWidth} ${contentHeight}`);
+      svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+      svg.style.width = '100%';
+      svg.style.height = '100%';
+      svg.style.transformOrigin = 'center center';
+      const scale = Math.min(viewWidth / contentWidth, viewHeight / contentHeight, compactMode ? 1.6 : 1.35);
+      svg.style.transform = `translate(${Math.max(0, (viewWidth - contentWidth * scale) / 2)}px, ${Math.max(0, (viewHeight - contentHeight * scale) / 2)}px) scale(${scale})`;
+    } catch (error) {
+      const rect = svg.getBoundingClientRect();
+      if (!rect.width || !rect.height) {
+        return;
+      }
+      const viewWidth = structureCanvas.clientWidth || rect.width;
+      const viewHeight = structureCanvas.clientHeight || rect.height;
+      const scale = Math.min(viewWidth / rect.width, viewHeight / rect.height, compactMode ? 1.6 : 1.35);
+      const translateX = Math.max(0, (viewWidth - rect.width * scale) / 2);
+      const translateY = Math.max(0, (viewHeight - rect.height * scale) / 2);
+      svg.style.transformOrigin = 'top left';
+      svg.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+    }
   }
 
   function updateSelection() {
@@ -325,12 +415,113 @@
     updateSmilesFromMolecule('edit');
   }
 
+  // Pan and zoom support for the structure viewport.
+  (function enablePanZoom() {
+    const view = document.getElementById('structure-view');
+    let scale = 1;
+    let tx = 0;
+    let ty = 0;
+    let isPanning = false;
+    let panStart = { x: 0, y: 0, tx: 0, ty: 0 };
+
+    function applyTransform() {
+      if (!structureCanvas) return;
+      structureCanvas.style.transform = `translate(${tx}px, ${ty}px) scale(${scale})`;
+    }
+
+    view.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const delta = -e.deltaY;
+      const factor = delta > 0 ? 1.08 : 0.92;
+      const newScale = Math.min(4, Math.max(0.3, scale * factor));
+      // zoom to pointer
+      const rect = structureCanvas.getBoundingClientRect();
+      const px = e.clientX - rect.left;
+      const py = e.clientY - rect.top;
+      const dx = (px - tx) / scale;
+      const dy = (py - ty) / scale;
+      tx = px - dx * newScale;
+      ty = py - dy * newScale;
+      scale = newScale;
+      applyTransform();
+    }, { passive: false });
+
+    view.addEventListener('pointerdown', (e) => {
+      // ignore when clicking atoms (they have .atom class)
+      const target = e.target;
+      if (target && target.classList && target.classList.contains('atom')) {
+        return;
+      }
+      isPanning = true;
+      panStart = { x: e.clientX, y: e.clientY, tx, ty };
+      view.classList.add('panning');
+      view.setPointerCapture(e.pointerId);
+    });
+
+    view.addEventListener('pointermove', (e) => {
+      if (!isPanning) return;
+      const dx = e.clientX - panStart.x;
+      const dy = e.clientY - panStart.y;
+      tx = panStart.tx + dx;
+      ty = panStart.ty + dy;
+      applyTransform();
+    });
+
+    function endPan(e) {
+      if (!isPanning) return;
+      isPanning = false;
+      try { view.releasePointerCapture(e.pointerId); } catch (_) {}
+      view.classList.remove('panning');
+    }
+
+    view.addEventListener('pointerup', endPan);
+    view.addEventListener('pointercancel', endPan);
+  })();
+
   window.renderSmiles = renderSmiles;
+  window.setCompactMode = setCompactMode;
   window.getSmiles = function () {
     if (!state.molecule) {
       return state.smiles;
     }
     return state.molecule.toSmiles();
+  };
+  window.exportSvg = function () {
+    try {
+      // Get the SVG element directly
+      const svg = structureCanvas || document.getElementById('smiles-canvas');
+      if (!svg) {
+        return null;
+      }
+      // Check if SVG has content (children or child nodes)
+      if (!svg.hasChildNodes || svg.childNodes.length === 0) {
+        return null;
+      }
+      const clone = svg.cloneNode(true);
+      // Remove any transform/viewBox attributes to get clean SVG
+      clone.removeAttribute('transform');
+      // Remove <style> tags to avoid flutter_svg parsing errors
+      const styles = clone.querySelectorAll('style');
+      styles.forEach(style => style.remove());
+      // Ensure it has proper viewBox for standalone rendering
+      if (!clone.getAttribute('viewBox')) {
+        try {
+          const bbox = svg.getBBox();
+          clone.setAttribute('viewBox', `${bbox.x} ${bbox.y} ${bbox.width} ${bbox.height}`);
+        } catch (e) {
+          clone.setAttribute('viewBox', '0 0 300 300');
+        }
+      }
+      clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      clone.setAttribute('width', '300');
+      clone.setAttribute('height', '300');
+      const svgString = new XMLSerializer().serializeToString(clone);
+      // Ensure we have valid SVG content
+      return svgString && svgString.length > 50 ? svgString : null;
+    } catch (error) {
+      console.error('exportSvg error:', error);
+      return null;
+    }
   };
   window.setMoleculeJson = function (json) {
     try {
@@ -371,12 +562,18 @@
       case 'setMoleculeJson':
         window.setMoleculeJson(payload);
         break;
+      case 'exportSvg': {
+        const svgString = window.exportSvg();
+        postToHost('exportSvgResult', { svgString });
+        break;
+      }
       default:
         break;
     }
   });
 
   document.addEventListener('DOMContentLoaded', function () {
+    setCompactMode(compactMode);
     postToHost('onBridgeReady', {});
   });
 })();

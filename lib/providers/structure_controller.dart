@@ -43,7 +43,7 @@ class StructureController extends StateNotifier<StructureState> {
 
   final StructureService _service;
 
-  Future<void> generate(String query) async {
+  Future<void> generate(String query, {String? mode}) async {
     if (state.status == StructureStatus.loading) {
       return;
     }
@@ -55,7 +55,7 @@ class StructureController extends StateNotifier<StructureState> {
     );
     await Future.delayed(AppConfig.mockDelay);
 
-    final result = await _service.generateStructure(query);
+    final result = await _service.generateStructure(query, mode: mode);
     if (!result.isValid) {
       state = state.copyWith(
         status: StructureStatus.failure,

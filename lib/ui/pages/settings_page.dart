@@ -3,9 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../config/ai_models.dart';
-import '../../config/app_config.dart';
 import '../../services/ai_settings_store.dart';
-import '../../services/name_resolver_client.dart';
 import '../../services/vivo_aigc_client.dart';
 import '../../theme/app_colors.dart';
 import '../widgets/accent_pill.dart';
@@ -26,22 +24,18 @@ class _SettingsPageState extends State<SettingsPage> {
   final TextEditingController _apiKeyController = TextEditingController();
   final TextEditingController _customModelController = TextEditingController();
   final TextEditingController _baseUrlController = TextEditingController();
-  final TextEditingController _resolverUrlController = TextEditingController();
 
   final AiSettingsStore _settingsStore = AiSettingsStore();
   final VivoAigcClient _client = VivoAigcClient();
-  final NameResolverClient _resolverClient = NameResolverClient();
 
   String? _selectedTextModel;
   String? _selectedEmbeddingModel;
   String? _selectedRerankModel;
   bool _obscureKey = true;
   bool _isTesting = false;
-  bool _isResolverTesting = false;
   bool _hasLoaded = false;
   Timer? _saveDebounce;
   ConnectionTestResult? _testResult;
-  ResolverTestResult? _resolverTestResult;
 
   bool get _isCustomModel => _selectedTextModel == _customModelValue;
 
@@ -57,7 +51,6 @@ class _SettingsPageState extends State<SettingsPage> {
     _apiKeyController.dispose();
     _customModelController.dispose();
     _baseUrlController.dispose();
-    _resolverUrlController.dispose();
     super.dispose();
   }
 
@@ -71,7 +64,6 @@ class _SettingsPageState extends State<SettingsPage> {
 
     _apiKeyController.text = settings.apiKey;
     _baseUrlController.text = settings.baseUrl;
-    _resolverUrlController.text = settings.nameResolverBaseUrl;
     _selectedEmbeddingModel = settings.embeddingModel;
     _selectedRerankModel = settings.rerankModel;
 
@@ -93,7 +85,6 @@ class _SettingsPageState extends State<SettingsPage> {
     setState(() {
       _hasLoaded = true;
       _testResult = null;
-      _resolverTestResult = null;
     });
   }
 
@@ -111,14 +102,12 @@ class _SettingsPageState extends State<SettingsPage> {
     final apiKey = _apiKeyController.text.trim();
     final textModel = _resolveTextModel();
     final baseUrl = _resolveBaseUrl();
-    final resolverUrl = _resolveResolverUrl();
 
     await _settingsStore.save(
       AiSettings(
         apiKey: apiKey,
         textModel: textModel,
         baseUrl: baseUrl,
-        nameResolverBaseUrl: resolverUrl,
         embeddingModel: _selectedEmbeddingModel,
         rerankModel: _selectedRerankModel,
       ),
@@ -135,11 +124,6 @@ class _SettingsPageState extends State<SettingsPage> {
   String _resolveBaseUrl() {
     final raw = _baseUrlController.text.trim();
     return raw.isEmpty ? defaultAigcBaseUrl : raw;
-  }
-
-  String _resolveResolverUrl() {
-    final raw = _resolverUrlController.text.trim();
-    return raw.isEmpty ? AppConfig.nameResolverBaseUrl : raw;
   }
 
   Future<void> _runConnectionTest() async {
@@ -196,52 +180,6 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
-  Future<void> _runResolverTest() async {
-    FocusScope.of(context).unfocus();
-    setState(() {
-      _resolverTestResult = null;
-    });
-
-    final resolverUrl = _resolveResolverUrl();
-    if (resolverUrl.trim().isEmpty) {
-      setState(() {
-        _resolverTestResult = ResolverTestResult.failure('名称解析后端地址不能为空');
-      });
-      return;
-    }
-
-    await _persistSettings();
-
-    setState(() {
-      _isResolverTesting = true;
-    });
-
-    final stopwatch = Stopwatch()..start();
-    try {
-      final result = await _resolverClient.resolve(
-        'benzoic acid',
-        baseUrl: resolverUrl,
-      );
-      stopwatch.stop();
-      setState(() {
-        _resolverTestResult = ResolverTestResult.success(
-          smiles: result.canonicalSmiles,
-          formula: result.molecularFormula,
-          weight: result.molecularWeight,
-          latencyMs: stopwatch.elapsedMilliseconds,
-        );
-      });
-    } catch (error) {
-      stopwatch.stop();
-      setState(() {
-        _resolverTestResult = ResolverTestResult.failure('$error');
-      });
-    } finally {
-      setState(() {
-        _isResolverTesting = false;
-      });
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -403,25 +341,6 @@ class _SettingsPageState extends State<SettingsPage> {
                     hintText: 'https://api-ai.vivo.com.cn',
                   ),
                 ),
-                const SizedBox(height: 16),
-                Text('名称解析后端',
-                    style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: _resolverUrlController,
-                  onChanged: (_) => _scheduleSave(),
-                  keyboardType: TextInputType.url,
-                  decoration: const InputDecoration(
-                    hintText: 'http://localhost:9001',
-                  ),
-                ),
-                const SizedBox(height: 16),
-                PrimaryButton(
-                  label: _isResolverTesting ? '正在测试...' : '解析服务测试',
-                  onPressed: _isResolverTesting ? null : _runResolverTest,
-                ),
-                const SizedBox(height: 12),
-                _buildResolverTestResult(context),
               ],
             ),
           ),
@@ -539,84 +458,6 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildResolverTestResult(BuildContext context) {
-    if (_isResolverTesting) {
-      return Row(
-        children: [
-          const SizedBox(
-            width: 16,
-            height: 16,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-          const SizedBox(width: 10),
-          Text('正在测试解析服务...',
-              style: Theme.of(context).textTheme.bodySmall),
-        ],
-      );
-    }
-
-    final result = _resolverTestResult;
-    if (result == null) {
-      return const SizedBox.shrink();
-    }
-
-    final color = result.success ? AppColors.aqua : Colors.redAccent;
-    return GlassPanel(
-      padding: const EdgeInsets.all(12),
-      radius: 18,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                result.success ? Icons.check_circle : Icons.cancel,
-                color: color,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                result.success ? '解析服务可用' : '解析服务失败',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.copyWith(color: color),
-              ),
-              const Spacer(),
-              if (result.latencyMs != null)
-                Text(
-                  '${result.latencyMs} ms',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          if (result.success && result.smiles != null)
-            Text(
-              'SMILES: ${result.smiles}',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          if (result.success && result.formula != null)
-            Text(
-              '分子式: ${result.formula}',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          if (result.success && result.weight != null)
-            Text(
-              '分子量: ${result.weight!.toStringAsFixed(2)}',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          if (!result.success && result.errorMessage != null)
-            Text(
-              result.errorMessage!,
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: Colors.redAccent.shade100),
-            ),
-        ],
-      ),
-    );
-  }
 }
 
 class ConnectionTestResult {
@@ -645,46 +486,6 @@ class ConnectionTestResult {
 
   factory ConnectionTestResult.failure(String errorMessage) {
     return ConnectionTestResult._(
-      success: false,
-      errorMessage: errorMessage,
-    );
-  }
-}
-
-class ResolverTestResult {
-  final bool success;
-  final String? smiles;
-  final String? formula;
-  final double? weight;
-  final String? errorMessage;
-  final int? latencyMs;
-
-  const ResolverTestResult._({
-    required this.success,
-    this.smiles,
-    this.formula,
-    this.weight,
-    this.errorMessage,
-    this.latencyMs,
-  });
-
-  factory ResolverTestResult.success({
-    required String smiles,
-    String? formula,
-    double? weight,
-    required int latencyMs,
-  }) {
-    return ResolverTestResult._(
-      success: true,
-      smiles: smiles,
-      formula: formula,
-      weight: weight,
-      latencyMs: latencyMs,
-    );
-  }
-
-  factory ResolverTestResult.failure(String errorMessage) {
-    return ResolverTestResult._(
       success: false,
       errorMessage: errorMessage,
     );
