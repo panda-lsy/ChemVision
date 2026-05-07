@@ -116,12 +116,21 @@ def _opsin_smiles(iupac_name: str) -> tuple[Optional[str], Optional[str]]:
         return None, f"import failed: {exc}"
 
     try:
-        if hasattr(pyopsin, "name_to_smiles"):
-            return pyopsin.name_to_smiles(cleaned), None
-        if hasattr(pyopsin, "opsin"):
-            return pyopsin.opsin(cleaned), None
-        if hasattr(pyopsin, "OPSIN"):
-            return pyopsin.OPSIN().name_to_smiles(cleaned), None
+        if hasattr(pyopsin, "PyOpsin"):
+            parser = pyopsin.PyOpsin()
+            if hasattr(parser, "to_smiles_single"):
+                return parser.to_smiles_single(cleaned), None
+            if hasattr(parser, "to_smiles"):
+                return parser.to_smiles(cleaned), None
+        if hasattr(pyopsin, "pyopsin"):
+            module = pyopsin.pyopsin
+            parser = getattr(module, "PyOpsin", None)
+            if parser is not None:
+                instance = parser()
+                if hasattr(instance, "to_smiles_single"):
+                    return instance.to_smiles_single(cleaned), None
+                if hasattr(instance, "to_smiles"):
+                    return instance.to_smiles(cleaned), None
     except Exception as exc:
         LOGGER.warning("OPSIN parse failed: %s", exc)
         return None, f"parse failed: {exc}"
