@@ -19,6 +19,24 @@ jobs:
           flutter-version: '3.22.x'
           channel: 'stable'
 
+      - name: Bump version
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          # Read current version from pubspec.yaml
+          CURRENT=$(grep -E '^version:' pubspec.yaml | sed 's/version: //')
+          VERSION_NAME=$(echo "$CURRENT" | cut -d'+' -f1)
+          VERSION_CODE=$(echo "$CURRENT" | cut -d'+' -f2)
+          # Split and increment patch
+          MAJOR=$(echo "$VERSION_NAME" | cut -d'.' -f1)
+          MINOR=$(echo "$VERSION_NAME" | cut -d'.' -f2)
+          PATCH=$(echo "$VERSION_NAME" | cut -d'.' -f3)
+          NEW_PATCH=$((PATCH + 1))
+          NEW_CODE=$((VERSION_CODE + 1))
+          NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}+${NEW_CODE}"
+          # Update pubspec.yaml
+          sed -i "s/^version: .*/version: ${NEW_VERSION}/" pubspec.yaml
+          echo "Version bumped: ${CURRENT} -> ${NEW_VERSION}"
+
       - name: Install dependencies
         run: flutter pub get
 
