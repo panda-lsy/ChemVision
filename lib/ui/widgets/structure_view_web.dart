@@ -14,6 +14,7 @@ class StructureView extends StatefulWidget {
     this.onSmilesUpdated,
     this.onControllerReady,
     this.compact = false,
+    this.readOnly = false,
   });
 
   final String smiles;
@@ -21,6 +22,7 @@ class StructureView extends StatefulWidget {
   final ValueChanged<String>? onSmilesUpdated;
   final ValueChanged<StructureViewController>? onControllerReady;
   final bool compact;
+  final bool readOnly;
 
   @override
   State<StructureView> createState() => _StructureViewState();
@@ -60,7 +62,7 @@ class _StructureViewState extends State<StructureView> {
   void _registerViewFactory() {
     ui.platformViewRegistry.registerViewFactory(_viewType, (int viewId) {
       final iframe = html.IFrameElement()
-        ..src = 'assets/web/index.html?channel=$_channel&compact=${widget.compact ? 1 : 0}'
+        ..src = 'assets/web/index.html?channel=$_channel&compact=${widget.compact ? 1 : 0}&readOnly=${widget.readOnly ? 1 : 0}'
         ..style.border = 'none'
         ..style.width = '100%'
         ..style.height = '100%'
@@ -71,6 +73,9 @@ class _StructureViewState extends State<StructureView> {
         _ensureController();
         if (widget.compact) {
           _postMessage('setCompactMode', {'compact': true});
+        }
+        if (widget.readOnly) {
+          _postMessage('setReadOnly', {'readOnly': true});
         }
         _sendSmiles(widget.smiles);
       });
@@ -111,6 +116,30 @@ class _StructureViewState extends State<StructureView> {
           _postMessage('exportSvg', {});
           return await completer.future.timeout(
             const Duration(seconds: 2),
+            onTimeout: () => null,
+          );
+        } catch (e) {
+          return null;
+        }
+      },
+      exportPng: () async {
+        final iframe = _iframe;
+        if (iframe == null) return null;
+        try {
+          final completer = Completer<String?>();
+          late StreamSubscription sub;
+          sub = html.window.onMessage.listen((event) {
+            final data = event.data;
+            if (data is Map &&
+                data['channel'] == _channel &&
+                data['type'] == 'exportPngResult') {
+              completer.complete(data['payload']?['dataUrl'] as String?);
+              sub.cancel();
+            }
+          });
+          _postMessage('renderPng', {});
+          return await completer.future.timeout(
+            const Duration(seconds: 4),
             onTimeout: () => null,
           );
         } catch (e) {

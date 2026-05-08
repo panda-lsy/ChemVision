@@ -2,13 +2,6 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Start Vivo Proxy",
-      "type": "shell",
-      "command": "node tools/vivo_proxy.js",
-      "isBackground": true,
-      "problemMatcher": []
-    },
-    {
       "label": "Flutter Run Web",
       "type": "shell",
       "command": "flutter run -d chrome --web-port=8080",
@@ -18,7 +11,6 @@
     {
       "label": "Start Web Dev",
       "dependsOn": [
-        "Start Vivo Proxy",
         "Flutter Run Web"
       ],
       "dependsOrder": "parallel",

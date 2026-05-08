@@ -20,9 +20,6 @@ class VivoAigcClient {
     final normalizedBase = _normalizeBaseUrl(
       baseUrl.isEmpty ? AppConfig.vivoAigcBaseUrl : baseUrl,
     );
-    if (kIsWeb && normalizedBase == AppConfig.vivoAigcBaseUrl) {
-      throw Exception('Web环境暂不支持直连，请使用手机端测试或配置代理');
-    }
 
     final requestId = _generateRequestId();
     final queryParameters = {
@@ -47,14 +44,19 @@ class VivoAigcClient {
 
     _logRequest(uri, headers, body);
 
-    final response = await _dio.postUri(
-      uri,
-      options: Options(
-        headers: headers,
-        validateStatus: (_) => true,
-      ),
-      data: body,
-    );
+    Response response;
+    try {
+      response = await _retryPost(uri, headers: headers, body: body);
+    } on DioException catch (error) {
+      if (kIsWeb) {
+        throw Exception('网络连接失败，请检查网络或确认接口支持 CORS');
+      }
+      final message = error.message ?? '网络连接失败';
+      throw Exception(message);
+    } catch (error) {
+      if (error is Exception) rethrow;
+      throw Exception('网络连接失败: $error');
+    }
 
     final statusCode = response.statusCode ?? 0;
     if (statusCode != 200) {
@@ -182,5 +184,46 @@ class VivoAigcClient {
     }
 
     return '${hex(8)}-${hex(4)}-${hex(4)}-${hex(4)}-${hex(12)}';
+  }
+
+  /// Retry POST up to [maxAttempts] times with exponential backoff.
+  /// Retries on network errors and non-200 status codes.
+  Future<Response> _retryPost(
+    Uri uri, {
+    required Map<String, String> headers,
+    required Map<String, dynamic> body,
+    int maxAttempts = 3,
+  }) async {
+    DioException? lastDioError;
+    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        final response = await _dio.postUri(
+          uri,
+          options: Options(
+            headers: headers,
+            validateStatus: (_) => true,
+          ),
+          data: body,
+        );
+        final status = response.statusCode ?? 0;
+        // Treat 200 as success; 4xx are client errors (no retry); 5xx/0 retry.
+        if (status == 200 || (status >= 400 && status < 500)) {
+          return response;
+        }
+        if (kDebugMode) {
+          debugPrint('[VivoAigc] Retry $attempt/$maxAttempts (HTTP $status)');
+        }
+      } on DioException catch (e) {
+        lastDioError = e;
+        if (kDebugMode) {
+          debugPrint('[VivoAigc] Retry $attempt/$maxAttempts (${e.type})');
+        }
+      }
+      if (attempt < maxAttempts) {
+        await Future.delayed(Duration(milliseconds: 500 * attempt));
+      }
+    }
+    if (lastDioError != null) throw lastDioError;
+    throw Exception('请求失败，已重试 $maxAttempts 次');
   }
 }

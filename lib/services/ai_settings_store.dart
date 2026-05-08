@@ -102,27 +102,42 @@ class AiSettingsStore {
   String _migrateBaseUrl(String value) {
     var trimmed = value.trim();
     if (trimmed.isEmpty) {
-      return defaultAigcBaseUrl;
+      return _defaultAigcBaseUrl();
+    }
+    if (!trimmed.contains('://') &&
+        (trimmed.startsWith('localhost') || trimmed.startsWith('10.0.2.2'))) {
+      trimmed = 'http://$trimmed';
+    }
+    // On Web, keep localhost:8787 — the proxy is required for CORS.
+    if (kIsWeb &&
+        (trimmed.startsWith('http://localhost:8787') ||
+            trimmed.startsWith('http://10.0.2.2:8787'))) {
+      return trimmed;
+    }
+    // On Web, if stored value is a direct external URL, force proxy.
+    if (kIsWeb && trimmed.startsWith('https://api-ai.vivo.com.cn')) {
+      return AppConfig.proxyBaseUrl;
+    }
+    // On non-Web, migrate away from localhost:8787 to the direct URL.
+    if (!kIsWeb &&
+        (trimmed.startsWith('http://localhost:8787') ||
+            trimmed.startsWith('http://10.0.2.2:8787'))) {
+      return AppConfig.vivoTextGenerationUrl;
     }
     if (trimmed.contains('/api/v1')) {
-      return AppConfig.vivoAigcBaseUrl;
+      return AppConfig.vivoTextGenerationUrl;
     }
     if (trimmed == 'https://api-ai.vivo.com.cn') {
-      return AppConfig.vivoAigcBaseUrl;
-    }
-    if (!trimmed.contains('://') && trimmed.startsWith('localhost')) {
-      trimmed = 'http://$trimmed';
+      return AppConfig.vivoTextGenerationUrl;
     }
     return trimmed;
   }
 
-
+  /// On Web, always use the local proxy to avoid CORS.
+  /// On Android, use the direct Vivo URL.
   String _defaultAigcBaseUrl() {
     if (kIsWeb) {
-      return 'http://localhost:8787';
-    }
-    if (defaultTargetPlatform == TargetPlatform.android) {
-      return 'http://10.0.2.2:8787';
+      return AppConfig.proxyBaseUrl;
     }
     return defaultAigcBaseUrl;
   }

@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import '../config/app_config.dart';
 import '../models/structure_result.dart';
 import 'ai_settings_store.dart';
 import 'structure_cache_store.dart';
@@ -141,12 +142,15 @@ class NameToStructureService implements StructureService {
       }
 
       var englishName = trimmed;
-      var chineseName = trimmed;
+      String? chineseName;
       var normalizedName = trimmed;
       if (_looksChinese(trimmed)) {
         final pair = await _normalizeNameWithChinese(trimmed, apiKey, model, settings.baseUrl);
         englishName = pair['english'] ?? trimmed;
-        chineseName = pair['chinese'] ?? trimmed;
+        chineseName = pair['chinese'];
+        if (chineseName == null || chineseName.isEmpty) {
+          chineseName = trimmed;
+        }
         normalizedName = pair['english'] ?? trimmed;
       }
       if (kDebugMode) {
@@ -172,8 +176,18 @@ class NameToStructureService implements StructureService {
         );
       }
 
+      final resolvedWithNames = _ResolutionResult(
+        canonicalSmiles: resolved.canonicalSmiles,
+        source: resolved.source,
+        molecularFormula: resolved.molecularFormula,
+        molecularWeight: resolved.molecularWeight,
+        resolvedName: resolved.resolvedName,
+        englishName: englishName,
+        chineseName: chineseName,
+      );
+
       final structureResult = _buildStructureResult(
-        resolved,
+        resolvedWithNames,
         fallbackName: resolverInput,
         confidence: 0.9,
       );
@@ -335,9 +349,15 @@ class NameToStructureService implements StructureService {
     // Parse "English (Chinese)" format
     final match = RegExp(r'^([^()]+)\s*\(([^)]*)\)').firstMatch(text);
     if (match != null) {
+      final rawChinese = match.group(2)?.trim();
+      final normalizedChinese = (rawChinese == null ||
+              rawChinese.isEmpty ||
+              rawChinese.toLowerCase() == 'unknown')
+          ? null
+          : rawChinese;
       return {
         'english': match.group(1)?.trim(),
-        'chinese': match.group(2)?.trim(),
+        'chinese': normalizedChinese,
       };
     }
     return {'english': text, 'chinese': null};
@@ -356,32 +376,44 @@ class NameToStructureService implements StructureService {
     String? originalName,
   }) async {
     final candidates = _dedupeCandidates([query, originalName]);
-    final pubchemResult = await _pubchem.queryAny(candidates);
-    final opsinResult = await _opsin.query(query);
 
-    final choice = _chooseSmiles(pubchemResult.smiles, opsinResult.smiles);
-    if (choice == null) {
-      final notFound = pubchemResult.notFound && opsinResult.notFound;
-      final error = pubchemResult.error ?? opsinResult.error;
-      return _ResolveOutcome(result: null, notFound: notFound, error: error);
+    // Run PubChem first; if it succeeds, skip OPSIN entirely.
+    final pubchemResult = await _pubchem.queryAny(candidates);
+    if (pubchemResult.smiles != null && pubchemResult.smiles!.trim().isNotEmpty) {
+      final resolvedName = pubchemResult.name ?? query;
+      return _ResolveOutcome(
+        result: _ResolutionResult(
+          canonicalSmiles: pubchemResult.smiles!.trim(),
+          source: 'pubchem',
+          molecularFormula: pubchemResult.formula,
+          molecularWeight: pubchemResult.weight,
+          resolvedName: resolvedName,
+        ),
+        notFound: false,
+        error: null,
+      );
     }
 
-    final resolvedName =
-        pubchemResult.name ?? opsinResult.name ?? query;
-    final formula = pubchemResult.formula ?? opsinResult.formula;
-    final weight = pubchemResult.weight ?? opsinResult.weight;
+    // PubChem failed — try OPSIN as fallback.
+    final opsinResult = await _opsin.query(query);
+    if (opsinResult.smiles != null && opsinResult.smiles!.trim().isNotEmpty) {
+      final resolvedName = opsinResult.name ?? query;
+      return _ResolveOutcome(
+        result: _ResolutionResult(
+          canonicalSmiles: opsinResult.smiles!.trim(),
+          source: 'opsin',
+          molecularFormula: opsinResult.formula,
+          molecularWeight: opsinResult.weight,
+          resolvedName: resolvedName,
+        ),
+        notFound: false,
+        error: null,
+      );
+    }
 
-    return _ResolveOutcome(
-      result: _ResolutionResult(
-        canonicalSmiles: choice.smiles,
-        source: choice.source,
-        molecularFormula: formula,
-        molecularWeight: weight,
-        resolvedName: resolvedName,
-      ),
-      notFound: false,
-      error: null,
-    );
+    final notFound = pubchemResult.notFound && opsinResult.notFound;
+    final error = pubchemResult.error ?? opsinResult.error;
+    return _ResolveOutcome(result: null, notFound: notFound, error: error);
   }
 
   List<String> _dedupeCandidates(List<String?> names) {
@@ -398,21 +430,6 @@ class NameToStructureService implements StructureService {
       }
     }
     return results;
-  }
-
-  _SmilesChoice? _chooseSmiles(String? pubchem, String? opsin) {
-    final pubchemTrimmed = pubchem?.trim() ?? '';
-    final opsinTrimmed = opsin?.trim() ?? '';
-    if (pubchemTrimmed.isNotEmpty) {
-      return _SmilesChoice(
-        smiles: pubchemTrimmed,
-        source: opsinTrimmed.isNotEmpty ? 'pubchem' : 'pubchem',
-      );
-    }
-    if (opsinTrimmed.isNotEmpty) {
-      return _SmilesChoice(smiles: opsinTrimmed, source: 'opsin');
-    }
-    return null;
   }
 
   String _sanitizeName(String value) {
@@ -568,13 +585,6 @@ class _ResolutionResult {
   });
 }
 
-class _SmilesChoice {
-  final String smiles;
-  final String source;
-
-  const _SmilesChoice({required this.smiles, required this.source});
-}
-
 class _SourceResult {
   final String? smiles;
   final String? formula;
@@ -663,10 +673,40 @@ class PubChemClient {
         'MolecularFormula,MolecularWeight,IUPACName/JSON';
 
     try {
-      final response = await _dio.get(
-        url,
-        options: Options(validateStatus: (_) => true),
-      );
+      Response? response;
+      DioException? lastDioError;
+      for (var attempt = 1; attempt <= 3; attempt++) {
+        try {
+          response = await _dio.get(
+            url,
+            options: Options(validateStatus: (_) => true),
+          );
+          final s = response.statusCode ?? 0;
+          // 200 = success; 4xx = client error (no retry); 5xx = server error (retry).
+          if (s == 200 || (s >= 400 && s < 500)) break;
+          if (kDebugMode) {
+            debugPrint('[PubChem] Retry $attempt/3 (HTTP $s)');
+          }
+        } on DioException catch (e) {
+          lastDioError = e;
+          if (kDebugMode) {
+            debugPrint('[PubChem] Retry $attempt/3 (${e.type})');
+          }
+        }
+        if (attempt < 3) {
+          await Future.delayed(Duration(milliseconds: 300 * attempt));
+        }
+      }
+      if (response == null) {
+        return _SourceResult(
+          smiles: null,
+          formula: null,
+          weight: null,
+          name: null,
+          error: lastDioError?.message ?? 'connection_error',
+          notFound: false,
+        );
+      }
 
       final status = response.statusCode ?? 0;
       final data = _decodeMap(response.data);
@@ -875,7 +915,10 @@ class OpsinClient {
               ),
             );
 
-  static const String _baseUrl = 'https://opsin.ch.cam.ac.uk/opsin';
+  // On web, use the local proxy to avoid CORS; on other platforms, direct.
+  static final String _baseUrl = kIsWeb
+      ? '${AppConfig.proxyBaseUrl}/opsin'
+      : 'https://opsin.ch.cam.ac.uk/opsin';
   final Dio _dio;
 
   Future<_SourceResult> query(String name) async {
@@ -905,10 +948,40 @@ class OpsinClient {
     final url = '$_baseUrl/$encoded.json';
 
     try {
-      final response = await _dio.get(
-        url,
-        options: Options(validateStatus: (_) => true),
-      );
+      Response? response;
+      DioException? lastDioError;
+      for (var attempt = 1; attempt <= 3; attempt++) {
+        try {
+          response = await _dio.get(
+            url,
+            options: Options(validateStatus: (_) => true),
+          );
+          final s = response.statusCode ?? 0;
+          // 200 = success; 4xx = client error (no retry); 5xx = server error (retry).
+          if (s == 200 || (s >= 400 && s < 500)) break;
+          if (kDebugMode) {
+            debugPrint('[OPSIN] Retry $attempt/3 (HTTP $s)');
+          }
+        } on DioException catch (e) {
+          lastDioError = e;
+          if (kDebugMode) {
+            debugPrint('[OPSIN] Retry $attempt/3 (${e.type})');
+          }
+        }
+        if (attempt < 3) {
+          await Future.delayed(Duration(milliseconds: 300 * attempt));
+        }
+      }
+      if (response == null) {
+        return _SourceResult(
+          smiles: null,
+          formula: null,
+          weight: null,
+          name: null,
+          error: lastDioError?.message ?? 'connection_error',
+          notFound: false,
+        );
+      }
       final status = response.statusCode ?? 0;
       final data = _decodeMap(response.data);
       if (kDebugMode) {

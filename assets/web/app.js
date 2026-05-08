@@ -2,6 +2,7 @@
   const params = new URLSearchParams(window.location.search);
   const channel = params.get('channel') || 'chemvision';
   let compactMode = params.get('compact') === '1';
+  let readOnlyMode = params.get('readOnly') === '1';
   const state = {
     smiles: '',
     atoms: [],
@@ -40,6 +41,24 @@
       engineLabel.style.display = compactMode ? 'none' : '';
     }
     drawSmiles(state.smiles);
+  }
+
+  function setReadOnly(enabled) {
+    readOnlyMode = Boolean(enabled);
+    if (readOnlyMode) {
+      // Hide atom list and interactive elements
+      if (atomList) {
+        atomList.style.display = 'none';
+      }
+      if (hint) {
+        hint.style.display = 'none';
+      }
+      // Disable pointer events on the structure view to prevent pan/zoom
+      const view = document.getElementById('structure-view');
+      if (view) {
+        view.style.pointerEvents = 'none';
+      }
+    }
   }
 
   const drawerTheme = {
@@ -480,6 +499,7 @@
 
   window.renderSmiles = renderSmiles;
   window.setCompactMode = setCompactMode;
+  window.setReadOnly = setReadOnly;
   window.getSmiles = function () {
     if (!state.molecule) {
       return state.smiles;
@@ -488,22 +508,18 @@
   };
   window.exportSvg = function () {
     try {
-      // Get the SVG element directly
-      const svg = structureCanvas || document.getElementById('smiles-canvas');
+      const container = structureCanvas || document.getElementById('smiles-canvas');
+      if (!container) {
+        return null;
+      }
+      const svg = container.querySelector('svg');
       if (!svg) {
         return null;
       }
-      // Check if SVG has content (children or child nodes)
-      if (!svg.hasChildNodes || svg.childNodes.length === 0) {
-        return null;
-      }
       const clone = svg.cloneNode(true);
-      // Remove any transform/viewBox attributes to get clean SVG
       clone.removeAttribute('transform');
-      // Remove <style> tags to avoid flutter_svg parsing errors
       const styles = clone.querySelectorAll('style');
       styles.forEach(style => style.remove());
-      // Ensure it has proper viewBox for standalone rendering
       if (!clone.getAttribute('viewBox')) {
         try {
           const bbox = svg.getBBox();
@@ -516,11 +532,63 @@
       clone.setAttribute('width', '300');
       clone.setAttribute('height', '300');
       const svgString = new XMLSerializer().serializeToString(clone);
-      // Ensure we have valid SVG content
       return svgString && svgString.length > 50 ? svgString : null;
     } catch (error) {
       console.error('exportSvg error:', error);
       return null;
+    }
+  };
+  window.renderPng = function (scale) {
+    scale = scale || 2;
+    const container = structureCanvas || document.getElementById('smiles-canvas');
+    if (!container) {
+      postToHost('exportPngResult', { dataUrl: null });
+      return;
+    }
+    const svg = container.querySelector('svg');
+    if (!svg) {
+      postToHost('exportPngResult', { dataUrl: null });
+      return;
+    }
+    try {
+      const clone = svg.cloneNode(true);
+      clone.removeAttribute('transform');
+      const styles = clone.querySelectorAll('style');
+      styles.forEach(function (s) { s.remove(); });
+      if (!clone.getAttribute('viewBox')) {
+        try {
+          var bbox = svg.getBBox();
+          clone.setAttribute('viewBox', bbox.x + ' ' + bbox.y + ' ' + bbox.width + ' ' + bbox.height);
+        } catch (e) {
+          clone.setAttribute('viewBox', '0 0 300 300');
+        }
+      }
+      clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+      var svgString = new XMLSerializer().serializeToString(clone);
+      var vb = clone.getAttribute('viewBox').split(' ').map(Number);
+      var w = Math.round((vb[2] || 300) * scale);
+      var h = Math.round((vb[3] || 300) * scale);
+      var blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+      var url = URL.createObjectURL(blob);
+      var img = new Image();
+      img.onload = function () {
+        var canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        var ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#0b0f1a';
+        ctx.fillRect(0, 0, w, h);
+        ctx.drawImage(img, 0, 0, w, h);
+        URL.revokeObjectURL(url);
+        postToHost('exportPngResult', { dataUrl: canvas.toDataURL('image/png') });
+      };
+      img.onerror = function () {
+        URL.revokeObjectURL(url);
+        postToHost('exportPngResult', { dataUrl: null });
+      };
+      img.src = url;
+    } catch (err) {
+      postToHost('exportPngResult', { dataUrl: null });
     }
   };
   window.setMoleculeJson = function (json) {
@@ -562,11 +630,17 @@
       case 'setMoleculeJson':
         window.setMoleculeJson(payload);
         break;
+      case 'setReadOnly':
+        setReadOnly(payload.readOnly);
+        break;
       case 'exportSvg': {
         const svgString = window.exportSvg();
         postToHost('exportSvgResult', { svgString });
         break;
       }
+      case 'renderPng':
+        window.renderPng(2);
+        break;
       default:
         break;
     }
@@ -574,6 +648,9 @@
 
   document.addEventListener('DOMContentLoaded', function () {
     setCompactMode(compactMode);
+    if (readOnlyMode) {
+      setReadOnly(true);
+    }
     postToHost('onBridgeReady', {});
   });
 })();

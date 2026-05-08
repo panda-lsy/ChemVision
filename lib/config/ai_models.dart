@@ -7,7 +7,7 @@ class AiModelOption {
   const AiModelOption({required this.name, required this.description});
 }
 
-const String defaultAigcBaseUrl = AppConfig.vivoAigcBaseUrl;
+const String defaultAigcBaseUrl = AppConfig.vivoTextGenerationUrl;
 
 const List<AiModelOption> textGenerationModels = [
   AiModelOption(name: 'Doubao-Seed-2.0-pro', description: '高质量回答'),

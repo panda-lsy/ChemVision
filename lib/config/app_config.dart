@@ -7,4 +7,6 @@ class AppConfig {
   static const String vivoTextGenerationPath = '/chat/completions';
   static const String vivoTextGenerationUrl =
       '$vivoAigcBaseUrl$vivoTextGenerationPath';
+  static const String proxyBaseUrl = 'http://localhost:8787';
+  static const String opsinProxyBaseUrl = '$proxyBaseUrl/opsin';
 }

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
@@ -13,6 +14,7 @@ class StructureView extends StatefulWidget {
     this.onSmilesUpdated,
     this.onControllerReady,
     this.compact = false,
+    this.readOnly = false,
   });
 
   final String smiles;
@@ -20,6 +22,7 @@ class StructureView extends StatefulWidget {
   final ValueChanged<String>? onSmilesUpdated;
   final ValueChanged<StructureViewController>? onControllerReady;
   final bool compact;
+  final bool readOnly;
 
   @override
   State<StructureView> createState() => _StructureViewState();
@@ -29,6 +32,7 @@ class _StructureViewState extends State<StructureView> {
   InAppWebViewController? _controller;
   bool _pageReady = false;
   StructureViewController? _viewController;
+  Completer<String?>? _pngCompleter;
 
   @override
   void didUpdateWidget(covariant StructureView oldWidget) {
@@ -82,6 +86,20 @@ class _StructureViewState extends State<StructureView> {
         return null;
       },
     );
+
+    controller.addJavaScriptHandler(
+      handlerName: 'exportPngResult',
+      callback: (args) {
+        if (args.isNotEmpty && args.first is Map) {
+          final data = Map<String, dynamic>.from(args.first);
+          final dataUrl = data['dataUrl'] as String?;
+          if (_pngCompleter != null && !_pngCompleter!.isCompleted) {
+            _pngCompleter!.complete(dataUrl);
+          }
+        }
+        return null;
+      },
+    );
   }
 
   Future<void> _sendSmiles(String smiles) async {
@@ -115,6 +133,20 @@ class _StructureViewState extends State<StructureView> {
           return null;
         }
       },
+      exportPng: () async {
+        try {
+          _pngCompleter = Completer<String?>();
+          await controller.evaluateJavascript(
+            source: 'window.renderPng && window.renderPng(2);',
+          );
+          return await _pngCompleter!.future.timeout(
+            const Duration(seconds: 4),
+            onTimeout: () => null,
+          );
+        } catch (e) {
+          return null;
+        }
+      },
     );
     widget.onControllerReady?.call(_viewController!);
   }
@@ -139,6 +171,11 @@ class _StructureViewState extends State<StructureView> {
         controller.evaluateJavascript(
           source: 'window.setCompactMode && window.setCompactMode(${widget.compact ? 'true' : 'false'});',
         );
+        if (widget.readOnly) {
+          controller.evaluateJavascript(
+            source: 'window.setReadOnly && window.setReadOnly(true);',
+          );
+        }
         _sendSmiles(widget.smiles);
       },
     );
