@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
 import 'theme/app_theme.dart';
-import 'ui/pages/input_page.dart';
+import 'ui/pages/splash_page.dart';
+import 'ui/widgets/bottom_nav_shell.dart';
 
 class ChemVisionApp extends StatelessWidget {
   const ChemVisionApp({super.key});
@@ -12,7 +13,7 @@ class ChemVisionApp extends StatelessWidget {
       title: 'ChemVISION',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark(),
-      home: const InputPage(),
+      home: const SplashPage(),
     );
   }
 }

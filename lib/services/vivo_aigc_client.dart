@@ -85,6 +85,83 @@ class VivoAigcClient {
     throw Exception('服务响应异常');
   }
 
+  /// Generate text with multimodal input (text + image).
+  /// [imageBase64] should be a data URI like "data:image/jpeg;base64,..."
+  Future<String> generateMultimodal({
+    required String apiKey,
+    required String model,
+    required String prompt,
+    required String imageBase64,
+    required String baseUrl,
+  }) async {
+    final normalizedBase = _normalizeBaseUrl(
+      baseUrl.isEmpty ? AppConfig.vivoAigcBaseUrl : baseUrl,
+    );
+
+    final requestId = _generateRequestId();
+    final queryParameters = {
+      'requestId': requestId,
+      'request_id': requestId,
+    };
+    final body = {
+      'model': model,
+      'messages': [
+        {
+          'role': 'user',
+          'content': [
+            {
+              'type': 'image_url',
+              'image_url': {'url': imageBase64},
+            },
+            {
+              'type': 'text',
+              'text': prompt,
+            },
+          ],
+        }
+      ],
+      'stream': false,
+      'temperature': 0.3,
+      'max_tokens': 2048,
+    };
+    final uri = _buildTextGenerationUri(normalizedBase, queryParameters);
+    final headers = {
+      'Authorization': 'Bearer $apiKey',
+      'Content-Type': 'application/json',
+    };
+
+    _logRequest(uri, headers, body);
+
+    Response response;
+    try {
+      response = await _retryPost(uri, headers: headers, body: body);
+    } on DioException catch (error) {
+      if (kIsWeb) {
+        throw Exception('网络连接失败，请检查网络或确认接口支持 CORS');
+      }
+      final message = error.message ?? '网络连接失败';
+      throw Exception(message);
+    } catch (error) {
+      if (error is Exception) rethrow;
+      throw Exception('网络连接失败: $error');
+    }
+
+    final statusCode = response.statusCode ?? 0;
+    if (statusCode != 200) {
+      throw Exception('HTTP $statusCode: ${response.data}');
+    }
+
+    final data = response.data;
+    if (data is Map<String, dynamic>) {
+      final extracted = _extractChatContent(data);
+      if (extracted != null) {
+        _logResponse(extracted);
+        return extracted;
+      }
+    }
+    throw Exception('服务响应异常');
+  }
+
   String _normalizeBaseUrl(String baseUrl) {
     final trimmed = baseUrl.trim();
     if (trimmed.endsWith('/')) {

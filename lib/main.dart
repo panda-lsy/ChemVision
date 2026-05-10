@@ -1,8 +1,145 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import 'app.dart';
+import 'models/adapters/favorite_item_adapter.dart';
+import 'models/adapters/structure_candidate_adapter.dart';
+import 'models/adapters/structure_result_adapter.dart';
+import 'providers/favorites_provider.dart';
+import 'services/favorites_service.dart';
+import 'services/search_history_service.dart';
+import 'services/app_version_service.dart';
 
-void main() {
-  runApp(const ProviderScope(child: ChemVisionApp()));
+// 导出 provider 供其他文件使用
+export 'providers/favorites_provider.dart';
+
+// 全局搜索历史服务实例
+final searchHistoryServiceProvider = Provider<SearchHistoryService>((ref) {
+  return SearchHistoryService();
+});
+
+// 搜索历史列表 Provider - 用于 UI 同步
+final searchHistoryListProvider = StateProvider<List<String>>((ref) => []);
+
+// 全局搜索词控制器 Provider
+final searchQueryControllerProvider = StateProvider<String>((ref) => '');
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // 立即启动应用，减少首帧渲染时间
+  runApp(ProviderScope(
+    child: const _InitializationWrapper(),
+  ));
+}
+
+/// 初始化包装器 - 在后台异步完成初始化
+class _InitializationWrapper extends StatefulWidget {
+  const _InitializationWrapper();
+
+  @override
+  State<_InitializationWrapper> createState() => _InitializationWrapperState();
+}
+
+class _InitializationWrapperState extends State<_InitializationWrapper> {
+  FavoritesService? _favoritesService;
+  SearchHistoryService? _searchHistoryService;
+  bool _initialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeAsync();
+  }
+
+  Future<void> _initializeAsync() async {
+    // 在后台线程初始化
+    await Future.microtask(() async {
+      try {
+        // 请求权限（非阻塞）
+        if (!kIsWeb) {
+          await _requestPermissions();
+        }
+        
+        // 初始化 Hive
+        await Hive.initFlutter();
+        
+        // 注册适配器
+        Hive.registerAdapter(StructureResultAdapter());
+        Hive.registerAdapter(StructureCandidateAdapter());
+        Hive.registerAdapter(FavoriteItemAdapter());
+
+        // 初始化服务
+        _favoritesService = FavoritesService();
+        await _favoritesService!.init();
+
+        _searchHistoryService = SearchHistoryService();
+        await _searchHistoryService!.init();
+        
+        // 初始化版本服务
+        await AppVersionService().init();
+      } catch (e) {
+        debugPrint('初始化失败：$e');
+      }
+    });
+    
+    if (mounted) {
+      setState(() {
+        _initialized = true;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_initialized) {
+      // 显示简单的加载指示器
+      return const MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: CircularProgressIndicator(),
+          ),
+        ),
+      );
+    }
+    
+    return ProviderScope(
+      overrides: [
+        favoritesServiceProvider.overrideWithValue(_favoritesService!),
+        searchHistoryServiceProvider.overrideWithValue(_searchHistoryService!),
+      ],
+      child: const ChemVisionApp(),
+    );
+  }
+}
+
+/// 请求应用所需的权限
+Future<void> _requestPermissions() async {
+  // Web 平台不支持某些权限
+  if (kIsWeb) {
+    debugPrint('Web 平台：跳过权限请求');
+    return;
+  }
+  
+  try {
+    // 请求麦克风权限（用于语音识别）
+    final micStatus = await Permission.microphone.status;
+    if (micStatus.isDenied) {
+      await Permission.microphone.request();
+    }
+    
+    // 请求相机权限（用于图像识别）
+    final cameraStatus = await Permission.camera.status;
+    if (cameraStatus.isDenied) {
+      await Permission.camera.request();
+    }
+    
+    // 注意：storage 权限在 Android 10+ 已废弃，Web 平台不支持
+    // 如果需要文件访问，使用 image_picker 或 file_picker
+  } catch (e) {
+    debugPrint('权限请求失败：$e');
+  }
 }

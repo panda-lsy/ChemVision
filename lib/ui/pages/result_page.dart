@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../config/app_config.dart';
 import '../../models/structure_result.dart';
+import '../../providers/favorites_provider.dart';
+import '../../services/favorites_service.dart';
 import '../../theme/app_colors.dart';
 import '../widgets/accent_pill.dart';
 import '../widgets/app_scaffold.dart';
+import '../widgets/bouncy_button.dart';
 import '../widgets/glass_panel.dart';
 import '../widgets/primary_button.dart';
 import '../widgets/structure_view.dart';
 import '../widgets/structure_view_controller.dart';
 import 'settings_page.dart';
 
-class ResultPage extends StatefulWidget {
+class ResultPage extends ConsumerStatefulWidget {
   const ResultPage({
     super.key,
     required this.query,
@@ -21,10 +25,10 @@ class ResultPage extends StatefulWidget {
   final StructureResult result;
 
   @override
-  State<ResultPage> createState() => _ResultPageState();
+  ConsumerState<ResultPage> createState() => _ResultPageState();
 }
 
-class _ResultPageState extends State<ResultPage> {
+class _ResultPageState extends ConsumerState<ResultPage> {
   StructureViewController? _controller;
   String _currentSmiles = '';
   String? _selectedAtomId;
@@ -32,6 +36,8 @@ class _ResultPageState extends State<ResultPage> {
   final ScrollController _candidateScrollController = ScrollController();
   late final List<StructureCandidate> _candidates;
   late StructureCandidate _activeCandidate;
+  bool _isFavorited = false;
+  
   @override
   void dispose() {
     _candidateScrollController.dispose();
@@ -46,6 +52,15 @@ class _ResultPageState extends State<ResultPage> {
         .where((item) => item.smiles.trim().isNotEmpty)
         .toList();
     _currentSmiles = _activeCandidate.smiles;
+    _checkIfFavorited();
+  }
+
+  void _checkIfFavorited() {
+    // 检查当前结构是否已收藏
+    final service = ref.read(favoritesServiceProvider);
+    final allFavorites = service.getAll();
+    _isFavorited = allFavorites.any((item) => 
+      item.structureResult.smiles == _activeCandidate.smiles);
   }
 
   StructureCandidate _primaryCandidate() {
@@ -74,6 +89,7 @@ class _ResultPageState extends State<ResultPage> {
     setState(() {
       _activeCandidate = candidate;
       _currentSmiles = candidate.smiles;
+      _checkIfFavorited(); // 重新检查收藏状态
     });
   }
 
@@ -149,23 +165,36 @@ class _ResultPageState extends State<ResultPage> {
         children: [
           Row(
             children: [
-              Text('ChemVISION',
-                  style: Theme.of(context).textTheme.labelLarge),
+              Flexible(
+                child: Text(
+                  'ChemVISION',
+                  style: Theme.of(context).textTheme.labelLarge,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
               const Spacer(),
               Flexible(
+                flex: 2,
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
                       icon: const Icon(Icons.settings, size: 20),
                       color: AppColors.textMuted,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 40,
+                        minHeight: 40,
+                      ),
                       onPressed: () => Navigator.of(context).push(
                         MaterialPageRoute(
                             builder: (_) => const SettingsPage()),
                       ),
                     ),
                     const SizedBox(width: 6),
-                    const AccentPill(label: '结构已生成'),
+                    Flexible(
+                      child: const AccentPill(label: '结构已生成'),
+                    ),
                   ],
                 ),
               ),
@@ -287,10 +316,21 @@ class _ResultPageState extends State<ResultPage> {
                                         ? AppColors.aqua
                                         : Colors.white
                                             .withOpacity(0.06),
+                                    width: isActive ? 2 : 1,
                                   ),
                                   color: isActive
                                       ? AppColors.glassStrong
                                       : Colors.transparent,
+                                  boxShadow: isActive
+                                      ? [
+                                          BoxShadow(
+                                            color:
+                                                AppColors.aqua.withOpacity(0.3),
+                                            blurRadius: 8,
+                                            spreadRadius: 2,
+                                          ),
+                                        ]
+                                      : null,
                                 ),
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 12, vertical: 10),
@@ -393,9 +433,81 @@ class _ResultPageState extends State<ResultPage> {
               Expanded(
                 child: SizedBox(
                   height: 52,
-                  child: PrimaryButton(
-                    label: '收藏',
-                    onPressed: () {},
+                  child: BouncyButton(
+                    onPressed: _isFavorited
+                        ? () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('该结构已在收藏中'),
+                                backgroundColor: AppColors.navy,
+                              ),
+                            );
+                          }
+                        : () async {
+                            await ref
+                                .read(favoritesControllerProvider.notifier)
+                                .add(widget.result, widget.query);
+                            setState(() {
+                              _isFavorited = true;
+                            });
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('已添加到收藏'),
+                                  backgroundColor: AppColors.aqua,
+                                ),
+                              );
+                            }
+                          },
+                    child: Container(
+                      width: double.infinity,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(18),
+                        gradient: _isFavorited
+                            ? null
+                            : const LinearGradient(
+                                colors: [
+                                  AppColors.aqua,
+                                  Color(0xFF4EDCC8),
+                                ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                        color: _isFavorited ? Colors.transparent : null,
+                        border: _isFavorited
+                            ? Border.all(
+                                color: AppColors.aqua.withOpacity(0.6),
+                                width: 2,
+                              )
+                            : null,
+                      ),
+                      child: Center(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              _isFavorited ? Icons.check : Icons.star_border,
+                              size: 20,
+                              color: _isFavorited
+                                  ? AppColors.aqua
+                                  : AppColors.navy,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              _isFavorited ? '已收藏' : '收藏',
+                              style: TextStyle(
+                                color: _isFavorited
+                                    ? AppColors.aqua
+                                    : AppColors.navy,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                 ),
               ),

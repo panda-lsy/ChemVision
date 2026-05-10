@@ -38,21 +38,6 @@ class _InputPageState extends ConsumerState<InputPage> {
     super.initState();
     // 立即加载历史记录
     _loadHistory();
-    
-    // 监听搜索历史变化
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.listen<List<String>>(
-        searchHistoryListProvider,
-        (previous, next) {
-          if (mounted) {
-            setState(() {
-              _history.clear();
-              _history.addAll(next.take(8));
-            });
-          }
-        },
-      );
-    });
   }
 
   void _loadHistory() {
@@ -75,12 +60,21 @@ class _InputPageState extends ConsumerState<InputPage> {
   }
 
   @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
+  Widget build(BuildContext context) {
+    // 监听搜索历史变化（在 build 中调用）
+    ref.listen<List<String>>(
+      searchHistoryListProvider,
+      (previous, next) {
+        if (!listEquals(previous, next) && mounted) {
+          setState(() {
+            _history.clear();
+            _history.addAll(next.take(8));
+          });
+        }
+      },
+    );
+    
+    const panelRadius = 22.0;
     final query = _controller.text.trim();
     if (query.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(

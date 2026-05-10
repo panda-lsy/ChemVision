@@ -6,6 +6,7 @@ class AppColors {
   static const Color navyDeep = Color(0xFF0D1627);
   static const Color navyDarker = Color(0xFF0F1A30);
   static const Color aqua = Color(0xFF38D5C1);
+  static const Color aquaLight = Color(0xFF5CE0D0);
   static const Color lime = Color(0xFFB7F171);
   static const Color amber = Color(0xFFF6B355);
   static const Color mist = Color(0xFFE9EEF5);

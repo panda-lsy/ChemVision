@@ -13,6 +13,7 @@ backend/__pycache__/
 .pub/
 build/
 flutter_*.log
+.kotlin/
 
 # IDE
 .idea/

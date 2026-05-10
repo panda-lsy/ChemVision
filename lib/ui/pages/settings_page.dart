@@ -190,17 +190,14 @@ class _SettingsPageState extends State<SettingsPage> {
         children: [
           Row(
             children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back),
-                color: AppColors.textPrimary,
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-              const SizedBox(width: 6),
-              Text('连接设置', style: Theme.of(context).textTheme.titleLarge),
+              Text('ChemVISION',
+                  style: Theme.of(context).textTheme.labelLarge),
               const Spacer(),
               const AccentPill(label: '云端配置'),
             ],
           ),
+          const SizedBox(height: 18),
+          Text('连接设置', style: Theme.of(context).textTheme.headlineMedium),
           const SizedBox(height: 16),
           if (_apiKeyController.text.trim().isEmpty)
             GlassPanel(
