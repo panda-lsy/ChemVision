@@ -16,8 +16,11 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.x'
+          flutter-version: 'latest'
           channel: 'stable'
+
+      - name: Show Flutter version
+        run: flutter --version
 
       - name: Bump version
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -58,8 +61,11 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.x'
+          flutter-version: 'latest'
           channel: 'stable'
+
+      - name: Show Flutter version
+        run: flutter --version
 
       - name: Install dependencies
         run: flutter pub get

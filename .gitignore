@@ -14,6 +14,7 @@ backend/__pycache__/
 build/
 flutter_*.log
 .kotlin/
+.flutter-plugins-dependencies
 
 # IDE
 .idea/
