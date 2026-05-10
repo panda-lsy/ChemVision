@@ -21,8 +21,51 @@ final searchHistoryServiceProvider = Provider<SearchHistoryService>((ref) {
   return SearchHistoryService();
 });
 
+class SearchHistoryController extends StateNotifier<List<String>> {
+  SearchHistoryController(this._service) : super(const []) {
+    load();
+  }
+
+  final SearchHistoryService _service;
+
+  void load() {
+    state = _service.getAll();
+  }
+
+  Future<void> add(String query) async {
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) return;
+
+    final next = [
+      trimmed,
+      ...state.where((item) => item != trimmed),
+    ].take(20).toList();
+    state = next;
+
+    final persisted = await _service.add(trimmed);
+    state = persisted;
+  }
+
+  Future<void> remove(String query) async {
+    final next = state.where((item) => item != query).toList();
+    state = next;
+
+    final persisted = await _service.remove(query);
+    state = persisted;
+  }
+
+  Future<void> clear() async {
+    state = const [];
+    await _service.clear();
+  }
+}
+
 // 搜索历史列表 Provider - 用于 UI 同步
-final searchHistoryListProvider = StateProvider<List<String>>((ref) => []);
+final searchHistoryListProvider =
+    StateNotifierProvider<SearchHistoryController, List<String>>((ref) {
+  final service = ref.watch(searchHistoryServiceProvider);
+  return SearchHistoryController(service);
+}, dependencies: [searchHistoryServiceProvider]);
 
 // 全局搜索词控制器 Provider
 final searchQueryControllerProvider = StateProvider<String>((ref) => '');

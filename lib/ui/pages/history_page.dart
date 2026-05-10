@@ -7,7 +7,6 @@ import '../widgets/accent_pill.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/glass_panel.dart';
 import '../widgets/quick_tag.dart';
-import 'input_page.dart';
 
 /// 搜索历史页面
 class HistoryPage extends ConsumerStatefulWidget {
@@ -64,9 +63,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
                             onPressed: () {
                               Navigator.pop(ctx);
                               // 清空并同步更新
-                              final service = ref.read(searchHistoryServiceProvider);
-                              service.clear();
-                              ref.read(searchHistoryListProvider.notifier).state = [];
+                              ref.read(searchHistoryListProvider.notifier).clear();
                             },
                             style: TextButton.styleFrom(
                               foregroundColor: AppColors.aqua,
@@ -143,10 +140,7 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
                                     },
                                     onDelete: () {
                                       // 删除并同步更新
-                                      final service = ref.read(searchHistoryServiceProvider);
-                                      service.remove(item);
-                                      // 更新 Provider
-                                      ref.read(searchHistoryListProvider.notifier).state = service.getAll();
+                                      ref.read(searchHistoryListProvider.notifier).remove(item);
                                     },
                                   ),
                                 ),

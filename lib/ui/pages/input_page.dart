@@ -8,7 +8,6 @@ import '../../main.dart';
 import '../../providers/structure_controller.dart';
 import '../../services/ai_settings_store.dart';
 import '../../services/ocr_service.dart';
-import '../../services/search_history_service.dart';
 import '../../services/vivo_aigc_client.dart';
 import '../../theme/app_colors.dart';
 import '../widgets/accent_pill.dart';
@@ -30,49 +29,7 @@ class InputPage extends ConsumerStatefulWidget {
 
 class _InputPageState extends ConsumerState<InputPage> {
   final TextEditingController _controller = TextEditingController();
-  final List<String> _history = [];
   ResolveMode _mode = ResolveMode.exact;
-
-  @override
-  void initState() {
-    super.initState();
-    // 立即加载历史记录
-    _loadHistory();
-    
-    // 监听搜索历史变化
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.listen<List<String>>(
-        searchHistoryListProvider,
-        (previous, next) {
-          if (mounted) {
-            setState(() {
-              _history.clear();
-              _history.addAll(next.take(8));
-            });
-          }
-        },
-      );
-    });
-  }
-
-  void _loadHistory() {
-    try {
-      // 获取服务实例
-      final service = ref.read(searchHistoryServiceProvider);
-      final history = service.getAll();
-      if (mounted && history.isNotEmpty) {
-        setState(() {
-          _history.clear();
-          _history.addAll(history.take(8));
-        });
-        // 更新 Provider
-        ref.read(searchHistoryListProvider.notifier).state = history;
-      }
-    } catch (e) {
-      debugPrint('加载搜索历史失败：$e');
-      // 忽略错误，使用空历史
-    }
-  }
 
   @override
   void dispose() {
@@ -90,7 +47,7 @@ class _InputPageState extends ConsumerState<InputPage> {
     }
 
     // 先添加到历史记录（立即显示）
-    _addHistorySync(query);
+    ref.read(searchHistoryListProvider.notifier).add(query);
     
     ref.read(structureControllerProvider.notifier).reset();
     Navigator.of(context).push(
@@ -103,39 +60,8 @@ class _InputPageState extends ConsumerState<InputPage> {
     );
   }
 
-  // 同步添加到 UI（不等待持久化）
-  void _addHistorySync(String query) {
-    // 先更新 UI（立即显示）
-    setState(() {
-      _history.removeWhere((item) => item == query);
-      _history.insert(0, query);
-      if (_history.length > 8) {
-        _history.removeRange(8, _history.length);
-      }
-    });
-    
-    // 异步持久化
-    final service = ref.read(searchHistoryServiceProvider);
-    service.add(query);
-    
-    // 更新 Provider 以同步到其他页面
-    final allHistory = service.getAll();
-    ref.read(searchHistoryListProvider.notifier).state = allHistory;
-  }
-
   void _removeHistory(String query) async {
-    // 先更新 UI（立即删除）
-    setState(() {
-      _history.removeWhere((item) => item == query);
-    });
-    
-    // 异步持久化
-    final service = ref.read(searchHistoryServiceProvider);
-    await service.remove(query);
-    
-    // 更新 Provider 以同步到其他页面
-    final allHistory = service.getAll();
-    ref.read(searchHistoryListProvider.notifier).state = allHistory;
+    await ref.read(searchHistoryListProvider.notifier).remove(query);
   }
 
   Future<void> _startVoiceInput() async {
@@ -426,7 +352,8 @@ class _InputPageState extends ConsumerState<InputPage> {
 
   Widget _buildHistorySection(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    if (_history.isEmpty) {
+    final history = ref.watch(searchHistoryListProvider).take(8).toList();
+    if (history.isEmpty) {
       return Text(
         '暂无搜索记录',
         style: textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
@@ -435,7 +362,7 @@ class _InputPageState extends ConsumerState<InputPage> {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: _history
+      children: history
           .map(
             (item) => QuickTag(
               label: item,

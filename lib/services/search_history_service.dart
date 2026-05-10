@@ -19,45 +19,44 @@ class SearchHistoryService {
     await _ensureInitialized();
   }
 
+  Future<void> _writeAll(List<String> items) async {
+    await _ensureInitialized();
+    await _box!.clear();
+    for (var i = 0; i < items.length; i++) {
+      await _box!.put(i, items[i]);
+    }
+  }
+
   /// 添加搜索记录
-  Future<void> add(String query) async {
+  Future<List<String>> add(String query) async {
     await _ensureInitialized();
     final trimmed = query.trim();
-    if (trimmed.isEmpty) return;
+    if (trimmed.isEmpty) return getAll();
 
-    // 移除已存在的相同记录
-    await remove(trimmed);
-
-    // 添加到开头
-    await _box!.put(0, trimmed);
-
-    // 移动其他记录
-    final existing = getAll();
-    for (var i = 0; i < existing.length; i++) {
-      if (existing[i] != trimmed) {
-        await _box!.put(i + 1, existing[i]);
-      }
+    final items = getAll();
+    items.removeWhere((item) => item == trimmed);
+    items.insert(0, trimmed);
+    if (items.length > 20) {
+      items.removeRange(20, items.length);
     }
 
-    // 限制最多保存 20 条
-    if (_box!.length > 20) {
-      await _box!.deleteAt(_box!.length - 1);
-    }
+    await _writeAll(items);
+    return items;
   }
 
   /// 删除搜索记录
-  Future<void> remove(String query) async {
+  Future<List<String>> remove(String query) async {
     await _ensureInitialized();
-    final index = _box!.values.toList().indexOf(query);
-    if (index != -1) {
-      await _box!.deleteAt(index);
-    }
+    final items = getAll()..removeWhere((item) => item == query);
+    await _writeAll(items);
+    return items;
   }
 
   /// 清空所有记录
-  Future<void> clear() async {
+  Future<List<String>> clear() async {
     await _ensureInitialized();
     await _box!.clear();
+    return const [];
   }
 
   /// 获取所有记录
