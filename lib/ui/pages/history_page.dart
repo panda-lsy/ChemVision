@@ -6,9 +6,8 @@ import '../../theme/app_colors.dart';
 import '../widgets/accent_pill.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/glass_panel.dart';
-import '../widgets/quick_tag.dart';
 
-/// 搜索历史页面
+/// 搜索历史页面 — 表格布局
 class HistoryPage extends ConsumerStatefulWidget {
   const HistoryPage({super.key});
 
@@ -17,11 +16,45 @@ class HistoryPage extends ConsumerStatefulWidget {
 }
 
 class _HistoryPageState extends ConsumerState<HistoryPage> {
+  void _useQuery(String query) {
+    ref.read(searchQueryControllerProvider.notifier).state = query;
+    ref.read(bottomNavIndexProvider.notifier).state = 0;
+  }
+
+  void _removeQuery(String query) {
+    ref.read(searchHistoryListProvider.notifier).remove(query);
+  }
+
+  void _clearAll() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.navy,
+        title: const Text('清空历史'),
+        content: const Text('确定要清空所有搜索历史吗？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              ref.read(searchHistoryListProvider.notifier).clear();
+            },
+            style: TextButton.styleFrom(foregroundColor: AppColors.aqua),
+            child: const Text('清空'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // 使用 ref.watch 监听 Provider 变化
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final allHistory = ref.watch(searchHistoryListProvider);
-    
+
     return AppScaffold(
       scroll: false,
       child: Column(
@@ -38,7 +71,8 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
           const SizedBox(height: 18),
           Row(
             children: [
-              Text('搜索历史', style: Theme.of(context).textTheme.headlineMedium),
+              Text('搜索历史',
+                  style: Theme.of(context).textTheme.headlineMedium),
               const Spacer(),
               if (allHistory.isNotEmpty)
                 TextButton.icon(
@@ -47,44 +81,16 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
                   style: TextButton.styleFrom(
                     foregroundColor: AppColors.textMuted,
                   ),
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        backgroundColor: AppColors.navy,
-                        title: const Text('清空历史'),
-                        content: const Text('确定要清空所有搜索历史吗？'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx),
-                            child: const Text('取消'),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pop(ctx);
-                              // 清空并同步更新
-                              ref.read(searchHistoryListProvider.notifier).clear();
-                            },
-                            style: TextButton.styleFrom(
-                              foregroundColor: AppColors.aqua,
-                            ),
-                            child: const Text('清空'),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
+                  onPressed: _clearAll,
                 ),
             ],
           ),
-              const SizedBox(height: 14),
-          // 历史列表区域 - 使用 Expanded 占满剩余空间
+          const SizedBox(height: 14),
           Expanded(
             child: allHistory.isEmpty
                 ? Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Icon(Icons.history,
                             size: 48, color: AppColors.textMuted),
@@ -99,57 +105,140 @@ class _HistoryPageState extends ConsumerState<HistoryPage> {
                       ],
                     ),
                   )
-                : Container(
-                    width: double.infinity,
-                    constraints: const BoxConstraints(minHeight: 200),
-                    child: GlassPanel(
-                      radius: 22,
-                      padding: const EdgeInsets.all(16),
-                      child: SingleChildScrollView(
-                        child: Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: allHistory
-                              .map(
-                                (item) => SizedBox(
-                                  width: (MediaQuery.of(context).size.width - 48) / 2, // 每行两个，减去 padding
-                                  child: QuickTag(
-                                    label: item,
-                                    onTap: () {
-                                      // 不关闭页面，只显示提示
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(
-                                          content: Text('已选择：$item'),
-                                          backgroundColor: AppColors.aqua,
-                                          action: SnackBarAction(
-                                            label: '使用',
-                                            textColor: Colors.white,
-                                            onPressed: () {
-                                              // 设置搜索词
-                                              ref.read(searchQueryControllerProvider.notifier).state = item;
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                const SnackBar(
-                                                  content: Text('已填充到输入框，请切换到"识别"标签页'),
-                                                  backgroundColor: AppColors.aqua,
-                                                ),
-                                              );
-                                            },
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                    onDelete: () {
-                                      // 删除并同步更新
-                                      ref.read(searchHistoryListProvider.notifier).remove(item);
-                                    },
-                                  ),
+                : GlassPanel(
+                    radius: 22,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 4, vertical: 8),
+                    child: Column(
+                      children: [
+                        // 表头
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  '搜索内容',
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(
+                                        color: AppColors.textMuted,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                 ),
-                              )
-                              .toList(),
+                              ),
+                              SizedBox(
+                                width: 56,
+                                child: Text(
+                                  '使用',
+                                  textAlign: TextAlign.center,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.copyWith(
+                                        color: AppColors.textMuted,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                ),
+                              ),
+                              const SizedBox(width: 40),
+                            ],
+                          ),
                         ),
-                      ),
+                        Divider(
+                          height: 1,
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.06)
+                              : AppColors.dayBluePrimary
+                                  .withValues(alpha: 0.1),
+                        ),
+                        // 表格内容
+                        Expanded(
+                          child: ListView.builder(
+                            padding: EdgeInsets.zero,
+                            itemCount: allHistory.length,
+                            itemBuilder: (context, index) {
+                              final item = allHistory[index];
+                              return _HistoryRow(
+                                query: item,
+                                isDark: isDark,
+                                onUse: () => _useQuery(item),
+                                onDelete: () => _removeQuery(item),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HistoryRow extends StatelessWidget {
+  const _HistoryRow({
+    required this.query,
+    required this.isDark,
+    required this.onUse,
+    required this.onDelete,
+  });
+
+  final String query;
+  final bool isDark;
+  final VoidCallback onUse;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.04)
+                : AppColors.dayBluePrimary.withValues(alpha: 0.06),
+          ),
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              query,
+              style: Theme.of(context).textTheme.bodyMedium,
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
+          ),
+          SizedBox(
+            width: 56,
+            child: TextButton(
+              onPressed: onUse,
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                foregroundColor:
+                    isDark ? AppColors.aqua : AppColors.dayBluePrimary,
+              ),
+              child: const Text('使用', style: TextStyle(fontSize: 13)),
+            ),
+          ),
+          SizedBox(
+            width: 40,
+            child: IconButton(
+              icon: const Icon(Icons.close, size: 18),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              color: AppColors.textMuted,
+              onPressed: onDelete,
+            ),
           ),
         ],
       ),

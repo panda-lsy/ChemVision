@@ -6,6 +6,7 @@ class _IconConfig {
   const _IconConfig({
     required this.icon,
     required this.color,
+    required this.dayColor,
     required this.size,
     required this.top,
     required this.left,
@@ -16,6 +17,7 @@ class _IconConfig {
 
   final IconData icon;
   final Color color;
+  final Color dayColor;
   final double size;
   final double? top; // fraction of container height
   final double? left;
@@ -41,6 +43,7 @@ class _FloatingChemIconsState extends State<FloatingChemIcons>
     _IconConfig(
       icon: Icons.science,
       color: AppColors.aqua,
+      dayColor: AppColors.dayBluePrimary,
       size: 14,
       top: 0.08,
       left: -0.02,
@@ -51,6 +54,7 @@ class _FloatingChemIconsState extends State<FloatingChemIcons>
     _IconConfig(
       icon: Icons.local_florist,
       color: AppColors.lime,
+      dayColor: Color(0xFF2E7D4F),
       size: 12,
       top: -0.04,
       left: null,
@@ -61,6 +65,7 @@ class _FloatingChemIconsState extends State<FloatingChemIcons>
     _IconConfig(
       icon: Icons.access_time,
       color: AppColors.amber,
+      dayColor: Color(0xFFB87A1A),
       size: 11,
       top: null,
       left: 0,
@@ -71,6 +76,7 @@ class _FloatingChemIconsState extends State<FloatingChemIcons>
     _IconConfig(
       icon: Icons.description,
       color: Color(0xFFA0D2F0),
+      dayColor: AppColors.dayBlueAccent,
       size: 13,
       top: null,
       left: null,
@@ -81,6 +87,7 @@ class _FloatingChemIconsState extends State<FloatingChemIcons>
     _IconConfig(
       icon: Icons.show_chart,
       color: AppColors.aqua,
+      dayColor: Color(0xFF2C6EC9),
       size: 10,
       top: 0.48,
       left: null,
@@ -91,6 +98,7 @@ class _FloatingChemIconsState extends State<FloatingChemIcons>
     _IconConfig(
       icon: Icons.star,
       color: Color(0xFF9BC4FF),
+      dayColor: Color(0xFF5A8FD9),
       size: 12,
       top: 0.62,
       left: -0.06,
@@ -117,8 +125,9 @@ class _FloatingChemIconsState extends State<FloatingChemIcons>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return AnimatedOpacity(
-      opacity: widget.visible ? 0.45 : 0.0,
+      opacity: widget.visible ? (isDark ? 0.45 : 0.68) : 0.0,
       duration: const Duration(milliseconds: 600),
       child: SizedBox.expand(
         child: AnimatedBuilder(
@@ -160,7 +169,7 @@ class _FloatingChemIconsState extends State<FloatingChemIcons>
                       scale: scale,
                       child: Icon(
                         config.icon,
-                        color: config.color,
+                        color: isDark ? config.color : config.dayColor,
                         size: config.size,
                       ),
                     ),

@@ -70,6 +70,9 @@ final searchHistoryListProvider =
 // 全局搜索词控制器 Provider
 final searchQueryControllerProvider = StateProvider<String>((ref) => '');
 
+// 底部导航当前 tab 索引 Provider（用于跨页面切换 tab）
+final bottomNavIndexProvider = StateProvider<int>((ref) => 0);
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   

@@ -34,6 +34,8 @@ class _PulseDotsState extends State<PulseDots>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final dotColor = isDark ? AppColors.aqua : AppColors.dayBluePrimary;
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
@@ -50,12 +52,12 @@ class _PulseDotsState extends State<PulseDots>
                 scale: scale,
                 child: Opacity(
                   opacity: opacity,
-                  child: const DecoratedBox(
+                  child: DecoratedBox(
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppColors.aqua,
+                      color: dotColor,
                     ),
-                    child: SizedBox(width: 6, height: 6),
+                    child: const SizedBox(width: 6, height: 6),
                   ),
                 ),
               ),

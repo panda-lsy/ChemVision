@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="gwt:property" content="baseUrl=https://cdn.jsdelivr.net/npm/jsme-editor@2024.4.29/" />
+    <title>ChemVISION JSME Editor</title>
+    <script>
+      (function () {
+        var params = new URLSearchParams(window.location.search);
+        var theme = (params.get('theme') || '').toLowerCase();
+        if (theme === 'light' || theme === 'dark') {
+          document.documentElement.setAttribute('data-theme', theme);
+        }
+      })();
+    </script>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg-start: #0f172a;
+        --bg-end: #0c1426;
+        --panel-bg: rgba(20, 29, 46, 0.82);
+        --panel-border: rgba(126, 200, 227, 0.35);
+        --title: #d8e6ff;
+        --subtitle: #91a8cf;
+        --badge-bg: rgba(126, 200, 227, 0.18);
+        --badge-text: #9fe9ff;
+        --loading: #cfd9ee;
+      }
+      :root[data-theme='light'] {
+        color-scheme: light;
+        --bg-start: #f4f8ff;
+        --bg-end: #eaf2ff;
+        --panel-bg: rgba(255, 255, 255, 0.95);
+        --panel-border: rgba(38, 94, 190, 0.26);
+        --title: #11356f;
+        --subtitle: #4a6ca3;
+        --badge-bg: rgba(25, 81, 184, 0.12);
+        --badge-text: #1f54b9;
+        --loading: #1f48b3;
+      }
+      html, body {
+        margin: 0;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        background: transparent;
+        font-family: Inter, "PingFang SC", "Microsoft YaHei", sans-serif;
+      }
+      #jsme-root {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        display: flex;
+        align-items: stretch;
+        justify-content: stretch;
+        background: linear-gradient(180deg, var(--bg-start), var(--bg-end));
+      }
+      #editor-card {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        border: 1px solid var(--panel-border);
+        background: var(--panel-bg);
+        box-shadow: 0 10px 24px rgba(6, 23, 48, 0.2);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+      }
+      #editor-header {
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 10px 14px;
+        border-bottom: 1px solid var(--panel-border);
+      }
+      #editor-title-wrap {
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+      }
+      #editor-title {
+        color: var(--title);
+        font-size: 14px;
+        font-weight: 700;
+        letter-spacing: 0.2px;
+      }
+      #editor-subtitle {
+        color: var(--subtitle);
+        font-size: 11px;
+        line-height: 1.3;
+      }
+      #mode-badge {
+        background: var(--badge-bg);
+        color: var(--badge-text);
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-size: 11px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+      #editor-stage {
+        position: relative;
+        flex: 1 1 auto;
+        min-height: 0;
+      }
+      #jsme_container {
+        width: 100%;
+        height: 100%;
+      }
+      #loading {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--loading);
+        font-size: 13px;
+        pointer-events: none;
+        backdrop-filter: blur(1px);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="jsme-root">
+      <div id="editor-card">
+        <div id="editor-header">
+          <div id="editor-title-wrap">
+            <div id="editor-title">JSME 结构式编辑器</div>
+            <div id="editor-subtitle">原子、键、环、删除等工具已启用</div>
+          </div>
+          <div id="mode-badge">夜间模式</div>
+        </div>
+        <div id="editor-stage">
+          <div id="jsme_container"></div>
+          <div id="loading">正在加载 JSME 编辑器...</div>
+        </div>
+      </div>
+    </div>
+    <script>
+      (function () {
+        function hostCall(type, payload) {
+          if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+            window.flutter_inappwebview.callHandler(type, payload);
+          }
+        }
+        window.addEventListener('error', function (event) {
+          hostCall('onDebugLog', {
+            ts: new Date().toISOString(),
+            level: 'error',
+            message: 'editor_jsme.html window error',
+            extra: {
+              message: event.message,
+              source: event.filename,
+              line: event.lineno,
+              column: event.colno
+            }
+          });
+        });
+        window.addEventListener('unhandledrejection', function (event) {
+          hostCall('onDebugLog', {
+            ts: new Date().toISOString(),
+            level: 'error',
+            message: 'editor_jsme.html unhandled rejection',
+            extra: { reason: event.reason ? String(event.reason) : null }
+          });
+        });
+      })();
+      window.__chemvisionJsmeLoaded = false;
+      window.jsmeOnLoad = function () {
+        if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+          window.flutter_inappwebview.callHandler('onDebugLog', {
+            ts: new Date().toISOString(),
+            level: 'info',
+            message: 'jsmeOnLoad callback invoked'
+          });
+        }
+        window.__chemvisionJsmeLoaded = true;
+        if (typeof window.__chemvisionInitJsme === 'function') {
+          window.__chemvisionInitJsme();
+        }
+      };
+    </script>
+    <script src="jsme.nocache.js"></script>
+    <script src="editor_jsme.js"></script>
+  </body>
+</html>

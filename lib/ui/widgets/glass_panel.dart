@@ -18,6 +18,13 @@ class GlassPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final color = isDark ? AppColors.glass : AppColors.dayGlass;
+    final border = isDark
+        ? Colors.white.withValues(alpha: 0.1)
+        : const Color(0x663D77DE);
+    final shadow = isDark ? AppColors.shadow : AppColors.dayShadow;
+
     return ClipRRect(
       borderRadius: BorderRadius.circular(radius),
       child: BackdropFilter(
@@ -25,12 +32,12 @@ class GlassPanel extends StatelessWidget {
         child: Container(
           padding: padding,
           decoration: BoxDecoration(
-            color: AppColors.glass,
+            color: color,
             borderRadius: BorderRadius.circular(radius),
-            border: Border.all(color: Colors.white.withOpacity(0.1)),
-            boxShadow: const [
+            border: Border.all(color: border),
+            boxShadow: [
               BoxShadow(
-                color: AppColors.shadow,
+                color: shadow,
                 blurRadius: 22,
                 offset: Offset(0, 12),
               ),

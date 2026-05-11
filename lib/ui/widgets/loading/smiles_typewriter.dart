@@ -70,6 +70,7 @@ class _SmilesTypewriterState extends State<SmilesTypewriter>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final displayText = widget.active
         ? widget.smiles.substring(0, _charCount)
         : widget.smiles;
@@ -86,7 +87,7 @@ class _SmilesTypewriterState extends State<SmilesTypewriter>
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 fontFamily: 'Courier New',
                 fontFamilyFallback: ['monospace'],
-                color: AppColors.aqua,
+                color: isDark ? AppColors.aqua : AppColors.dayBluePrimary,
                 letterSpacing: 0.5,
                 fontSize: 13,
               ),

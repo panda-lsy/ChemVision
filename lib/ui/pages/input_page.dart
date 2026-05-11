@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../main.dart';
 import '../../providers/structure_controller.dart';
+import '../../providers/theme_mode_provider.dart';
 import '../../services/ai_settings_store.dart';
 import '../../services/ocr_service.dart';
 import '../../services/vivo_aigc_client.dart';
@@ -146,7 +148,7 @@ class _InputPageState extends ConsumerState<InputPage> {
       );
 
       final bytes = await image.readAsBytes();
-      final base64Image = base64Encode(bytes);
+      final base64Image = await compute(_encodeBytes, bytes);
 
       final settings = await AiSettingsStore().load();
       if (settings.apiKey.isEmpty) {
@@ -227,9 +229,15 @@ class _InputPageState extends ConsumerState<InputPage> {
     return 'image/jpeg';
   }
 
+// compute helper for base64 encoding
+String _encodeBytes(Uint8List bytes) {
+  return base64Encode(bytes);
+}
+
   @override
   Widget build(BuildContext context) {
     const panelRadius = 22.0;
+    final isDark = ref.watch(themeModeProvider) != ThemeMode.light;
     final hintText = _mode == ResolveMode.infer
         ? '输入用途或描述，例如：止痛消炎用药'
         : '输入化学名称，如：苯甲酸';
@@ -261,6 +269,14 @@ class _InputPageState extends ConsumerState<InputPage> {
             children: [
               Text('ChemVISION', style: Theme.of(context).textTheme.labelLarge),
               const Spacer(),
+              IconButton(
+                onPressed: () => ref.read(themeModeProvider.notifier).toggle(),
+                icon: Icon(
+                  isDark ? Icons.nightlight_round : Icons.wb_sunny_rounded,
+                  size: 18,
+                  color: isDark ? AppColors.textMuted : AppColors.dayBluePrimary,
+                ),
+              ),
               const AccentPill(label: '端侧意图识别'),
             ],
           ),
@@ -295,9 +311,9 @@ class _InputPageState extends ConsumerState<InputPage> {
                 const SizedBox(height: 10),
                 TextField(
                   controller: _controller,
-                  cursorColor: AppColors.aqua,
-                  style: const TextStyle(
-                    color: AppColors.textPrimary,
+                  cursorColor: isDark ? AppColors.aqua : AppColors.dayBluePrimary,
+                  style: TextStyle(
+                    color: isDark ? AppColors.textPrimary : AppColors.dayTextPrimary,
                     fontSize: 18,
                     fontWeight: FontWeight.w500,
                   ),
@@ -305,12 +321,12 @@ class _InputPageState extends ConsumerState<InputPage> {
                     hintText: hintText,
                     prefixIcon: IconButton(
                       icon: const Icon(Icons.mic_none),
-                      color: AppColors.textSecondary,
+                      color: isDark ? AppColors.textSecondary : AppColors.dayTextSecondary,
                       onPressed: _startVoiceInput,
                     ),
                     suffixIcon: IconButton(
                       icon: const Icon(Icons.photo_camera_outlined),
-                      color: AppColors.textSecondary,
+                      color: isDark ? AppColors.textSecondary : AppColors.dayTextSecondary,
                       onPressed: _pickImageAndRecognize,
                     ),
                   ),
@@ -379,12 +395,17 @@ class _InputPageState extends ConsumerState<InputPage> {
   }
 
   Widget _buildModeToggle(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: AppColors.glassStrong,
+        color: isDark ? AppColors.glassStrong : AppColors.dayGlass,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withOpacity(0.12)),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.12)
+              : AppColors.dayBluePrimary.withValues(alpha: 0.18),
+        ),
       ),
       child: Row(
         children: [
@@ -411,6 +432,7 @@ class _InputPageState extends ConsumerState<InputPage> {
     required String label,
     required IconData icon,
   }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final selected = _mode == mode;
     return Expanded(
       child: InkWell(
@@ -426,9 +448,13 @@ class _InputPageState extends ConsumerState<InputPage> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
             gradient: selected
-                ? const LinearGradient(
-                    colors: [AppColors.aqua, Color(0xFF9EF5D2)],
-                  )
+                ? (isDark
+                    ? const LinearGradient(
+                        colors: [AppColors.aqua, Color(0xFF9EF5D2)],
+                      )
+                    : const LinearGradient(
+                        colors: [AppColors.dayBluePrimary, AppColors.dayBlueAccent],
+                      ))
                 : null,
             color: selected ? null : Colors.transparent,
           ),
@@ -438,13 +464,19 @@ class _InputPageState extends ConsumerState<InputPage> {
               Icon(
                 icon,
                 size: 16,
-                color: selected ? AppColors.ink : AppColors.textSecondary,
+                color: selected
+                    ? (isDark ? AppColors.ink : Colors.white)
+                    : (isDark ? AppColors.textSecondary : AppColors.dayTextSecondary),
               ),
               const SizedBox(width: 6),
               Text(
                 label,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: selected ? AppColors.ink : AppColors.textSecondary,
+                      color: selected
+                          ? (isDark ? AppColors.ink : Colors.white)
+                          : (isDark
+                              ? AppColors.textSecondary
+                              : AppColors.dayTextSecondary),
                       fontWeight: FontWeight.w600,
                     ),
               ),

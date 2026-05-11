@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../providers/theme_mode_provider.dart';
 import '../../config/ai_models.dart';
 import '../../services/ai_settings_store.dart';
 import '../../services/vivo_aigc_client.dart';
@@ -13,14 +15,14 @@ import '../widgets/primary_button.dart';
 
 const String _customModelValue = '__custom__';
 
-class SettingsPage extends StatefulWidget {
+class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
 
   @override
-  State<SettingsPage> createState() => _SettingsPageState();
+  ConsumerState<SettingsPage> createState() => _SettingsPageState();
 }
 
-class _SettingsPageState extends State<SettingsPage> {
+class _SettingsPageState extends ConsumerState<SettingsPage> {
   final TextEditingController _apiKeyController = TextEditingController();
   final TextEditingController _customModelController = TextEditingController();
   final TextEditingController _baseUrlController = TextEditingController();
@@ -183,6 +185,8 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final themeMode = ref.watch(themeModeProvider);
+    final isDark = themeMode != ThemeMode.light;
     return AppScaffold(
       scroll: true,
       child: Column(
@@ -197,6 +201,32 @@ class _SettingsPageState extends State<SettingsPage> {
             ],
           ),
           const SizedBox(height: 18),
+          GlassPanel(
+            child: Row(
+              children: [
+                Icon(
+                  isDark ? Icons.nightlight_round : Icons.wb_sunny_rounded,
+                  color: isDark ? AppColors.textSecondary : AppColors.dayBluePrimary,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    '界面主题（夜间 / 日间）',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ),
+                Switch.adaptive(
+                  value: !isDark,
+                  onChanged: (value) {
+                    ref.read(themeModeProvider.notifier).setMode(
+                          value ? ThemeMode.light : ThemeMode.dark,
+                        );
+                  },
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
           Text('连接设置', style: Theme.of(context).textTheme.headlineMedium),
           const SizedBox(height: 16),
           if (_apiKeyController.text.trim().isEmpty)
@@ -253,7 +283,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 DropdownButtonFormField<String>(
                   value: _selectedTextModel,
                   isExpanded: true,
-                  dropdownColor: AppColors.navy,
+                  dropdownColor: isDark ? AppColors.navy : AppColors.daySurface,
                   items: _buildTextModelItems(),
                   onChanged: (value) {
                     setState(() {
@@ -301,7 +331,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 DropdownButtonFormField<String>(
                   value: _selectedEmbeddingModel ?? '',
                   isExpanded: true,
-                  dropdownColor: AppColors.navy,
+                  dropdownColor: isDark ? AppColors.navy : AppColors.daySurface,
                   items: _buildOptionalItems(embeddingModels),
                   onChanged: (value) {
                     setState(() {
@@ -317,7 +347,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 DropdownButtonFormField<String>(
                   value: _selectedRerankModel ?? '',
                   isExpanded: true,
-                  dropdownColor: AppColors.navy,
+                  dropdownColor: isDark ? AppColors.navy : AppColors.daySurface,
                   items: _buildOptionalItems(rerankModels),
                   onChanged: (value) {
                     setState(() {

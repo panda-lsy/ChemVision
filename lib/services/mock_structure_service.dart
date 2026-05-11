@@ -60,4 +60,35 @@ class MockStructureService implements StructureService {
 
     return StructureResult.invalid(message: '请输入更准确的IUPAC命名');
   }
+
+  @override
+  Future<StructureResult> reverseResolveName(String smiles) async {
+    final normalized = smiles.trim();
+    if (normalized.isEmpty) {
+      return StructureResult.invalid(message: 'SMILES 不能为空');
+    }
+
+    for (final preset in _presets.values) {
+      if (preset.smiles == normalized) {
+        return preset;
+      }
+    }
+
+    return StructureResult(
+      smiles: normalized,
+      resolvedName: null,
+      englishName: null,
+      chineseName: null,
+      molecularFormula: '',
+      molecularWeight: 0,
+      isValid: true,
+      confidence: 0.6,
+      message: '已修改结构',
+    );
+  }
+
+  @override
+  Future<StructureResult> resolveBySmiles(String smiles) {
+    return reverseResolveName(smiles);
+  }
 }

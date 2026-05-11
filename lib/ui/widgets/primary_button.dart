@@ -11,25 +11,35 @@ class PrimaryButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final enabled = onPressed != null;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeGradient = isDark
+        ? const LinearGradient(
+            colors: [AppColors.aqua, Color(0xFF9EF5D2)],
+          )
+        : const LinearGradient(
+            colors: [AppColors.dayBluePrimary, AppColors.dayBlueAccent],
+          );
+    final activeText = isDark ? AppColors.ink : Colors.white;
+    final shadowColor = isDark
+        ? AppColors.aqua.withValues(alpha: 0.35)
+        : AppColors.dayBluePrimary.withValues(alpha: 0.32);
     return SizedBox(
       width: double.infinity,
       child: DecoratedBox(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
           gradient: enabled
-              ? const LinearGradient(
-                  colors: [AppColors.aqua, Color(0xFF9EF5D2)],
-                )
+              ? activeGradient
               : LinearGradient(
                   colors: [
-                    Colors.white.withOpacity(0.08),
-                    Colors.white.withOpacity(0.04),
+                    Colors.white.withValues(alpha: 0.08),
+                    Colors.white.withValues(alpha: 0.04),
                   ],
                 ),
           boxShadow: enabled
               ? [
                   BoxShadow(
-                    color: AppColors.aqua.withOpacity(0.35),
+                    color: shadowColor,
                     blurRadius: 18,
                     offset: const Offset(0, 8),
                   ),
@@ -47,7 +57,11 @@ class PrimaryButton extends StatelessWidget {
                 child: Text(
                   label,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: enabled ? AppColors.ink : AppColors.textMuted,
+                        color: enabled
+                            ? activeText
+                            : (isDark
+                                ? AppColors.textMuted
+                                : AppColors.dayTextMuted),
                         fontWeight: FontWeight.w700,
                       ),
                 ),

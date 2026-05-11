@@ -7,6 +7,10 @@ backend/__pycache__/
 
 # Flutter / Dart
 .dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.flutter-plugins-dependencies.lock
+.flutter-plugins-dependencies.json
 .android/
 .ios/
 .pub-cache/
@@ -14,18 +18,59 @@ backend/__pycache__/
 build/
 flutter_*.log
 .kotlin/
-.flutter-plugins-dependencies
 
 # IDE
 .idea/
 .vscode/
+!.vscode/settings.json
 !.vscode/tasks.json
+!.vscode/launch.json
 *.iml
 
 # Android
 android/.gradle/
 android/app/build/
+android/app/release/
+android/app/debug/
+android/app/profile/
+android/gradle.appname.lock
 android/local.properties
 
-# Misc
+# iOS
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/Flutter.framework/
+**/ios/Flutter/Flutter.podspec
+
+# Web
+web/flutter_bootstrap.js
+
+# Windows
+windows/flutter/ephemeral/
+windows/runner/ephemeral/
+*.exe
+
+# macOS
 .DS_Store
+**/ios/**/DerivedData/
+
+# Environment
+.env
+.env.*
+*.key
+*.pem
+
+# Logs
+*.log
+logs/
+
+# Cache
+.cache/
+**/__pycache__/
+**/*.pyc
+
+# Misc
+todo.md
+CHEMVISION.prproj
+chemvision.iml
+icon4prototype.png

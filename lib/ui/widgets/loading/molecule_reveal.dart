@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../../../theme/app_colors.dart';
 
 class MoleculeReveal extends StatefulWidget {
   const MoleculeReveal({super.key, this.svgString});
@@ -78,6 +79,8 @@ class _MoleculeRevealState extends State<MoleculeReveal>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final accent = isDark ? const Color(0xFF38D5C1) : AppColors.dayBluePrimary;
     if (widget.svgString == null || widget.svgString!.isEmpty) {
       return const SizedBox.shrink();
     }
@@ -98,22 +101,22 @@ class _MoleculeRevealState extends State<MoleculeReveal>
         child: Container(
           width: double.infinity,
           height: double.infinity,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: const Color(0xFF38D5C1).withOpacity(0.35),
-                blurRadius: 10,
-              ),
-            ],
-          ),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: accent.withValues(alpha: 0.35),
+                  blurRadius: 10,
+                ),
+              ],
+            ),
           clipBehavior: Clip.antiAlias,
           child: Container(
             color: Colors.black26,
-            child: const Center(
+            child: Center(
               child: Icon(
                 Icons.check_circle_outline,
-                color: Color(0xFF38D5C1),
+                color: accent,
                 size: 32,
               ),
             ),
@@ -167,8 +170,7 @@ class _MoleculeRevealState extends State<MoleculeReveal>
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF38D5C1)
-                          .withOpacity(0.3 * opacity),
+                      color: accent.withValues(alpha: 0.3 * opacity),
                       blurRadius: 10 + blur,
                     ),
                   ],
@@ -176,10 +178,10 @@ class _MoleculeRevealState extends State<MoleculeReveal>
                 clipBehavior: Clip.antiAlias,
                 child: Container(
                   color: Colors.black26,
-                  child: const Center(
+                  child: Center(
                     child: Icon(
                       Icons.check_circle_outline,
-                      color: Color(0xFF38D5C1),
+                      color: accent,
                       size: 32,
                     ),
                   ),

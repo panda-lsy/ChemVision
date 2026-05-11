@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
@@ -12,17 +14,25 @@ class StructureView extends StatefulWidget {
     required this.smiles,
     this.onAtomSelected,
     this.onSmilesUpdated,
+    this.onEditorError,
+    this.onViewportInteraction,
     this.onControllerReady,
+    this.onEditTitle,
     this.compact = false,
     this.readOnly = false,
+    this.interactive = true,
   });
 
   final String smiles;
   final void Function(String atomId, String? element)? onAtomSelected;
   final ValueChanged<String>? onSmilesUpdated;
+  final ValueChanged<String>? onEditorError;
+  final ValueChanged<bool>? onViewportInteraction;
   final ValueChanged<StructureViewController>? onControllerReady;
+  final void Function()? onEditTitle;
   final bool compact;
   final bool readOnly;
+  final bool interactive;
 
   @override
   State<StructureView> createState() => _StructureViewState();
@@ -33,6 +43,20 @@ class _StructureViewState extends State<StructureView> {
   bool _pageReady = false;
   StructureViewController? _viewController;
   Completer<String?>? _pngCompleter;
+
+  @override
+  void dispose() {
+    final controller = _controller;
+    _controller = null;
+    _viewController = null;
+    if (_pngCompleter != null && !_pngCompleter!.isCompleted) {
+      _pngCompleter!.complete(null);
+    }
+    if (controller != null) {
+      controller.stopLoading();
+    }
+    super.dispose();
+  }
 
   @override
   void didUpdateWidget(covariant StructureView oldWidget) {
@@ -88,6 +112,51 @@ class _StructureViewState extends State<StructureView> {
     );
 
     controller.addJavaScriptHandler(
+      handlerName: 'onEditorActionError',
+      callback: (args) {
+        if (args.isEmpty || widget.onEditorError == null) {
+          return null;
+        }
+        final raw = args.first;
+        if (raw is Map) {
+          final data = Map<String, dynamic>.from(raw);
+          final message = data['message']?.toString();
+          if (message != null && message.isNotEmpty) {
+            widget.onEditorError?.call(message);
+          }
+        }
+        return null;
+      },
+    );
+
+    controller.addJavaScriptHandler(
+      handlerName: 'onViewportInteraction',
+      callback: (args) {
+        if (args.isEmpty || widget.onViewportInteraction == null) {
+          return null;
+        }
+        final raw = args.first;
+        if (raw is Map) {
+          final data = Map<String, dynamic>.from(raw);
+          final active = data['active'] == true;
+          widget.onViewportInteraction?.call(active);
+        }
+        return null;
+      },
+    );
+
+    controller.addJavaScriptHandler(
+      handlerName: 'onEditTitleRequested',
+      callback: (args) {
+        if (widget.onEditTitle == null) {
+          return null;
+        }
+        widget.onEditTitle?.call();
+        return null;
+      },
+    );
+
+    controller.addJavaScriptHandler(
       handlerName: 'exportPngResult',
       callback: (args) {
         if (args.isNotEmpty && args.first is Map) {
@@ -123,6 +192,31 @@ class _StructureViewState extends State<StructureView> {
           source: "updateAtomElement('$safeId', '$safeElement');",
         );
       },
+      deleteAtom: (atomId) async {
+        final safeId = escapeForSingleQuotedJs(atomId);
+        await controller.evaluateJavascript(
+          source: "deleteAtom('$safeId');",
+        );
+      },
+      setBondType: (atomId, bondType) async {
+        final safeId = escapeForSingleQuotedJs(atomId);
+        await controller.evaluateJavascript(
+          source: "setBondTypeForAtom('$safeId', $bondType);",
+        );
+      },
+      addGroup: (atomId, groupKey) async {
+        final safeId = escapeForSingleQuotedJs(atomId);
+        final safeGroup = escapeForSingleQuotedJs(groupKey);
+        await controller.evaluateJavascript(
+          source: "addGroupToAtom('$safeId', '$safeGroup');",
+        );
+      },
+      undo: () async {
+        await controller.evaluateJavascript(source: 'undoEdit();');
+      },
+      redo: () async {
+        await controller.evaluateJavascript(source: 'redoEdit();');
+      },
       exportSvg: () async {
         try {
           final result = await controller.evaluateJavascript(
@@ -153,14 +247,22 @@ class _StructureViewState extends State<StructureView> {
 
   @override
   Widget build(BuildContext context) {
-    return InAppWebView(
+    final webView = InAppWebView(
       initialFile: AppConfig.localWebEntry,
       initialSettings: InAppWebViewSettings(
         javaScriptEnabled: true,
         transparentBackground: true,
+        cacheEnabled: false,
         allowFileAccessFromFileURLs: true,
         allowUniversalAccessFromFileURLs: true,
+        supportZoom: false,
+        disableVerticalScroll: true,
+        disableHorizontalScroll: true,
+        useHybridComposition: true,
       ),
+      gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
+        Factory<OneSequenceGestureRecognizer>(() => EagerGestureRecognizer()),
+      },
       onWebViewCreated: (controller) {
         _controller = controller;
         _registerHandlers(controller);
@@ -176,8 +278,17 @@ class _StructureViewState extends State<StructureView> {
             source: 'window.setReadOnly && window.setReadOnly(true);',
           );
         }
+        if (!widget.interactive) {
+          controller.evaluateJavascript(
+            source: 'window.setNonInteractive && window.setNonInteractive(true);',
+          );
+        }
         _sendSmiles(widget.smiles);
       },
     );
+    if (!widget.interactive) {
+      return IgnorePointer(child: webView);
+    }
+    return webView;
   }
 }

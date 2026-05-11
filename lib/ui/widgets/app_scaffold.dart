@@ -8,26 +8,43 @@ class AppScaffold extends StatelessWidget {
     required this.child,
     this.padding = const EdgeInsets.all(20),
     this.scroll = false,
+    this.scrollPhysics,
   });
 
   final Widget child;
   final EdgeInsetsGeometry padding;
   final bool scroll;
+  final ScrollPhysics? scrollPhysics;
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final screenGradient =
+        isDark ? AppColors.screenGradient : AppColors.lightScreenGradient;
+    final topGlow = isDark
+        ? AppColors.aqua.withValues(alpha: 0.2)
+        : AppColors.dayBlueAccent.withValues(alpha: 0.18);
+    final bottomGlow = isDark
+        ? AppColors.lime.withValues(alpha: 0.12)
+        : AppColors.dayBluePrimary.withValues(alpha: 0.12);
+
     final content = Padding(
       padding: padding,
-      child: scroll ? SingleChildScrollView(child: child) : child,
+      child: scroll
+          ? SingleChildScrollView(
+              physics: scrollPhysics,
+              child: child,
+            )
+          : child,
     );
 
     return Scaffold(
-      backgroundColor: AppColors.navyDeep,
+      backgroundColor: isDark ? AppColors.navyDeep : AppColors.dayBackground,
       body: Stack(
         children: [
-          const Positioned.fill(
+          Positioned.fill(
             child: DecoratedBox(
-              decoration: BoxDecoration(gradient: AppColors.screenGradient),
+              decoration: BoxDecoration(gradient: screenGradient),
             ),
           ),
           Positioned(
@@ -40,7 +57,7 @@ class AppScaffold extends StatelessWidget {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    AppColors.aqua.withOpacity(0.2),
+                    topGlow,
                     Colors.transparent,
                   ],
                 ),
@@ -57,7 +74,7 @@ class AppScaffold extends StatelessWidget {
                 shape: BoxShape.circle,
                 gradient: RadialGradient(
                   colors: [
-                    AppColors.lime.withOpacity(0.12),
+                    bottomGlow,
                     Colors.transparent,
                   ],
                 ),

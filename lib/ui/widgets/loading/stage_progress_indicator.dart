@@ -22,6 +22,12 @@ class StageProgressIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeColor = isDark ? AppColors.aqua : AppColors.dayBluePrimary;
+    final doneColor = isDark ? AppColors.textSecondary : AppColors.dayTextSecondary;
+    final pendingColor = isDark
+        ? AppColors.textMuted
+        : AppColors.dayTextMuted;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -34,10 +40,17 @@ class StageProgressIndicator extends StatelessWidget {
                 icon: _stages[i].icon,
                 isActive: i == currentStage,
                 isDone: i < currentStage,
+                activeColor: activeColor,
+                doneColor: doneColor,
+                pendingColor: pendingColor,
               ),
               if (i < _stages.length - 1)
                 Expanded(
-                  child: _StageConnector(isDone: i < currentStage),
+                  child: _StageConnector(
+                    isDone: i < currentStage,
+                    doneColor: activeColor,
+                    pendingColor: pendingColor,
+                  ),
                 ),
             ],
           ],
@@ -54,10 +67,10 @@ class StageProgressIndicator extends StatelessWidget {
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: i == currentStage
-                            ? AppColors.aqua
+                            ? activeColor
                             : i < currentStage
-                                ? AppColors.textSecondary
-                                : AppColors.textMuted,
+                                ? doneColor
+                                : pendingColor,
                         fontSize: 11,
                         fontWeight: i == currentStage
                             ? FontWeight.w600
@@ -77,19 +90,25 @@ class _StageDot extends StatelessWidget {
     required this.icon,
     required this.isActive,
     required this.isDone,
+    required this.activeColor,
+    required this.doneColor,
+    required this.pendingColor,
   });
 
   final IconData icon;
   final bool isActive;
   final bool isDone;
+  final Color activeColor;
+  final Color doneColor;
+  final Color pendingColor;
 
   @override
   Widget build(BuildContext context) {
     final color = isActive
-        ? AppColors.aqua
+        ? activeColor
         : isDone
-            ? AppColors.aqua.withOpacity(0.6)
-            : AppColors.textMuted;
+            ? doneColor
+            : pendingColor;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 300),
@@ -98,16 +117,16 @@ class _StageDot extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: isActive
-            ? AppColors.aqua.withOpacity(0.15)
+            ? activeColor.withValues(alpha: 0.15)
             : Colors.transparent,
         border: Border.all(
-          color: color.withOpacity(isActive ? 0.6 : 0.3),
+          color: color.withValues(alpha: isActive ? 0.7 : 0.45),
           width: 1.5,
         ),
         boxShadow: isActive
             ? [
                 BoxShadow(
-                  color: AppColors.aqua.withOpacity(0.3),
+                  color: activeColor.withValues(alpha: 0.3),
                   blurRadius: 8,
                 ),
               ]
@@ -123,9 +142,15 @@ class _StageDot extends StatelessWidget {
 }
 
 class _StageConnector extends StatelessWidget {
-  const _StageConnector({required this.isDone});
+  const _StageConnector({
+    required this.isDone,
+    required this.doneColor,
+    required this.pendingColor,
+  });
 
   final bool isDone;
+  final Color doneColor;
+  final Color pendingColor;
 
   @override
   Widget build(BuildContext context) {
@@ -136,8 +161,8 @@ class _StageConnector extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(1),
         color: isDone
-            ? AppColors.aqua.withOpacity(0.5)
-            : AppColors.textMuted.withOpacity(0.2),
+            ? doneColor.withValues(alpha: 0.5)
+            : pendingColor.withValues(alpha: 0.28),
       ),
     );
   }

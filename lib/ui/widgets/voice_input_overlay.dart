@@ -54,6 +54,10 @@ class _VoiceInputSheetState extends ConsumerState<_VoiceInputSheet>
 
   @override
   void dispose() {
+    // Ensure ASR resources are cleaned if the sheet is dismissed unexpectedly
+    try {
+      ref.read(asrControllerProvider.notifier).cancel();
+    } catch (_) {}
     _pulseController.dispose();
     super.dispose();
   }

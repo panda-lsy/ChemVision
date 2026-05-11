@@ -12,17 +12,25 @@ class StructureView extends StatefulWidget {
     required this.smiles,
     this.onAtomSelected,
     this.onSmilesUpdated,
+    this.onEditorError,
+    this.onViewportInteraction,
     this.onControllerReady,
+    this.onEditTitle,
     this.compact = false,
     this.readOnly = false,
+    this.interactive = true,
   });
 
   final String smiles;
   final void Function(String atomId, String? element)? onAtomSelected;
   final ValueChanged<String>? onSmilesUpdated;
+  final ValueChanged<String>? onEditorError;
+  final ValueChanged<bool>? onViewportInteraction;
   final ValueChanged<StructureViewController>? onControllerReady;
+  final void Function()? onEditTitle;
   final bool compact;
   final bool readOnly;
+  final bool interactive;
 
   @override
   State<StructureView> createState() => _StructureViewState();
@@ -51,6 +59,13 @@ class _StructureViewState extends State<StructureView> {
     if (oldWidget.smiles != widget.smiles && _pageReady) {
       _sendSmiles(widget.smiles);
     }
+    if (oldWidget.readOnly != widget.readOnly && _pageReady) {
+      _postMessage('setReadOnly', {'readOnly': widget.readOnly});
+    }
+    if (oldWidget.interactive != widget.interactive && _pageReady) {
+      _postMessage('setNonInteractive', {'disabled': !widget.interactive});
+      _iframe?.style.pointerEvents = widget.interactive ? '' : 'none';
+    }
   }
 
   @override
@@ -77,6 +92,10 @@ class _StructureViewState extends State<StructureView> {
         if (widget.readOnly) {
           _postMessage('setReadOnly', {'readOnly': true});
         }
+        if (!widget.interactive) {
+          _postMessage('setNonInteractive', {'disabled': true});
+          iframe.style.pointerEvents = 'none';
+        }
         _sendSmiles(widget.smiles);
       });
 
@@ -95,6 +114,27 @@ class _StructureViewState extends State<StructureView> {
           'atomId': atomId,
           'element': element,
         });
+      },
+      deleteAtom: (atomId) async {
+        _postMessage('deleteAtom', {'atomId': atomId});
+      },
+      setBondType: (atomId, bondType) async {
+        _postMessage('setBondTypeForAtom', {
+          'atomId': atomId,
+          'bondType': bondType,
+        });
+      },
+      addGroup: (atomId, groupKey) async {
+        _postMessage('addGroupToAtom', {
+          'atomId': atomId,
+          'groupKey': groupKey,
+        });
+      },
+      undo: () async {
+        _postMessage('undoEdit', {});
+      },
+      redo: () async {
+        _postMessage('redoEdit', {});
       },
       exportSvg: () async {
         final iframe = _iframe;
@@ -195,13 +235,31 @@ class _StructureViewState extends State<StructureView> {
       if (smiles != null && smiles.isNotEmpty) {
         widget.onSmilesUpdated?.call(smiles);
       }
+      return;
+    }
+    if (type == 'onEditorActionError' && payload is Map) {
+      final message = payload['message']?.toString();
+      if (message != null && message.isNotEmpty) {
+        widget.onEditorError?.call(message);
+      }
+      return;
+    }
+    if (type == 'onViewportInteraction' && payload is Map) {
+      widget.onViewportInteraction?.call(payload['active'] == true);
+      return;
+    }
+    if (type == 'onEditTitleRequested') {
+      widget.onEditTitle?.call();
+      return;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return RepaintBoundary(
-      child: HtmlElementView(viewType: _viewType),
-    );
+    Widget view = HtmlElementView(viewType: _viewType);
+    if (!widget.interactive) {
+      view = IgnorePointer(child: view);
+    }
+    return RepaintBoundary(child: view);
   }
 }

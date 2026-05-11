@@ -162,6 +162,65 @@ class VivoAigcClient {
     throw Exception('服务响应异常');
   }
 
+  Future<List<List<double>>> generateEmbeddings({
+    required String apiKey,
+    required String modelName,
+    required List<String> sentences,
+    required String baseUrl,
+  }) async {
+    final normalizedBase = _normalizeBaseUrl(
+      baseUrl.isEmpty ? AppConfig.vivoAigcBaseUrl : baseUrl,
+    );
+    final requestId = _generateRequestId();
+    final uri = Uri.parse('$normalizedBase/embedding-model-api/predict/batch')
+        .replace(queryParameters: {'requestId': requestId});
+    final headers = {
+      'Authorization': 'Bearer $apiKey',
+      'Content-Type': 'application/json',
+    };
+    final body = {
+      'model_name': modelName,
+      'sentences': sentences,
+    };
+
+    _logRequest(uri, headers, body);
+
+    Response response;
+    try {
+      response = await _retryPost(uri, headers: headers, body: body);
+    } on DioException catch (error) {
+      if (kIsWeb) {
+        throw Exception('网络连接失败，请检查网络或确认接口支持 CORS');
+      }
+      final message = error.message ?? '网络连接失败';
+      throw Exception(message);
+    } catch (error) {
+      if (error is Exception) rethrow;
+      throw Exception('网络连接失败: $error');
+    }
+
+    final statusCode = response.statusCode ?? 0;
+    if (statusCode != 200) {
+      throw Exception('HTTP $statusCode: ${response.data}');
+    }
+
+    final data = response.data;
+    if (data is Map<String, dynamic>) {
+      final vectors = data['data'];
+      if (vectors is List) {
+        return vectors
+            .whereType<List>()
+            .map(
+              (row) => row
+                  .map((item) => item is num ? item.toDouble() : double.parse(item.toString()))
+                  .toList(),
+            )
+            .toList();
+      }
+    }
+    throw Exception('Embedding 服务响应异常');
+  }
+
   String _normalizeBaseUrl(String baseUrl) {
     final trimmed = baseUrl.trim();
     if (trimmed.endsWith('/')) {
@@ -223,7 +282,7 @@ class VivoAigcClient {
     }
     final token = value.substring(prefix.length);
     if (token.length <= 6) {
-      return '${prefix}***';
+      return '$prefix***';
     }
     final tail = token.substring(token.length - 4);
     return '$prefix***$tail';

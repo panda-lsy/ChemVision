@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../providers/theme_mode_provider.dart';
 import '../../services/app_version_service.dart';
 import '../../theme/app_colors.dart';
 import '../../ui/widgets/bottom_nav_shell.dart';
@@ -7,14 +9,14 @@ import '../widgets/pulse_dots.dart';
 
 /// 开屏加载页面
 /// 参考原型：doc/prototype/screen-01-splash.html
-class SplashPage extends StatefulWidget {
+class SplashPage extends ConsumerStatefulWidget {
   const SplashPage({super.key});
 
   @override
-  State<SplashPage> createState() => _SplashPageState();
+  ConsumerState<SplashPage> createState() => _SplashPageState();
 }
 
-class _SplashPageState extends State<SplashPage>
+class _SplashPageState extends ConsumerState<SplashPage>
     with TickerProviderStateMixin {
   late AnimationController _pulseController;
   late AnimationController _fadeInController;
@@ -24,13 +26,13 @@ class _SplashPageState extends State<SplashPage>
   @override
   void initState() {
     super.initState();
-    
+
     // Logo 脉冲动画
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2000),
     );
-    
+
     _pulseAnimation = Tween<double>(
       begin: 1.0,
       end: 1.15,
@@ -45,7 +47,7 @@ class _SplashPageState extends State<SplashPage>
       vsync: this,
       duration: const Duration(milliseconds: 800),
     );
-    
+
     _fadeInAnimation = Tween<double>(
       begin: 0.0,
       end: 1.0,
@@ -54,7 +56,7 @@ class _SplashPageState extends State<SplashPage>
       curve: Curves.easeOut,
     ));
     _fadeInController.forward();
-    
+
     // 2.5 秒后跳转到主页面
     Future.delayed(const Duration(milliseconds: 2500), () {
       if (mounted) {
@@ -76,24 +78,25 @@ class _SplashPageState extends State<SplashPage>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = ref.watch(themeModeProvider) != ThemeMode.light;
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              AppColors.navyDeep,
-              AppColors.navyDarker,
-            ],
-          ),
+        decoration: BoxDecoration(
+          color: isDark ? null : const Color(0xFF1F48B3),
+          gradient: isDark
+              ? const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [AppColors.navyDeep, AppColors.navyDarker],
+                )
+              : null,
         ),
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Spacer(flex: 2),
-              
+
               // Logo
               FadeTransition(
                 opacity: _fadeInAnimation,
@@ -103,7 +106,7 @@ class _SplashPageState extends State<SplashPage>
                     builder: (context) {
                       // 尝试加载 Logo，失败则显示占位图标
                       return Image.asset(
-                        'assets/icon.png',
+                        isDark ? 'icon4prototype.png' : 'logo.png',
                         width: 130,
                         height: 130,
                         fit: BoxFit.contain,
@@ -114,7 +117,7 @@ class _SplashPageState extends State<SplashPage>
                             width: 130,
                             height: 130,
                             decoration: BoxDecoration(
-                              color: AppColors.aqua.withOpacity(0.1),
+                              color: AppColors.aqua.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: const Icon(
@@ -129,9 +132,9 @@ class _SplashPageState extends State<SplashPage>
                   ),
                 ),
               ),
-              
+
               const SizedBox(height: 32),
-              
+
               // 应用名称
               FadeTransition(
                 opacity: _fadeInAnimation,
@@ -162,17 +165,17 @@ class _SplashPageState extends State<SplashPage>
                   ],
                 ),
               ),
-              
+
               const SizedBox(height: 48),
-              
+
               // 加载指示器
               FadeTransition(
                 opacity: _fadeInAnimation,
                 child: const PulseDots(),
               ),
-              
+
               const Spacer(flex: 1),
-              
+
               // 底部版本信息
               FadeTransition(
                 opacity: _fadeInAnimation,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
+  // Night mode (existing palette)
   static const Color ink = Color(0xFF0B0F1A);
   static const Color navy = Color(0xFF0F172A);
   static const Color navyDeep = Color(0xFF0D1627);
@@ -24,6 +25,29 @@ class AppColors {
     colors: [
       navyDeep,
       navyDarker,
+    ],
+  );
+
+  // Day mode palette (picked from logo.png + 手绘海报.png)
+  static const Color dayBluePrimary = Color(0xFF1F48B3);
+  static const Color dayBlueAccent = Color(0xFF4F76D6);
+  static const Color dayBlueDeep = Color(0xFF16358A);
+  static const Color dayBackground = Color(0xFFF4F7FF);
+  static const Color daySurface = Color(0xFFFFFFFF);
+  static const Color dayTextPrimary = Color(0xFF0D2756);
+  static const Color dayTextSecondary = Color(0xFF2C4A7C);
+  static const Color dayTextMuted = Color(0xFF4A6A9E);
+  static const Color dayGlass = Color(0xEBFFFFFF);
+  static const Color dayGlassStrong = Color(0xFFF6FAFF);
+  static const Color dayShadow = Color(0x1E1A49A4);
+
+  static const LinearGradient lightScreenGradient = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [
+      Color(0xFFEAF1FF),
+      Color(0xFFDDE8FF),
+      Color(0xFFF5F8FF),
     ],
   );
 }

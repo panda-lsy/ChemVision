@@ -16,17 +16,26 @@ class QuickTag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return InputChip(
       label: Text(label),
       onPressed: onTap,
       onDeleted: onDelete,
-      deleteIcon: const Icon(Icons.close, size: 16, color: AppColors.textMuted),
-      backgroundColor: AppColors.glass,
+      deleteIcon: Icon(
+        Icons.close,
+        size: 16,
+        color: isDark ? AppColors.textMuted : AppColors.dayTextMuted,
+      ),
+      backgroundColor: isDark ? AppColors.glass : AppColors.dayGlass,
       labelStyle: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: AppColors.textSecondary,
+            color: isDark ? AppColors.textSecondary : AppColors.dayTextSecondary,
             fontWeight: FontWeight.w600,
           ),
-      side: BorderSide(color: Colors.white.withOpacity(0.1)),
+      side: BorderSide(
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.1)
+            : AppColors.dayBluePrimary.withValues(alpha: 0.25),
+      ),
       shape: const StadiumBorder(),
     );
   }

@@ -65,6 +65,38 @@ class _OrbitalParticlesState extends State<OrbitalParticles>
     ),
   ];
 
+  static const _dayParticles = [
+    _ParticleConfig(
+      color: AppColors.dayBluePrimary,
+      size: 5,
+      radius: 98,
+      periodFraction: 1 / 3.4,
+      startAngle: 0,
+    ),
+    _ParticleConfig(
+      color: AppColors.dayBlueAccent,
+      size: 4,
+      radius: 112,
+      periodFraction: 1 / 4.8,
+      startAngle: math.pi / 2,
+    ),
+    _ParticleConfig(
+      color: Color(0xFF2C6EC9),
+      size: 3,
+      radius: 82,
+      periodFraction: 1 / 6.0,
+      startAngle: math.pi * 200 / 180,
+    ),
+    _ParticleConfig(
+      color: Color(0xFF5A8FD9),
+      size: 4,
+      radius: 108,
+      periodFraction: 1 / 4.0,
+      startAngle: math.pi * 310 / 180,
+      counterClockwise: true,
+    ),
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -82,6 +114,7 @@ class _OrbitalParticlesState extends State<OrbitalParticles>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return AnimatedOpacity(
       opacity: widget.visible ? 1.0 : 0.0,
       duration: const Duration(milliseconds: 1000),
@@ -92,7 +125,7 @@ class _OrbitalParticlesState extends State<OrbitalParticles>
             size: const Size(290, 250),
             painter: _OrbitalPainter(
               progress: _controller.value,
-              particles: _particles,
+              particles: isDark ? _particles : _dayParticles,
             ),
           );
         },

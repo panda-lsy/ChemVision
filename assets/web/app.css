@@ -35,39 +35,29 @@ body {
 }
 
 #render-area {
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 20px;
-  padding: 16px;
-  min-height: 200px;
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow: 0 16px 32px rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(12px);
 }
 
 #render-area.compact-mode {
-  padding: 10px;
+  /* no extra styling — fits content only */
 }
 
 #structure-view {
   width: 100%;
-  aspect-ratio: 16 / 9;
-  min-height: 200px;
-  max-height: 360px;
+  height: 100%;
   border-radius: 16px;
   background: rgba(11, 15, 26, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 12px;
   overflow: hidden;
   touch-action: none;
   cursor: grab;
+  contain: layout paint style;
 }
 
 #render-area.compact-mode #structure-view {
@@ -84,52 +74,9 @@ body {
   width: 100%;
   height: 100%;
   transform-origin: center center;
-}
-
-#smiles-text {
-  font-size: 13px;
-  color: var(--aqua);
-  margin-bottom: 12px;
-  letter-spacing: 0.4px;
-}
-
-#atom-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  min-height: 56px;
-}
-
-.atom {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 6px 10px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  font-weight: 600;
-  cursor: pointer;
-  user-select: none;
-  color: #e8edf4;
-  transition: background 140ms ease, border-color 140ms ease, transform 140ms ease;
-}
-
-.atom.selected {
-  background: rgba(56, 213, 193, 0.2);
-  border-color: rgba(56, 213, 193, 0.5);
-  box-shadow: 0 0 12px rgba(56, 213, 193, 0.35);
-}
-
-.atom.dragging {
-  opacity: 0.85;
-  transform: scale(1.03);
-}
-
-#hint {
-  margin-top: 12px;
-  font-size: 12px;
-  color: #9fb1c9;
+  touch-action: none;
+  will-change: transform;
+  backface-visibility: hidden;
 }
 
 #engine-label {
@@ -139,9 +86,6 @@ body {
   word-break: break-word;
 }
 
-.compact-mode #smiles-text,
-.compact-mode #atom-list,
-.compact-mode #hint,
 .compact-mode #engine-label {
   display: none !important;
 }

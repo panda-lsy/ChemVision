@@ -1,23 +1,25 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../main.dart';
 import '../../theme/app_colors.dart';
 import '../pages/favorites_page.dart';
 import '../pages/history_page.dart';
 import '../pages/input_page.dart';
+import '../pages/reaction_page.dart';
 import '../pages/settings_page.dart';
 
-class BottomNavShell extends StatefulWidget {
+class BottomNavShell extends ConsumerStatefulWidget {
   const BottomNavShell({super.key});
 
   @override
-  State<BottomNavShell> createState() => _BottomNavShellState();
+  ConsumerState<BottomNavShell> createState() => _BottomNavShellState();
 }
 
-class _BottomNavShellState extends State<BottomNavShell> {
-  int _currentIndex = 0;
-
+class _BottomNavShellState extends ConsumerState<BottomNavShell> {
   static const _pages = <Widget>[
     InputPage(),
+    ReactionPage(),
     HistoryPage(),
     FavoritesPage(),
     SettingsPage(),
@@ -25,20 +27,32 @@ class _BottomNavShellState extends State<BottomNavShell> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final currentIndex = ref.watch(bottomNavIndexProvider);
+    // Wrap non-active pages in TickerMode to pause animations on inactive tabs
+    final children = List<Widget>.generate(_pages.length, (i) {
+      final page = _pages[i];
+      return TickerMode(
+        enabled: i == currentIndex,
+        child: page,
+      );
+    });
+
     return Scaffold(
-      body: IndexedStack(index: _currentIndex, children: _pages),
+      body: IndexedStack(index: currentIndex, children: children),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           border: Border(
-            top: BorderSide(color: Colors.white.withOpacity(0.08)),
+            top: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
           ),
         ),
         child: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: (i) => setState(() => _currentIndex = i),
-          backgroundColor: AppColors.navyDeep,
-          selectedItemColor: AppColors.aqua,
-          unselectedItemColor: AppColors.textMuted,
+          currentIndex: currentIndex,
+          onTap: (i) => ref.read(bottomNavIndexProvider.notifier).state = i,
+          backgroundColor: isDark ? AppColors.navyDeep : Colors.white,
+          selectedItemColor: isDark ? AppColors.aqua : AppColors.dayBluePrimary,
+          unselectedItemColor:
+              isDark ? AppColors.textMuted : AppColors.dayTextMuted,
           type: BottomNavigationBarType.fixed,
           selectedFontSize: 12,
           unselectedFontSize: 11,
@@ -48,6 +62,11 @@ class _BottomNavShellState extends State<BottomNavShell> {
               icon: Icon(Icons.science_outlined),
               activeIcon: Icon(Icons.science),
               label: '识别',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.device_thermostat_outlined),
+              activeIcon: Icon(Icons.device_thermostat),
+              label: '反应',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.history_outlined),

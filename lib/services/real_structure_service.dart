@@ -12,6 +12,11 @@ import 'structure_service.dart';
 import 'vivo_aigc_client.dart';
 
 class NameToStructureService implements StructureService {
+  @override
+  Future<StructureResult> resolveBySmiles(String smiles) {
+    return reverseResolveName(smiles);
+  }
+
   NameToStructureService({
     AiSettingsStore? settingsStore,
     VivoAigcClient? client,
@@ -34,8 +39,11 @@ class NameToStructureService implements StructureService {
       'assets/prompts/name_normalization.txt';
   static const String _inferPromptPath =
       'assets/prompts/infer_candidates.txt';
+  static const String _smilesToNamePromptPath =
+      'assets/prompts/smiles_to_name.txt';
   static Future<String>? _normalizationPromptCache;
   static Future<String>? _inferPromptCache;
+  static Future<String>? _smilesToNamePromptCache;
   static const List<String> _invalidExactPrefixes = [
     'the provided content is not a valid chinese chemical name',
     'invalid chinese chemical name',
@@ -200,6 +208,110 @@ class NameToStructureService implements StructureService {
     }
   }
 
+  @override
+  Future<StructureResult> reverseResolveName(String smiles) async {
+    final normalized = smiles.trim();
+    if (normalized.isEmpty) {
+      return StructureResult.invalid(message: 'SMILES 不能为空');
+    }
+    final cached = await _cacheStore.get(normalized, mode: 'reverse_smiles');
+    if (cached != null) {
+      return cached;
+    }
+
+    try {
+      final settings = await _settingsStore.load();
+      final pubchem = await _pubchem.queryBySmiles(normalized);
+
+      String? englishName = pubchem.name;
+      String? chineseName;
+      final aiCandidates = <Map<String, String?>>[];
+      if (settings.apiKey.trim().isNotEmpty && settings.textModel.trim().isNotEmpty) {
+        aiCandidates.addAll(
+          await _inferNamesFromSmilesWithAi(
+            normalized,
+            settings.apiKey.trim(),
+            settings.textModel.trim(),
+            settings.baseUrl,
+          ),
+        );
+      }
+
+      if ((englishName == null || englishName.isEmpty) && aiCandidates.isNotEmpty) {
+        englishName = aiCandidates.first['english'];
+      }
+      if (aiCandidates.isNotEmpty) {
+        chineseName = aiCandidates.first['chinese'];
+      } else if (englishName != null &&
+          englishName.isNotEmpty &&
+          settings.apiKey.trim().isNotEmpty &&
+          settings.textModel.trim().isNotEmpty) {
+        chineseName = await _translateEnglishNameToChinese(
+          englishName,
+          settings.apiKey.trim(),
+          settings.textModel.trim(),
+          settings.baseUrl,
+        );
+      }
+
+      final alternatives = aiCandidates.skip(1).map((entry) {
+        return StructureCandidate(
+          smiles: normalized,
+          resolvedName: entry['english'],
+          englishName: entry['english'],
+          chineseName: entry['chinese'],
+          molecularFormula: pubchem.formula ?? '',
+          molecularWeight: pubchem.weight ?? 0,
+          source: 'ai',
+          confidence: 0.72,
+        );
+      }).toList();
+
+      if (englishName == null || englishName.isEmpty) {
+        final fallback = StructureResult(
+          smiles: normalized,
+          resolvedName: null,
+          englishName: null,
+          chineseName: null,
+          molecularFormula: pubchem.formula ?? '',
+          molecularWeight: pubchem.weight ?? 0,
+          isValid: true,
+          confidence: 0.5,
+          message: '已修改结构',
+          alternatives: alternatives,
+        );
+        await _cacheStore.set(normalized, fallback, mode: 'reverse_smiles');
+        return fallback;
+      }
+
+      final result = StructureResult(
+        smiles: normalized,
+        resolvedName: englishName,
+        englishName: englishName,
+        chineseName: chineseName,
+        molecularFormula: pubchem.formula ?? '',
+        molecularWeight: pubchem.weight ?? 0,
+        isValid: true,
+        confidence: pubchem.error == null ? 0.88 : 0.74,
+        alternatives: alternatives,
+      );
+      await _cacheStore.set(normalized, result, mode: 'reverse_smiles');
+      return result;
+    } catch (error) {
+      return StructureResult(
+        smiles: normalized,
+        resolvedName: null,
+        englishName: null,
+        chineseName: null,
+        molecularFormula: '',
+        molecularWeight: 0,
+        isValid: true,
+        confidence: 0.5,
+        message: 'SMILES 解析失败: $error',
+      );
+    }
+  }
+
   Future<Map<String, String?>> _normalizeNameWithChinese(
     String query,
     String apiKey,
@@ -253,6 +365,34 @@ class NameToStructureService implements StructureService {
   ) async {
     final result = await _normalizeNameWithChinese(query, apiKey, model, baseUrl);
     return result['english'] ?? query;
+  }
+
+  Future<String?> _translateEnglishNameToChinese(
+    String englishName,
+    String apiKey,
+    String model,
+    String baseUrl,
+  ) async {
+    final prompt = '''
+Translate the following chemical name to concise Chinese.
+Return only Chinese text, no explanation.
+English name: $englishName
+''';
+    try {
+      final text = await _client.generateText(
+        apiKey: apiKey,
+        model: model,
+        prompt: prompt,
+        baseUrl: baseUrl,
+      );
+      final line = _extractSingleLine(text);
+      if (line == null || line.isEmpty) {
+        return null;
+      }
+      return line;
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<String> _loadNormalizationPrompt() async {
@@ -310,6 +450,79 @@ class NameToStructureService implements StructureService {
           'generic drug names (INN). Output each name on a new line without '
           'additional text.\nDescription: {{query}}';
     }
+  }
+
+  Future<String> _loadSmilesToNamePrompt() async {
+    _smilesToNamePromptCache ??= rootBundle.loadString(_smilesToNamePromptPath);
+    try {
+      return await _smilesToNamePromptCache!;
+    } catch (_) {
+      return 'Given a SMILES string, output likely names. '
+          'First line: ENGLISH | CHINESE. Additional candidates one per line.\n'
+          'SMILES: {{smiles}}';
+    }
+  }
+
+  Future<List<Map<String, String?>>> _inferNamesFromSmilesWithAi(
+    String smiles,
+    String apiKey,
+    String model,
+    String baseUrl,
+  ) async {
+    final template = await _loadSmilesToNamePrompt();
+    final prompt = template.contains('{{smiles}}')
+        ? template.replaceAll('{{smiles}}', smiles)
+        : '$template\nSMILES: $smiles';
+    try {
+      final text = await _client.generateText(
+        apiKey: apiKey,
+        model: model,
+        prompt: prompt,
+        baseUrl: baseUrl,
+      );
+      return _parseSmilesNameCandidates(text);
+    } catch (_) {
+      return const [];
+    }
+  }
+
+  List<Map<String, String?>> _parseSmilesNameCandidates(String text) {
+    final cleaned = text.replaceAll('```', '').trim();
+    if (cleaned.isEmpty) {
+      return const [];
+    }
+    final results = <Map<String, String?>>[];
+    final seen = <String>{};
+    for (final raw in cleaned.split(RegExp(r'\r?\n'))) {
+      final line = raw.trim();
+      if (line.isEmpty) {
+        continue;
+      }
+      final parts = line.split('|');
+      if (parts.length < 2) {
+        continue;
+      }
+      final english = _sanitizeName(parts.first);
+      var chinese = parts.sublist(1).join('|').trim();
+      if (english.isEmpty) {
+        continue;
+      }
+      if (chinese.isEmpty || chinese.toLowerCase() == 'unknown') {
+        chinese = '';
+      }
+      final key = english.toLowerCase();
+      if (!seen.add(key)) {
+        continue;
+      }
+      results.add({
+        'english': english,
+        'chinese': chinese.isEmpty ? null : chinese,
+      });
+      if (results.length >= 5) {
+        break;
+      }
+    }
+    return results;
   }
 
   List<String> _extractCandidates(String text) {
@@ -615,6 +828,8 @@ class PubChemClient {
 
   static const String _baseUrl =
       'https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name';
+  static const String _smilesBaseUrl =
+      'https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/smiles';
   final Dio _dio;
 
   Future<_SourceResult> queryAny(List<String> names) async {
@@ -817,6 +1032,108 @@ class PubChemClient {
     } catch (error) {
       return _SourceResult(
         smiles: null,
+        formula: null,
+        weight: null,
+        name: null,
+        error: 'error: $error',
+        notFound: false,
+      );
+    }
+  }
+
+  Future<_SourceResult> queryBySmiles(String smiles) async {
+    final trimmed = smiles.trim();
+    if (trimmed.isEmpty) {
+      return const _SourceResult(
+        smiles: null,
+        formula: null,
+        weight: null,
+        name: null,
+        error: 'empty_query',
+        notFound: false,
+      );
+    }
+
+    final encoded = Uri.encodeComponent(trimmed);
+    final url =
+        '$_smilesBaseUrl/$encoded/property/CanonicalSMILES,IsomericSMILES,'
+        'MolecularFormula,MolecularWeight,IUPACName/JSON';
+
+    try {
+      Response? response;
+      DioException? lastDioError;
+      for (var attempt = 1; attempt <= 3; attempt++) {
+        try {
+          response = await _dio.get(
+            url,
+            options: Options(validateStatus: (_) => true),
+          );
+          final s = response.statusCode ?? 0;
+          if (s == 200 || (s >= 400 && s < 500)) {
+            break;
+          }
+          if (kDebugMode) {
+            debugPrint('[PubChem:smiles] Retry $attempt/3 (HTTP $s)');
+          }
+        } on DioException catch (e) {
+          lastDioError = e;
+          if (kDebugMode) {
+            debugPrint('[PubChem:smiles] Retry $attempt/3 (${e.type})');
+          }
+        }
+        if (attempt < 3) {
+          await Future.delayed(Duration(milliseconds: 300 * attempt));
+        }
+      }
+      if (response == null) {
+        return _SourceResult(
+          smiles: trimmed,
+          formula: null,
+          weight: null,
+          name: null,
+          error: lastDioError?.message ?? 'connection_error',
+          notFound: false,
+        );
+      }
+      final status = response.statusCode ?? 0;
+      final data = _decodeMap(response.data);
+      if (kDebugMode) {
+        debugPrint('[PubChem:smiles] $status $url');
+      }
+      if (status == 200 && data != null) {
+        final properties = _findMapByKey(data, 'PropertyTable');
+        final rawList = properties == null ? null : properties['Properties'];
+        final list = _normalizePropertyList(rawList);
+        if (list.isNotEmpty) {
+          final first = _asMap(list.first);
+          if (first != null) {
+            final canonical = _asString(first['CanonicalSMILES']);
+            final isomeric = _asString(first['IsomericSMILES']);
+            final formula = _asString(first['MolecularFormula']);
+            final weight = _asDouble(first['MolecularWeight']);
+            final name = _asString(first['IUPACName']);
+            return _SourceResult(
+              smiles: canonical ?? isomeric ?? trimmed,
+              formula: formula,
+              weight: weight,
+              name: name,
+              error: null,
+              notFound: false,
+            );
+          }
+        }
+      }
+      return _SourceResult(
+        smiles: trimmed,
+        formula: null,
+        weight: null,
+        name: null,
+        error: 'http_$status',
+        notFound: status == 404,
+      );
+    } catch (error) {
+      return _SourceResult(
+        smiles: trimmed,
         formula: null,
         weight: null,
         name: null,
@@ -1103,6 +1420,11 @@ class OpsinClient {
 }
 
 class RealStructureService extends NameToStructureService {
+  @override
+  Future<StructureResult> resolveBySmiles(String smiles) {
+    return super.resolveBySmiles(smiles);
+  }
+
   RealStructureService({
     AiSettingsStore? settingsStore,
     VivoAigcClient? client,

@@ -33,6 +33,8 @@ class _GlowRingState extends State<GlowRing>
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final ringColor = isDark ? AppColors.aqua : AppColors.dayBluePrimary;
     return AnimatedOpacity(
       opacity: widget.visible ? 1.0 : 0.0,
       duration: const Duration(milliseconds: 800),
@@ -55,7 +57,7 @@ class _GlowRingState extends State<GlowRing>
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: AppColors.aqua.withOpacity(borderOpacity),
+                  color: ringColor.withValues(alpha: borderOpacity),
                   width: 2,
                 ),
               ),
