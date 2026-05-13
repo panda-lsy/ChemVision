@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="gwt:property" content="baseUrl=https://cdn.jsdelivr.net/npm/jsme-editor@2024.4.29/" />
+    <meta name="gwt:property" content="baseUrl=./" />
     <title>ChemVISION JSME Editor</title>
     <script>
       (function () {
@@ -26,6 +26,11 @@
         --badge-bg: rgba(126, 200, 227, 0.18);
         --badge-text: #9fe9ff;
         --loading: #cfd9ee;
+        --action-bg: rgba(126, 200, 227, 0.14);
+        --action-border: rgba(126, 200, 227, 0.35);
+        --action-text: #bdefff;
+        --status-bg: rgba(126, 200, 227, 0.14);
+        --status-text: #bdefff;
       }
       :root[data-theme='light'] {
         color-scheme: light;
@@ -38,6 +43,11 @@
         --badge-bg: rgba(25, 81, 184, 0.12);
         --badge-text: #1f54b9;
         --loading: #1f48b3;
+        --action-bg: rgba(31, 72, 179, 0.12);
+        --action-border: rgba(31, 72, 179, 0.32);
+        --action-text: #1f48b3;
+        --status-bg: rgba(31, 72, 179, 0.1);
+        --status-text: #1f48b3;
       }
       html, body {
         margin: 0;
@@ -68,40 +78,6 @@
         flex-direction: column;
         overflow: hidden;
       }
-      #editor-header {
-        flex: 0 0 auto;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-        padding: 10px 14px;
-        border-bottom: 1px solid var(--panel-border);
-      }
-      #editor-title-wrap {
-        display: flex;
-        flex-direction: column;
-        min-width: 0;
-      }
-      #editor-title {
-        color: var(--title);
-        font-size: 14px;
-        font-weight: 700;
-        letter-spacing: 0.2px;
-      }
-      #editor-subtitle {
-        color: var(--subtitle);
-        font-size: 11px;
-        line-height: 1.3;
-      }
-      #mode-badge {
-        background: var(--badge-bg);
-        color: var(--badge-text);
-        border-radius: 999px;
-        padding: 4px 10px;
-        font-size: 11px;
-        font-weight: 700;
-        white-space: nowrap;
-      }
       #editor-stage {
         position: relative;
         flex: 1 1 auto;
@@ -127,13 +103,6 @@
   <body>
     <div id="jsme-root">
       <div id="editor-card">
-        <div id="editor-header">
-          <div id="editor-title-wrap">
-            <div id="editor-title">JSME 结构式编辑器</div>
-            <div id="editor-subtitle">原子、键、环、删除等工具已启用</div>
-          </div>
-          <div id="mode-badge">夜间模式</div>
-        </div>
         <div id="editor-stage">
           <div id="jsme_container"></div>
           <div id="loading">正在加载 JSME 编辑器...</div>
@@ -169,6 +138,173 @@
           });
         });
       })();
+
+      // === GWT 引导诊断 ===
+      (function () {
+        var CDN_BASE = 'https://cdn.jsdelivr.net/npm/jsme-editor@2024.4.29/';
+        function rewriteDeferredSrc(src) {
+          if (!src) return src;
+          try {
+            var v = String(src);
+            // Case 1: deferredjs/xxxx/11.js
+            if (v.indexOf('deferredjs/') >= 0) {
+              var marker = 'deferredjs/';
+              var idx = v.indexOf(marker);
+              if (idx >= 0) return CDN_BASE + v.substring(idx);
+            }
+            // Case 2: /assets/web/<hash>.js or relative <hash>.js (GWT permutation)
+            var hashMatch = v.match(/([0-9A-F]{32}\.js(?:\?.*)?)$/i);
+            if (hashMatch && hashMatch[1]) {
+              return CDN_BASE + hashMatch[1];
+            }
+            // Case 3: /assets/web/<hash>/<n>.js
+            var fragMatch = v.match(/([0-9A-F]{32}\/\d+\.js(?:\?.*)?)$/i);
+            if (fragMatch && fragMatch[1]) {
+              return CDN_BASE + fragMatch[1];
+            }
+            // Case 4: /assets/web/<hash>.cache.js (GWT permutation naming)
+            var cacheMatch = v.match(/([0-9A-F]{32}\.cache\.js(?:\?.*)?)$/i);
+            if (cacheMatch && cacheMatch[1]) {
+              return CDN_BASE + cacheMatch[1];
+            }
+            // Case 5: clear.cache.gif
+            var gifMatch = v.match(/(clear\.cache\.gif(?:\?.*)?)$/i);
+            if (gifMatch && gifMatch[1]) {
+              return CDN_BASE + gifMatch[1];
+            }
+            return v;
+          } catch (_) {
+            return src;
+          }
+        }
+        function rewriteHtmlChunk(html) {
+          if (!html) return html;
+          var out = String(html);
+          out = out.replace(/(["'])((?:file:\/\/\/android_asset\/flutter_assets\/assets\/web\/)?deferredjs\/[^"']+)(["'])/ig, function (_, q1, u, q3) {
+            return q1 + rewriteDeferredSrc(u) + q3;
+          });
+          out = out.replace(/(["'])((?:file:\/\/\/android_asset\/flutter_assets\/assets\/web\/)?[0-9a-f]{32}\.cache\.js(?:\?[^"']*)?)(["'])/ig, function (_, q1, u, q3) {
+            return q1 + rewriteDeferredSrc(u) + q3;
+          });
+          out = out.replace(/(["'])((?:file:\/\/\/android_asset\/flutter_assets\/assets\/web\/)?clear\.cache\.gif(?:\?[^"']*)?)(["'])/ig, function (_, q1, u, q3) {
+            return q1 + rewriteDeferredSrc(u) + q3;
+          });
+          return out;
+        }
+        function diagLog(msg, extra) {
+          var text = '[GWT-DIAG] ' + msg;
+          try { console.log(text, extra || ''); } catch (_) {}
+          if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+            window.flutter_inappwebview.callHandler('onDebugLog', {
+              ts: new Date().toISOString(), level: 'diag', message: msg,
+              extra: extra || null
+            });
+          }
+        }
+        window.__chemvisionDiagLog = diagLog;
+        try {
+          var rawWrite = document.write ? document.write.bind(document) : null;
+          var rawWriteln = document.writeln ? document.writeln.bind(document) : null;
+          if (rawWrite) {
+            document.write = function (html) {
+              return rawWrite(rewriteHtmlChunk(html));
+            };
+          }
+          if (rawWriteln) {
+            document.writeln = function (html) {
+              return rawWriteln(rewriteHtmlChunk(html));
+            };
+          }
+        } catch (_) {}
+        // 记录页面基础信息
+        diagLog('page loaded', {
+          url: location.href,
+          protocol: location.protocol,
+          base: document.baseURI
+        });
+        // 监控所有动态创建的 <script> 标签
+        var origCreate = document.createElement.bind(document);
+        document.createElement = function (tag) {
+          var el = origCreate(tag);
+          if (tag.toLowerCase() === 'script') {
+            try {
+              var desc = Object.getOwnPropertyDescriptor(HTMLScriptElement.prototype, 'src');
+              if (desc && desc.get && desc.set) {
+                Object.defineProperty(el, 'src', {
+                  get: function () {
+                    return desc.get.call(this);
+                  },
+                  set: function (v) {
+                    var rewritten = rewriteDeferredSrc(v);
+                    if (rewritten !== v) {
+                      diagLog('rewrite deferred src', { from: v, to: rewritten });
+                    }
+                    desc.set.call(this, rewritten);
+                  }
+                });
+              }
+            } catch (_) {}
+            try {
+              var origSetAttr = el.setAttribute.bind(el);
+              el.setAttribute = function (name, value) {
+                if (name && String(name).toLowerCase() === 'src') {
+                  value = rewriteDeferredSrc(value);
+                }
+                return origSetAttr(name, value);
+              };
+            } catch (_) {}
+            el.addEventListener('error', function () {
+              var src = el.src || el.getAttribute('src') || '(inline)';
+              diagLog('SCRIPT LOAD ERROR', { src: src });
+              var fallback = rewriteDeferredSrc(src);
+              if (fallback && fallback !== src && !el.__chemvisionRetried) {
+                el.__chemvisionRetried = true;
+                diagLog('retry script from CDN', { from: src, to: fallback });
+                var retry = origCreate('script');
+                retry.src = fallback;
+                retry.onerror = function () {
+                  diagLog('CDN retry failed', { src: fallback });
+                };
+                document.head.appendChild(retry);
+                return;
+              }
+              // 尝试注入 GWT 错误回调（如果 jsme 命名空间已存在）
+              if (window.jsme && typeof window.jsme.__errFn === 'function') {
+                window.jsme.__errFn(src, new Error('script load failed'));
+              }
+            });
+            el.addEventListener('load', function () {
+              if (el.src) diagLog('script loaded OK', { src: el.src });
+            });
+          }
+          return el;
+        };
+        // GWT 错误回调：直接在 jsme 命名空间上设置，避免 meta 标签转义问题
+        window.jsme = window.jsme || {};
+        window.jsme.__errFn = function (jsUrl, ex) {
+          var msg = 'GWT loadError: ' + jsUrl + ' | ' + (ex && ex.message ? ex.message : ex);
+          diagLog(msg, { jsUrl: jsUrl });
+          return null;
+        };
+        window.__chemvisionRecoverMissingAsset = function (url, reason) {
+          try {
+            var rewritten = rewriteDeferredSrc(url);
+            diagLog('recover missing asset', { reason: reason || null, from: url, to: rewritten });
+            if (!rewritten || rewritten === url) return;
+            if (/\.js(\?|$)/i.test(rewritten)) {
+              var s = origCreate('script');
+              s.src = rewritten;
+              document.head.appendChild(s);
+              return;
+            }
+            if (/clear\.cache\.gif(\?|$)/i.test(rewritten)) {
+              var img = new Image();
+              img.src = rewritten;
+            }
+          } catch (_) {}
+        };
+      })();
+
       window.__chemvisionJsmeLoaded = false;
       window.jsmeOnLoad = function () {
         if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
@@ -184,7 +320,130 @@
         }
       };
     </script>
-    <script src="jsme.nocache.js"></script>
+    <script>
+      // Service worker registration (kept for compatibility, no MIME type fixing needed).
+      // All GWT scripts use .js extension natively.
+      (function () {
+        var coreRequested = false;
+        var coreFallbackRequested = false;
+
+        function hostDiag(msg, extra) {
+          if (typeof window.__chemvisionDiagLog === 'function') {
+            window.__chemvisionDiagLog(msg, extra);
+            return;
+          }
+          try { console.log('[GWT-DIAG] ' + msg, extra || ''); } catch (_) {}
+        }
+
+        function setGwtBaseUrl(baseUrl) {
+          try {
+            var meta = document.querySelector('meta[name="gwt:property"]');
+            if (!meta) {
+              meta = document.createElement('meta');
+              meta.setAttribute('name', 'gwt:property');
+              document.head.appendChild(meta);
+            }
+            meta.setAttribute('content', 'baseUrl=' + baseUrl);
+            hostDiag('set gwt baseUrl', { baseUrl: baseUrl });
+          } catch (_) {}
+        }
+
+        function appendCoreScript(src) {
+          var s = document.createElement('script');
+          s.src = src;
+          s.onerror = function () {
+            hostDiag('core script error', { src: src });
+            if (!coreFallbackRequested && src.indexOf('cdn.jsdelivr.net') === -1) {
+              coreFallbackRequested = true;
+              loadJsmeCoreCdn('local-core-onerror');
+              return;
+            }
+            if (src.indexOf('cdn.jsdelivr.net') >= 0) {
+              hostDiag('fallback to unpkg core', { from: src });
+              setGwtBaseUrl('https://unpkg.com/jsme-editor@2024.4.29/');
+              appendCoreScript('https://unpkg.com/jsme-editor@2024.4.29/jsme.nocache.js');
+            }
+          };
+          s.onload = function () {
+            hostDiag('core script loaded', { src: src });
+          };
+          document.head.appendChild(s);
+        }
+
+        function loadJsmeCoreLocal(reason) {
+          if (coreRequested) return;
+          if (location.protocol === 'file:') {
+            coreRequested = true;
+            coreFallbackRequested = true;
+            loadJsmeCoreCdn('file-protocol-prefer-cdn');
+            return;
+          }
+          coreRequested = true;
+          setGwtBaseUrl('./');
+          hostDiag('load local core', { reason: reason || 'startup' });
+          appendCoreScript('jsme.nocache.js');
+          window.setTimeout(function () {
+            if (!window.__chemvisionJsmeLoaded && !window.JSApplet && !coreFallbackRequested) {
+              coreFallbackRequested = true;
+              loadJsmeCoreCdn('local-core-timeout');
+            }
+          }, 1400);
+        }
+
+        function loadJsmeCoreCdn(reason) {
+          setGwtBaseUrl('https://cdn.jsdelivr.net/npm/jsme-editor@2024.4.29/');
+          hostDiag('load cdn core', { reason: reason || 'fallback' });
+          appendCoreScript('https://cdn.jsdelivr.net/npm/jsme-editor@2024.4.29/jsme.nocache.js');
+        }
+
+        window.__chemvisionEnsureJsmeCore = function (reason) {
+          if (!window.__chemvisionJsmeLoaded && !window.JSApplet) {
+            if (!coreRequested) {
+              loadJsmeCoreLocal(reason || 'ensure');
+              return;
+            }
+            if (!coreFallbackRequested) {
+              coreFallbackRequested = true;
+              loadJsmeCoreCdn(reason || 'ensure-fallback');
+            }
+          }
+        };
+
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.register('jsme_sw.js').then(function (reg) {
+            var sw = reg.installing || reg.waiting || reg.active;
+            if (sw && sw.state === 'activated') {
+              loadJsmeCoreLocal('sw-activated');
+            } else if (sw) {
+              sw.addEventListener('statechange', function () {
+                if (sw.state === 'activated') {
+                  loadJsmeCoreLocal('sw-statechange-activated');
+                }
+              });
+            } else {
+              reg.addEventListener('updatefound', function () {
+                var newSw = reg.installing;
+                if (newSw) {
+                  newSw.addEventListener('statechange', function () {
+                    if (newSw.state === 'activated') {
+                      loadJsmeCoreLocal('sw-updatefound-activated');
+                    }
+                  });
+                }
+              });
+              // Fallback: if no new worker, the existing one is already active
+              setTimeout(function () { loadJsmeCoreLocal('sw-fallback-timeout'); }, 50);
+            }
+          }).catch(function () {
+            // Service worker not supported or failed; load directly
+            loadJsmeCoreLocal('sw-register-failed');
+          });
+        } else {
+          loadJsmeCoreLocal('no-sw');
+        }
+      })();
+    </script>
+    <link rel="stylesheet" href="jsa.css" />
     <script src="editor_jsme.js"></script>
   </body>
 </html>

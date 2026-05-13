@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../../config/app_config.dart';
@@ -33,7 +36,11 @@ class JsmeEditorView extends StatefulWidget {
 class _JsmeEditorViewState extends State<JsmeEditorView> {
   InAppWebViewController? _controller;
   bool _pageReady = false;
+  bool _bridgeReady = false;
   JsmeEditorController? _viewController;
+  String? _cachedHtml;
+  Timer? _loadTimeout;
+  String _lastSentTheme = '';
 
   void _markPageReady() {
     if (_pageReady || !mounted) return;
@@ -55,6 +62,7 @@ class _JsmeEditorViewState extends State<JsmeEditorView> {
 
   @override
   void dispose() {
+    _loadTimeout?.cancel();
     final controller = _controller;
     _controller = null;
     _viewController = null;
@@ -68,6 +76,8 @@ class _JsmeEditorViewState extends State<JsmeEditorView> {
     controller.addJavaScriptHandler(
       handlerName: 'onBridgeReady',
       callback: (args) {
+        _bridgeReady = true;
+        _loadTimeout?.cancel();
         _markPageReady();
         _sendSmiles(widget.smiles);
         _sendTheme(widget.themeMode);
@@ -136,7 +146,58 @@ class _JsmeEditorViewState extends State<JsmeEditorView> {
     final controller = _controller;
     if (controller == null) return;
     final normalized = mode.toLowerCase() == 'light' ? 'light' : 'dark';
+    if (normalized == _lastSentTheme) return;
+    _lastSentTheme = normalized;
     await controller.evaluateJavascript(source: "setTheme('$normalized');");
+  }
+
+  bool _isRecoverableAssetError(String? url) {
+    if (url == null || url.isEmpty) return false;
+    final lower = url.toLowerCase();
+    return lower.contains('deferredjs/') ||
+        lower.contains('.cache.js') ||
+        lower.contains('clear.cache.gif');
+  }
+
+  Future<void> _triggerWebAssetRecovery(String url, String reason) async {
+    final controller = _controller;
+    if (controller == null) return;
+    final escapedUrl = escapeForSingleQuotedJs(url);
+    final escapedReason = escapeForSingleQuotedJs(reason);
+    await controller.evaluateJavascript(
+      source:
+          "if(window.__chemvisionRecoverMissingAsset){window.__chemvisionRecoverMissingAsset('$escapedUrl','$escapedReason');}"
+          "if(window.__chemvisionEnsureJsmeCore){window.__chemvisionEnsureJsmeCore('$escapedReason');}",
+    );
+  }
+
+  Future<void> _loadEditorHtml(InAppWebViewController controller) async {
+    try {
+      debugPrint('[JSME][mobile] loading editor via loadFile...');
+      await controller.loadFile(
+        assetFilePath: AppConfig.localJsmeEditorEntry,
+      );
+      debugPrint('[JSME][mobile] loadFile completed');
+    } catch (e) {
+      debugPrint('[JSME][mobile] loadFile failed: $e');
+      // 回退：尝试 loadData + baseUrl
+      try {
+        debugPrint('[JSME][mobile] fallback: loadData with baseUrl...');
+        final html = _cachedHtml ??= await rootBundle.loadString(
+          AppConfig.localJsmeEditorEntry,
+        );
+        await controller.loadData(
+          data: html,
+          mimeType: 'text/html',
+          encoding: 'utf-8',
+          baseUrl: WebUri('file:///android_asset/flutter_assets/assets/web/'),
+        );
+        debugPrint('[JSME][mobile] loadData fallback completed');
+      } catch (e2) {
+        debugPrint('[JSME][mobile] loadData fallback also failed: $e2');
+        widget.onError?.call('无法加载编辑器: $e2');
+      }
+    }
   }
 
   void _ensureController(InAppWebViewController controller) {
@@ -161,13 +222,14 @@ class _JsmeEditorViewState extends State<JsmeEditorView> {
     return Stack(
       children: [
         InAppWebView(
-          initialFile: AppConfig.localJsmeEditorEntry,
           initialSettings: InAppWebViewSettings(
             javaScriptEnabled: true,
-            transparentBackground: true,
+            transparentBackground: false,
             cacheEnabled: false,
             allowFileAccessFromFileURLs: true,
             allowUniversalAccessFromFileURLs: true,
+            allowFileAccess: true,
+            allowContentAccess: true,
             supportZoom: false,
             disableVerticalScroll: true,
             disableHorizontalScroll: true,
@@ -181,20 +243,37 @@ class _JsmeEditorViewState extends State<JsmeEditorView> {
             debugPrint('[JSME][mobile] onWebViewCreated');
             _registerHandlers(controller);
             _ensureController(controller);
+            _loadEditorHtml(controller);
           },
           onLoadStart: (controller, url) {
             debugPrint('[JSME][mobile] onLoadStart: $url');
           },
           onLoadStop: (controller, url) {
             debugPrint('[JSME][mobile] onLoadStop: $url');
-            _markPageReady();
-            _sendSmiles(widget.smiles);
-            _sendTheme(widget.themeMode);
+            // 主题和 SMILES 由 onBridgeReady 统一发送，避免 onLoadStop 时序问题
+            _loadTimeout?.cancel();
+            _loadTimeout = Timer(const Duration(seconds: 10), () {
+              if (_bridgeReady) return;
+              debugPrint('[JSME][mobile] TIMEOUT: GWT/JSME failed to initialize within 10s');
+              widget.onError?.call('JSME 编辑器加载超时（GWT 脚本可能未成功加载）');
+            });
           },
           onConsoleMessage: (controller, consoleMessage) {
             debugPrint(
               '[JSME][mobile][console] ${consoleMessage.messageLevel}: ${consoleMessage.message}',
             );
+          },
+          onReceivedError: (controller, request, error) {
+            final url = request.url?.toString();
+            debugPrint(
+              '[JSME][mobile] onReceivedError: ${error.type} ${error.description} (${request.url})',
+            );
+            if (_isRecoverableAssetError(url)) {
+              _triggerWebAssetRecovery(
+                url!,
+                'mobile-onReceivedError-${error.type}',
+              );
+            }
           },
         ),
         if (!_pageReady)

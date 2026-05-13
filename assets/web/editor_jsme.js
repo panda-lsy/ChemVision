@@ -1,14 +1,22 @@
 (function () {
   const params = new URLSearchParams(window.location.search);
   const channel = params.get('channel') || 'chemvision-jsme';
+  const initialTheme = (params.get('theme') || 'dark').toLowerCase() === 'light'
+    ? 'light'
+    : 'dark';
   const state = {
     smiles: '',
     editor: null,
     pollTimer: null,
+    healthTimer: null,
+    skinObserver: null,
+    skinRaf: 0,
+    skinApplying: false,
+    resetDivDetected: false,
     lastSentSmiles: '',
     bridgeReadySent: false,
     initFailed: false,
-    theme: 'dark',
+    theme: initialTheme,
   };
 
   function now() {
@@ -53,15 +61,394 @@
     }
   }
 
+  function showLoading(message) {
+    const loading = document.getElementById('loading');
+    if (!loading) return;
+    if (message) {
+      loading.textContent = message;
+    }
+    loading.style.display = 'flex';
+  }
+
+  // 前端状态/操作按钮已移除，保留空函数避免调用报错
+  function setStatus() {}
+  function updateStatusBySmiles() {}
+  function bindQuickActions() {}
+
   function applyTheme(mode) {
     const normalized = mode === 'light' ? 'light' : 'dark';
     state.theme = normalized;
     document.documentElement.setAttribute('data-theme', normalized);
-    const badge = document.getElementById('mode-badge');
-    if (badge) {
-      badge.textContent = normalized === 'light' ? '日间模式' : '夜间模式';
-    }
+    scheduleLegacySkinApply();
     debugLog('info', 'theme applied', { mode: normalized });
+  }
+
+  function themePalette() {
+    if (state.theme === 'light') {
+      return {
+        panelSoft: '#e8f0ff',
+        text: '#153a7a',
+        accent: '#1f48b3',
+        border: 'rgba(31, 72, 179, 0.36)',
+        canvas: '#ffffff',
+        svgToolbarBg: '#dce6f5',
+        svgToolbarStroke: '#b0c0d8',
+        svgToolbarText: '#153a7a',
+        svgPanelBg: '#dce6f5',
+        svgCanvasBg: '#ffffff',
+      };
+    }
+    return {
+      panelSoft: '#16253a',
+      text: '#d8e6ff',
+      accent: '#38d5c1',
+      border: 'rgba(126, 200, 227, 0.35)',
+      canvas: '#0f172a',
+      svgToolbarBg: '#16253a',
+      svgToolbarStroke: 'rgba(126, 200, 227, 0.25)',
+      svgToolbarText: '#d8e6ff',
+      svgPanelBg: '#16253a',
+      svgCanvasBg: '#0f172a',
+    };
+  }
+
+  // 颜色标准化：去除空格，统一格式，便于匹配
+  function normalizeColor(c) {
+    if (!c) return '';
+    return c.replace(/\s+/g, '').toLowerCase();
+  }
+  function isBlack(c) {
+    const n = normalizeColor(c);
+    if (n === 'rgb(0,0,0)' || n === '#000000' || n === '#000' || n === 'black') {
+      return true;
+    }
+    if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(n)) {
+      if (n.length === 4) {
+        const r = parseInt(n[1] + n[1], 16);
+        const g = parseInt(n[2] + n[2], 16);
+        const b = parseInt(n[3] + n[3], 16);
+        return r <= 48 && g <= 48 && b <= 48;
+      }
+      const r = parseInt(n.slice(1, 3), 16);
+      const g = parseInt(n.slice(3, 5), 16);
+      const b = parseInt(n.slice(5, 7), 16);
+      return r <= 48 && g <= 48 && b <= 48;
+    }
+    const m = n.match(/^rgb\((\d+),(\d+),(\d+)\)$/);
+    if (m) {
+      const r = Number(m[1]);
+      const g = Number(m[2]);
+      const b = Number(m[3]);
+      return r <= 48 && g <= 48 && b <= 48;
+    }
+    return false;
+  }
+  function isWhite(c) {
+    const n = normalizeColor(c);
+    return n === 'white' || n === '#ffffff' || n === '#fff' || n === 'rgb(255,255,255)';
+  }
+
+  // JSME 默认 UI 配色 → 主题色映射（key 全部标准化）
+  function buildColorMap(mapRaw) {
+    const result = {};
+    for (const k in mapRaw) {
+      result[normalizeColor(k)] = mapRaw[k];
+    }
+    return result;
+  }
+  const SVG_COLOR_MAP_DARK = buildColorMap({
+    'rgb(192, 192, 192)': '#16253a',
+    'rgb(134, 134, 134)': 'rgba(126, 200, 227, 0.25)',
+    'rgb(220, 220, 220)': 'rgba(126, 200, 227, 0.15)',
+    'rgb(255, 255, 255)': '#0f172a',
+    'rgb(0, 0, 0)': '#d8e8ff',
+    '#000': '#d8e8ff',
+    '#000000': '#d8e8ff',
+    'black': '#d8e8ff',
+  });
+  const SVG_COLOR_MAP_LIGHT = buildColorMap({
+    'rgb(192, 192, 192)': '#dce6f5',
+    'rgb(134, 134, 134)': '#b0c0d8',
+    'rgb(220, 220, 220)': '#c8d4e8',
+    'rgb(255, 255, 255)': '#ffffff',
+    '#000': '#153a7a',
+    '#000000': '#153a7a',
+    'black': '#153a7a',
+  });
+
+  function mapColor(raw, colorMap, fallback) {
+    const n = normalizeColor(raw);
+    if (n in colorMap) return colorMap[n];
+    if (n === 'currentcolor') {
+      return state.theme === 'light' ? '#153a7a' : '#d8e8ff';
+    }
+    if (isBlack(n)) {
+      return state.theme === 'light' ? '#153a7a' : '#d8e8ff';
+    }
+    return colorMap[n] || fallback || raw;
+  }
+
+  // 判断 SVG 是否为主画布（分子渲染区域）
+  function isMainCanvasSvg(svg) {
+    const r = svg.getBoundingClientRect();
+    const w = r.width || 0;
+    const h = r.height || 0;
+    return w > 200 && h > 100 && (w / h > 1.5);
+  }
+
+  // 获取 SVG 中面积最大的 <rect>（通常是背景）
+  function findLargestRect(svg) {
+    let best = null;
+    let bestArea = 0;
+    svg.querySelectorAll('rect').forEach((rect) => {
+      const w = parseFloat(rect.getAttribute('width') || '0');
+      const h = parseFloat(rect.getAttribute('height') || '0');
+      const area = w * h;
+      if (area > bestArea) {
+        bestArea = area;
+        best = rect;
+      }
+    });
+    return best;
+  }
+
+  // 深色模式下重映射 SVG 属性中的黑色
+  function remapBlackInAttr(el, attrName, bondColor) {
+    const raw = el.getAttribute(attrName);
+    if (raw && isBlack(raw)) {
+      el.setAttribute(attrName, bondColor);
+    }
+    const style = el.getAttribute('style');
+    if (!style) return;
+    const re = new RegExp(attrName + '\\s*:\\s*([^;]+)', 'i');
+    const m = style.match(re);
+    if (m && isBlack(m[1])) {
+      el.setAttribute('style', style.replace(re, attrName + ':' + bondColor));
+    }
+  }
+
+  function applySvgSkin() {
+    const root = document.getElementById('jsme_container');
+    if (!root) return;
+    const palette = themePalette();
+    const svgs = root.querySelectorAll('svg');
+
+    svgs.forEach((svg) => {
+      const r = svg.getBoundingClientRect();
+      const w = r.width || 0;
+      const h = r.height || 0;
+      if (w < 2 || h < 2) return;
+
+      const isCanvas = isMainCanvasSvg(svg);
+
+      if (isCanvas) {
+        // ── 主画布：改背景 + 重映射所有黑色元素（分子键、环、箭头）──
+        const bgRect = findLargestRect(svg);
+        if (bgRect) {
+          const fill = bgRect.getAttribute('fill') || '';
+          if (isWhite(fill)) {
+            bgRect.setAttribute('fill', palette.svgCanvasBg);
+          }
+          const style = bgRect.getAttribute('style') || '';
+          if (style && /fill\s*:\s*(white|#fff|rgb\(255\))/i.test(style)) {
+            bgRect.setAttribute('style', style.replace(/fill:\s*[^;]+/i, 'fill:' + palette.svgCanvasBg));
+          }
+        }
+
+        if (state.theme === 'dark') {
+          const bondColor = '#e0e8f0';
+          // line（分子键、箭头线）
+          svg.querySelectorAll('line').forEach((el) => {
+            remapBlackInAttr(el, 'stroke', bondColor);
+          });
+          // path（环结构、箭头头部、分子轮廓）
+          svg.querySelectorAll('path').forEach((el) => {
+            remapBlackInAttr(el, 'stroke', bondColor);
+            remapBlackInAttr(el, 'fill', bondColor);
+          });
+          // circle（原子节点、键端点）
+          svg.querySelectorAll('circle').forEach((el) => {
+            remapBlackInAttr(el, 'fill', bondColor);
+          });
+          // ellipse
+          svg.querySelectorAll('ellipse').forEach((el) => {
+            remapBlackInAttr(el, 'fill', bondColor);
+            remapBlackInAttr(el, 'stroke', bondColor);
+          });
+          // polygon / polyline（环结构可能用这些元素）
+          svg.querySelectorAll('polygon, polyline').forEach((el) => {
+            remapBlackInAttr(el, 'stroke', bondColor);
+            remapBlackInAttr(el, 'fill', bondColor);
+          });
+          // text（分子标签）
+          svg.querySelectorAll('text').forEach((el) => {
+            const fill = el.getAttribute('fill') || '';
+            if (isBlack(fill)) el.setAttribute('fill', bondColor);
+          });
+        }
+        return;
+      }
+
+      // ── 工具栏/侧栏：仅改背景色，保留图标原色 ──
+      // 这样 SMILES 按钮眼睛（白色+黑色）、化学环图标、箭头图标均保持原色
+      const bgRect = findLargestRect(svg);
+      if (bgRect) {
+        const fill = bgRect.getAttribute('fill') || '';
+        // JSME 默认灰色背景 → 主题背景色
+        if (isWhite(fill) || /rgb\(192\s*,\s*192\s*,\s*192\)/i.test(fill) || /rgb\(220\s*,\s*220\s*,\s*220\)/i.test(fill)) {
+          bgRect.setAttribute('fill', palette.svgPanelBg);
+        }
+        const style = bgRect.getAttribute('style') || '';
+        if (style && /fill\s*:/i.test(style)) {
+          const styleFill = style.replace(/.*fill:\s*/, '').replace(/;.*/, '');
+          if (isWhite(styleFill) || /rgb\(192\s*,\s*192\s*,\s*192\)/i.test(styleFill)) {
+            bgRect.setAttribute('style', style.replace(/fill:\s*[^;]+/i, 'fill:' + palette.svgPanelBg));
+          }
+        }
+      }
+      // 不触碰 line/path/circle/text — 保持工具栏图标的原始配色
+    });
+  }
+
+  function applyLegacySkin() {
+    try {
+      if (state.skinApplying) return;
+      state.skinApplying = true;
+      const root = document.getElementById('jsme_container');
+      if (!root) return;
+      const palette = themePalette();
+      const rootRect = root.getBoundingClientRect();
+      if (!rootRect.width || !rootRect.height) return;
+
+      root.style.background = palette.canvas;
+      root.style.border = `1px solid ${palette.border}`;
+      root.style.borderRadius = '12px';
+      root.style.overflow = 'hidden';
+
+      const nodes = root.querySelectorAll('div, td, span, button, a');
+      nodes.forEach((node) => {
+        const rect = node.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+        const cs = window.getComputedStyle(node);
+        const text = (node.textContent || '').trim();
+        const isToolbarCell = rect.top - rootRect.top < 44 && rect.height <= 44;
+        const isSideCell =
+          rect.left - rootRect.left < 46 && rect.height <= 40 && rect.width <= 42;
+        const isTinyTool =
+          rect.width <= 44 &&
+          rect.height <= 44 &&
+          (text.length <= 3 || cs.cursor === 'pointer');
+
+        if (isToolbarCell || isSideCell || isTinyTool) {
+          node.classList.add('chemvision-skin-tool');
+          node.style.setProperty('background', palette.panelSoft, 'important');
+          node.style.setProperty('color', palette.text, 'important');
+          node.style.setProperty('border-color', palette.border, 'important');
+          node.style.setProperty('box-sizing', 'border-box', 'important');
+          node.style.setProperty('border-radius', '8px', 'important');
+          const imgs = node.querySelectorAll('img');
+          imgs.forEach((img) => {
+            if (state.theme === 'light') {
+              img.style.setProperty('filter', 'saturate(0.9) hue-rotate(0deg)', 'important');
+            } else {
+              img.style.setProperty('filter', 'invert(0.92) hue-rotate(155deg) saturate(0.9)', 'important');
+            }
+          });
+        }
+
+        if (isSideCell && text.length >= 1 && text.length <= 2) {
+          node.classList.add('chemvision-skin-side');
+          node.style.setProperty('font-weight', '700', 'important');
+          node.style.setProperty('color', palette.accent, 'important');
+        }
+      });
+
+      const canvases = root.querySelectorAll('canvas, svg');
+      canvases.forEach((canvas) => {
+        canvas.style.background = palette.canvas;
+        canvas.style.borderColor = palette.border;
+      });
+
+      const resetDivs = root.querySelectorAll('.jsa-resetDiv');
+      if (resetDivs.length > 0 && !state.resetDivDetected) {
+        state.resetDivDetected = true;
+        debugLog('info', 'jsa-resetDiv detected', { count: resetDivs.length });
+      }
+      resetDivs.forEach((node) => {
+        node.style.setProperty('background', 'transparent', 'important');
+        node.style.setProperty('color', palette.text, 'important');
+        node.style.setProperty('border-color', 'transparent', 'important');
+        node.style.setProperty('box-shadow', 'none', 'important');
+      });
+
+      // SVG 级样式：直接修改工具栏/侧栏/画布的 SVG 元素颜色
+      applySvgSkin();
+    } catch (error) {
+      debugLog('warn', 'applyLegacySkin failed', { error: String(error) });
+    } finally {
+      state.skinApplying = false;
+    }
+  }
+
+  function scheduleLegacySkinApply() {
+    if (state.skinRaf) {
+      cancelAnimationFrame(state.skinRaf);
+    }
+    state.skinRaf = requestAnimationFrame(() => {
+      state.skinRaf = 0;
+      applyLegacySkin();
+    });
+  }
+
+  function watchLegacyUiMutations() {
+    const root = document.getElementById('jsme_container');
+    if (!root || state.skinObserver) return;
+    state.skinObserver = new MutationObserver(() => {
+      if (state.skinApplying) return;
+      scheduleLegacySkinApply();
+    });
+    state.skinObserver.observe(root, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['fill', 'stroke', 'style'],
+    });
+  }
+
+  function scheduleRenderHealthCheck() {
+    if (state.healthTimer) {
+      clearTimeout(state.healthTimer);
+      state.healthTimer = null;
+    }
+    state.healthTimer = setTimeout(() => {
+      state.healthTimer = null;
+      const root = document.getElementById('jsme_container');
+      if (!root) {
+        debugLog('warn', 'render health: container missing');
+        return;
+      }
+      const rect = root.getBoundingClientRect();
+      const childCount = root.children ? root.children.length : 0;
+      const hasCanvas = root.querySelectorAll('canvas,svg').length;
+      debugLog('info', 'render health snapshot', {
+        width: Math.round(rect.width || 0),
+        height: Math.round(rect.height || 0),
+        childCount,
+        hasCanvas,
+        hasEditor: Boolean(state.editor),
+      });
+      if (hasCanvas > 0 || childCount > 0) {
+        hideLoading();
+        return;
+      }
+      showLoading('JSME 渲染异常，正在回退样式…');
+      setStatus(`SMILES 长度 ${(state.smiles || '').length} · UI加载异常`);
+      const style = document.getElementById('chemvision-jsme-modern-style');
+      if (style) {
+        style.remove();
+      }
+      disposeSkinWatchers();
+    }, 1600);
   }
 
   function injectModernEditorStyles() {
@@ -84,6 +471,36 @@
       #jsme_container [class*="button"]:hover {
         filter: brightness(1.05);
       }
+      #jsme_container .chemvision-skin-tool {
+        border: 1px solid var(--action-border) !important;
+      }
+      #jsme_container .chemvision-skin-side {
+        text-shadow: 0 0 8px rgba(56, 213, 193, 0.22) !important;
+      }
+      :root[data-theme='light'] #jsme_container .chemvision-skin-side {
+        text-shadow: 0 0 8px rgba(31, 72, 179, 0.18) !important;
+      }
+      #jsme_container .jsa-resetDiv {
+        background: transparent !important;
+        color: var(--title) !important;
+        border-color: transparent !important;
+      }
+      #jsme_container .jsa-resetDiv td,
+      #jsme_container .jsa-resetDiv div,
+      #jsme_container .jsa-resetDiv span,
+      #jsme_container .jsa-resetDiv button {
+        color: var(--title) !important;
+        border-color: transparent !important;
+      }
+      #jsme_container .jsa-resetDiv td {
+        background: transparent !important;
+      }
+      #jsme_container .jsa-resetDiv img {
+        filter: invert(0.92) hue-rotate(155deg) saturate(0.9) !important;
+      }
+      :root[data-theme='light'] #jsme_container .jsa-resetDiv img {
+        filter: saturate(0.9) hue-rotate(0deg) !important;
+      }
     `;
     document.head.appendChild(style);
   }
@@ -101,6 +518,21 @@
     if (state.pollTimer) {
       clearInterval(state.pollTimer);
       state.pollTimer = null;
+    }
+    if (state.skinRaf) {
+      cancelAnimationFrame(state.skinRaf);
+      state.skinRaf = 0;
+    }
+    if (state.healthTimer) {
+      clearTimeout(state.healthTimer);
+      state.healthTimer = null;
+    }
+  }
+
+  function disposeSkinWatchers() {
+    if (state.skinObserver) {
+      state.skinObserver.disconnect();
+      state.skinObserver = null;
     }
   }
 
@@ -122,11 +554,13 @@
     if (smiles === state.lastSentSmiles) return;
     state.lastSentSmiles = smiles;
     state.smiles = smiles;
+    updateStatusBySmiles(smiles);
     postToHost('onSmilesUpdated', { smiles });
   }
 
   function setSmiles(smiles) {
     state.smiles = smiles || '';
+    updateStatusBySmiles(state.smiles);
     debugLog('info', 'setSmiles called', {
       length: state.smiles.length,
       editorReady: Boolean(state.editor),
@@ -158,15 +592,31 @@
       debugLog('info', 'initEditor skipped: already ready');
       return;
     }
-    debugLog('info', 'initEditor attempt', {
+    // 详细诊断：检查 GWT 加载状态
+    const diag = {
       attempt,
       hasJSApplet: Boolean(window.JSApplet),
       hasJSME: Boolean(window.JSApplet && window.JSApplet.JSME),
-      baseHref: document.baseURI,
-      location: window.location.href,
-    });
+      loadedFlag: Boolean(window.__chemvisionJsmeLoaded),
+      scriptCount: document.querySelectorAll('script').length,
+      pageUrl: location.href,
+    };
+    if (attempt === 0 || attempt % 10 === 0) {
+      debugLog('info', 'initEditor attempt', diag);
+    }
+    // 第一次尝试时检查 GWT 模块是否已下载
+    if (attempt === 1 && !window.__chemvisionJsmeLoaded) {
+      debugLog('warn', 'GWT module NOT loaded after 200ms — jsmeOnLoad never called', {
+        hasJSApplet: Boolean(window.JSApplet),
+        baseURI: document.baseURI,
+      });
+    }
+    if ((attempt === 6 || attempt === 15) && !window.JSApplet && typeof window.__chemvisionEnsureJsmeCore === 'function') {
+      window.__chemvisionEnsureJsmeCore(`init-attempt-${attempt}`);
+    }
     if (window.JSApplet && window.JSApplet.JSME) {
       try {
+        setStatus(`SMILES 长度 ${(state.smiles || '').length} · 初始化中`);
         state.editor = new window.JSApplet.JSME(
           'jsme_container',
           '100%',
@@ -175,30 +625,41 @@
         );
         injectModernEditorStyles();
         applyTheme(state.theme);
-        hideLoading();
+        showLoading('正在构建编辑器界面…');
         if (state.smiles) {
           setSmiles(state.smiles);
         }
         state.lastSentSmiles = getSmiles();
         clearPollTimer();
         state.pollTimer = window.setInterval(emitSmilesIfChanged, 450);
+        watchLegacyUiMutations();
         if (!state.bridgeReadySent) {
           state.bridgeReadySent = true;
           postToHost('onBridgeReady', {});
         }
         debugLog('info', 'JSME initialized successfully');
+        updateStatusBySmiles(state.lastSentSmiles || state.smiles);
+        scheduleLegacySkinApply();
+        scheduleRenderHealthCheck();
         return;
       } catch (error) {
         state.initFailed = true;
+        setStatus(`SMILES 长度 ${(state.smiles || '').length} · 初始化失败`);
         reportError('初始化 JSME 失败', { error: String(error), stack: error && error.stack ? String(error.stack) : null });
         return;
       }
     }
     if (attempt >= 80) {
+      setStatus(`SMILES 长度 ${(state.smiles || '').length} · 加载超时`);
       reportError('JSME 加载超时，请检查网络后重试', {
         hasJSApplet: Boolean(window.JSApplet),
         hasJSME: Boolean(window.JSApplet && window.JSApplet.JSME),
+        pageUrl: location.href,
+        baseURI: document.baseURI,
+        scriptCount: document.querySelectorAll('script').length,
+        loadedFlag: Boolean(window.__chemvisionJsmeLoaded),
       });
+      state.initFailed = true;
       return;
     }
     window.setTimeout(() => initEditor(attempt + 1), 200);
@@ -215,7 +676,9 @@
     const data = event.data;
     if (!data || data.channel !== channel) return;
     const payload = data.payload || {};
-    debugLog('info', 'bridge message received', { type: data.type });
+    if (data.type !== 'setSmiles' && data.type !== 'setTheme') {
+      debugLog('info', 'bridge message received', { type: data.type });
+    }
     switch (data.type) {
       case 'setSmiles':
       case 'renderSmiles':
@@ -235,8 +698,14 @@
     }
   });
 
-  window.addEventListener('beforeunload', clearPollTimer);
-  window.addEventListener('pagehide', clearPollTimer);
+  window.addEventListener('beforeunload', () => {
+    clearPollTimer();
+    disposeSkinWatchers();
+  });
+  window.addEventListener('pagehide', () => {
+    clearPollTimer();
+    disposeSkinWatchers();
+  });
   window.addEventListener('error', (event) => {
     reportError('JSME 页面脚本异常', {
       message: event.message,
@@ -260,15 +729,39 @@
   });
 
   document.addEventListener('DOMContentLoaded', () => {
+    bindQuickActions();
     applyTheme(state.theme);
+    setStatus(`SMILES 长度 ${(state.smiles || '').length} · 等待内核`);
     debugLog('info', 'DOMContentLoaded', {
       loadedFlag: Boolean(window.__chemvisionJsmeLoaded),
       hasInitHook: typeof window.__chemvisionInitJsme === 'function',
+      pageUrl: location.href,
+      baseURI: document.baseURI,
+      hasJSApplet: Boolean(window.JSApplet),
     });
     if (window.__chemvisionJsmeLoaded) {
       initEditor(0);
       return;
     }
     window.setTimeout(() => initEditor(0), 200);
+    window.setTimeout(() => {
+      if (!state.editor && !window.JSApplet && typeof window.__chemvisionEnsureJsmeCore === 'function') {
+        window.__chemvisionEnsureJsmeCore('dom-timeout-1000ms');
+      }
+    }, 1000);
+    // GWT 加载超时检测：8 秒后仍未加载则输出详细诊断
+    window.setTimeout(() => {
+      if (!state.editor && !state.initFailed) {
+        debugLog('error', 'GWT load timeout — detailed diagnostics', {
+          loadedFlag: Boolean(window.__chemvisionJsmeLoaded),
+          hasJSApplet: Boolean(window.JSApplet),
+          hasJSME: Boolean(window.JSApplet && window.JSApplet.JSME),
+          scriptTags: document.querySelectorAll('script').length,
+          pageUrl: location.href,
+          baseURI: document.baseURI,
+          readyState: document.readyState,
+        });
+      }
+    }, 8000);
   });
 })();

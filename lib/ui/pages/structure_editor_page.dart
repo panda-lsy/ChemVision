@@ -24,7 +24,6 @@ class StructureEditorPage extends StatefulWidget {
 class _StructureEditorPageState extends State<StructureEditorPage> {
   JsmeEditorController? _controller;
   String _currentSmiles = '';
-  final List<String> _debugLogs = <String>[];
 
   @override
   void initState() {
@@ -99,52 +98,15 @@ class _StructureEditorPageState extends State<StructureEditorPage> {
                         },
                         themeMode: isDark ? 'dark' : 'light',
                         onError: (message) {
-                          _debugLogs.insert(0, '[error] $message');
-                          if (_debugLogs.length > 80) {
-                            _debugLogs.removeRange(80, _debugLogs.length);
-                          }
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(content: Text(message)),
                           );
                         },
-                        onDebugLog: (line) {
-                          if (!mounted) return;
-                          setState(() {
-                            _debugLogs.insert(0, line);
-                            if (_debugLogs.length > 80) {
-                              _debugLogs.removeRange(80, _debugLogs.length);
-                            }
-                          });
-                        },
+                        onDebugLog: (_) {},
                       ),
                     ),
                   ),
                   const SizedBox(height: 10),
-                  if (_debugLogs.isNotEmpty) ...[
-                    Container(
-                      width: double.infinity,
-                      constraints: const BoxConstraints(maxHeight: 120),
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? Colors.black.withValues(alpha: 0.22)
-                            : const Color(0x120D2F72),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: SingleChildScrollView(
-                        child: Text(
-                          _debugLogs.take(20).join('\n'),
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                fontFamily: 'monospace',
-                                color: isDark
-                                    ? AppColors.textSecondary
-                                    : AppColors.dayTextSecondary,
-                              ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                  ],
                   Container(
                     width: double.infinity,
                     padding:

@@ -74,3 +74,8 @@ todo.md
 CHEMVISION.prproj
 chemvision.iml
 icon4prototype.png
+
+# JSME GWT build artifacts (generated, ~1.1MB)
+assets/web/0ADE505A5718D4BE2E0EE1B7C54CC163.js
+assets/web/4277561D0E87B89F4DFCCC3A712D5B19.js
+assets/web/deferredjs/
