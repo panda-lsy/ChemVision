@@ -1220,6 +1220,87 @@ class PubChemClient {
     }
     return null;
   }
+
+  /// Search PubChem for compounds similar to the given SMILES using
+  /// 2D fingerprint similarity.
+  Future<List<StructureCandidate>> querySimilar(
+    String smiles, {
+    int threshold = 80,
+    int maxRecords = 10,
+  }) async {
+    final trimmed = smiles.trim();
+    if (trimmed.isEmpty) return const [];
+
+    final encoded = Uri.encodeComponent(trimmed);
+    final url =
+        'https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/fastsimilarity_2d'
+        '/smiles/$encoded/property/CanonicalSMILES,MolecularFormula,'
+        'MolecularWeight,IUPACName/JSON'
+        '?Threshold=$threshold&MaxRecords=$maxRecords';
+
+    try {
+      Response? response;
+      for (var attempt = 1; attempt <= 2; attempt++) {
+        try {
+          response = await _dio.get(
+            url,
+            options: Options(validateStatus: (_) => true),
+          );
+          final s = response.statusCode ?? 0;
+          if (s == 200 || s == 404 || (s >= 400 && s < 500)) break;
+        } on DioException catch (e) {
+          if (kDebugMode) {
+            debugPrint('[PubChem:similar] Retry $attempt/2 (${e.type})');
+          }
+        }
+        if (attempt < 2) {
+          await Future.delayed(Duration(milliseconds: 500 * attempt));
+        }
+      }
+
+      if (response == null) return const [];
+      final status = response.statusCode ?? 0;
+      if (status == 404) return const [];
+      if (status != 200) return const [];
+
+      final data = _decodeMap(response.data);
+      if (data == null) return const [];
+
+      final properties = _findMapByKey(data, 'PropertyTable');
+      final rawList = properties == null ? null : properties['Properties'];
+      final list = _normalizePropertyList(rawList);
+      if (list.isEmpty) return const [];
+
+      final results = <StructureCandidate>[];
+      for (var i = 0; i < list.length; i++) {
+        final item = _asMap(list[i]);
+        if (item == null) continue;
+        final canonical = _asString(item['CanonicalSMILES']);
+        if (canonical == null || canonical.isEmpty) continue;
+        final formula = _asString(item['MolecularFormula']) ?? '';
+        final weight = _asDouble(item['MolecularWeight']) ?? 0;
+        final name = _asString(item['IUPACName']);
+        // Confidence degrades by rank position
+        final confidence =
+            (0.5 + (threshold / 200.0)) * (1.0 - i * 0.04);
+        results.add(StructureCandidate(
+          smiles: canonical,
+          resolvedName: name,
+          englishName: name,
+          molecularFormula: formula,
+          molecularWeight: weight,
+          source: 'PubChem similarity',
+          confidence: confidence.clamp(0.1, 0.98),
+        ));
+      }
+      return results;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[PubChem:similar] error: $e');
+      }
+      return const [];
+    }
+  }
 }
 
 class OpsinClient {

@@ -7,6 +7,11 @@ class ReactionKnowledgeEntry {
     required this.conditionFields,
     required this.sourceReference,
     required this.explanation,
+    this.reactants = const [],
+    this.products = const [],
+    this.reactionType = '',
+    this.conditionRationale = '',
+    this.sourceChapter = '',
     this.embedding,
   });
 
@@ -17,6 +22,22 @@ class ReactionKnowledgeEntry {
   final Map<String, String> conditionFields;
   final String sourceReference;
   final String explanation;
+
+  /// 反应物列表（结构化）
+  final List<String> reactants;
+
+  /// 产物列表（结构化）
+  final List<String> products;
+
+  /// 反应类型（化合/分解/置换/复分解/有机反应等）
+  final String reactionType;
+
+  /// 条件推断依据（为什么需要该温度/催化剂/溶剂）
+  final String conditionRationale;
+
+  /// 教材来源章节（如"人教版必修1 第三章 第一节"）
+  final String sourceChapter;
+
   final List<double>? embedding;
 
   Map<String, dynamic> toJson() {
@@ -28,6 +49,11 @@ class ReactionKnowledgeEntry {
       'conditionFields': conditionFields,
       'sourceReference': sourceReference,
       'explanation': explanation,
+      if (reactants.isNotEmpty) 'reactants': reactants,
+      if (products.isNotEmpty) 'products': products,
+      if (reactionType.isNotEmpty) 'reactionType': reactionType,
+      if (conditionRationale.isNotEmpty) 'conditionRationale': conditionRationale,
+      if (sourceChapter.isNotEmpty) 'sourceChapter': sourceChapter,
       'embedding': embedding,
     };
   }
@@ -41,6 +67,11 @@ class ReactionKnowledgeEntry {
       conditionFields: _toStringMap(json['conditionFields']),
       sourceReference: json['sourceReference']?.toString() ?? '',
       explanation: json['explanation']?.toString() ?? '',
+      reactants: _toStringList(json['reactants']),
+      products: _toStringList(json['products']),
+      reactionType: json['reactionType']?.toString() ?? '',
+      conditionRationale: json['conditionRationale']?.toString() ?? '',
+      sourceChapter: json['sourceChapter']?.toString() ?? '',
       embedding: _toDoubleList(json['embedding']),
     );
   }
@@ -87,6 +118,10 @@ class ReactionCompletionResult {
     required this.matchedKeywords,
     required this.candidateTitles,
     required this.usedModel,
+    this.reactants = const [],
+    this.products = const [],
+    this.reactionType = '',
+    this.conditionRationale = '',
   });
 
   final String query;
@@ -98,6 +133,18 @@ class ReactionCompletionResult {
   final List<String> matchedKeywords;
   final List<String> candidateTitles;
   final bool usedModel;
+
+  /// 反应物列表（结构化）
+  final List<String> reactants;
+
+  /// 产物列表（结构化）
+  final List<String> products;
+
+  /// 反应类型
+  final String reactionType;
+
+  /// 条件推断依据
+  final String conditionRationale;
 
   String get conditionSummary {
     final parts = <String>[];

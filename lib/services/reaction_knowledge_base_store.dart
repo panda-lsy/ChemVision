@@ -180,6 +180,10 @@ class ReactionKnowledgeBaseStore {
       return currentText;
     }
 
+    List<String> mergeLists(List<String> a, List<String> b) {
+      return {...a, ...b}.toList();
+    }
+
     String mergeConditionField(String field) {
       return pickText(
         base.conditionFields[field] ?? '',
@@ -200,6 +204,11 @@ class ReactionKnowledgeBaseStore {
       },
       sourceReference: pickText(base.sourceReference, incoming.sourceReference),
       explanation: pickText(base.explanation, incoming.explanation),
+      reactants: mergeLists(base.reactants, incoming.reactants),
+      products: mergeLists(base.products, incoming.products),
+      reactionType: pickText(base.reactionType, incoming.reactionType),
+      conditionRationale: pickText(base.conditionRationale, incoming.conditionRationale),
+      sourceChapter: pickText(base.sourceChapter, incoming.sourceChapter),
       embedding: incoming.embedding ?? base.embedding,
     );
   }

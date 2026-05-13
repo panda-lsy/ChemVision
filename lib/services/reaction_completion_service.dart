@@ -182,10 +182,17 @@ class ReactionCompletionService {
       conditionFields: best.entry.conditionFields,
       explanation: best.entry.explanation,
       confidence: best.confidence,
-      sourceReferences: [best.entry.sourceReference],
+      sourceReferences: [
+        best.entry.sourceReference,
+        if (best.entry.sourceChapter.isNotEmpty) best.entry.sourceChapter,
+      ],
       matchedKeywords: best.matchedKeywords,
       candidateTitles: matches.take(3).map((m) => m.entry.title).toList(),
       usedModel: false,
+      reactants: best.entry.reactants,
+      products: best.entry.products,
+      reactionType: best.entry.reactionType,
+      conditionRationale: best.entry.conditionRationale,
     );
   }
 
@@ -200,20 +207,45 @@ class ReactionCompletionService {
             : '无本地命中')
         : matches
             .take(3)
-            .map(
-              (match) => '- ${match.entry.title} | 公式: ${match.entry.completedEquation} | 条件: ${match.entry.conditionFields.entries.map((e) => '${e.key}=${e.value}').join(', ')} | 来源: ${match.entry.sourceReference}',
-            )
-            .join('\n');
+            .map((match) {
+              final entry = match.entry;
+              final parts = <String>[
+                '- 标题: ${entry.title}',
+                '  方程式: ${entry.completedEquation}',
+                if (entry.reactants.isNotEmpty) '  反应物: ${entry.reactants.join(' + ')}',
+                if (entry.products.isNotEmpty) '  产物: ${entry.products.join(' + ')}',
+                if (entry.reactionType.isNotEmpty) '  反应类型: ${entry.reactionType}',
+                '  条件: ${entry.conditionFields.entries.map((e) => '${e.key}=${e.value}').join(', ')}',
+                if (entry.conditionRationale.isNotEmpty) '  条件依据: ${entry.conditionRationale}',
+                if (entry.sourceChapter.isNotEmpty) '  教材章节: ${entry.sourceChapter}',
+                if (entry.sourceReference.isNotEmpty) '  来源: ${entry.sourceReference}',
+              ];
+              return parts.join('\n');
+            })
+            .join('\n\n');
 
     return '''
 你是 ChemVISION 的化学反应式语义补全引擎。
-任务：根据用户输入，补全可能的完整反应方程式，并拆分条件字段（temperature/catalyst/solvent/other），同时给出来源引用和推理说明。
+任务：根据用户输入，补全可能的完整反应方程式，并提供教材级别的结构化信息。
 
 要求：
 1. 仅输出 JSON，不要输出多余说明。
-2. JSON 必须包含以下字段：completedEquation, conditionFields, explanation, confidence, sourceReferences, candidateTitles, matchedKeywords。
-3. 如果信息不足，返回尽可能保守的补全结果，并在 explanation 中说明。
+2. JSON 必须包含以下字段：
+   - completedEquation: 完整反应方程式
+   - reactants: 反应物列表（数组）
+   - products: 产物列表（数组）
+   - reactionType: 反应类型（化合/分解/置换/复分解/有机反应/氧化还原等）
+   - conditionFields: {temperature, catalyst, solvent, other} 条件字段
+   - conditionRationale: 条件推断依据，解释为什么需要该温度/催化剂/溶剂（从化学原理角度）
+   - explanation: 推理说明
+   - confidence: 置信度 0-1
+   - sourceReferences: 来源引用（教材名称+页码）
+   - sourceChapter: 教材章节（如"人教版必修1 第三章 第一节"）
+   - candidateTitles: 候选模板标题
+   - matchedKeywords: 命中关键词
+3. 如果信息不足，返回尽可能保守的补全结果，并在 explanation 中说明不确定之处。
 4. 优先使用本地知识检索结果作为候选上下文，再进行推理。
+5. 条件推断依据应具体说明化学原理（如"该反应为吸热反应，需要高温提供活化能"）。
 
 用户输入：$query
 
@@ -222,18 +254,23 @@ $kbContext
 
 输出示例：
 {
-  "completedEquation": "...",
+  "completedEquation": "2H₂ + O₂ → 2H₂O",
+  "reactants": ["H₂", "O₂"],
+  "products": ["H₂O"],
+  "reactionType": "化合",
   "conditionFields": {
-    "temperature": "...",
-    "catalyst": "...",
-    "solvent": "...",
-    "other": "..."
+    "temperature": "点燃",
+    "catalyst": "无",
+    "solvent": "无",
+    "other": "需要点燃提供活化能"
   },
-  "explanation": "...",
-  "confidence": 0.72,
-  "sourceReferences": ["..."],
-  "candidateTitles": ["..."],
-  "matchedKeywords": ["..."]
+  "conditionRationale": "氢气与氧气的化合反应需要克服较高的活化能壁垒，点燃提供足够的能量使分子碰撞有效，反应一旦开始则为放热反应可自行维持。",
+  "explanation": "氢气在氧气中燃烧生成水，是典型的化合反应。",
+  "confidence": 0.95,
+  "sourceReferences": ["人教版必修1 P48"],
+  "sourceChapter": "人教版必修1 第三章 第一节",
+  "candidateTitles": ["氢气燃烧"],
+  "matchedKeywords": ["氢", "氧", "燃烧"]
 }
 ''';
   }
@@ -273,6 +310,10 @@ $kbContext
         matchedKeywords: matchedKeywords,
         candidateTitles: candidateTitles,
         usedModel: true,
+        reactants: _stringList(data['reactants']) ?? fallback.reactants,
+        products: _stringList(data['products']) ?? fallback.products,
+        reactionType: _stringOrNull(data['reactionType']) ?? fallback.reactionType,
+        conditionRationale: _stringOrNull(data['conditionRationale']) ?? fallback.conditionRationale,
       );
     } catch (_) {
       return null;
@@ -331,7 +372,12 @@ $kbContext
       entry.title,
       entry.keywords.join(' '),
       entry.completedEquation,
+      entry.reactants.join(' '),
+      entry.products.join(' '),
+      entry.reactionType,
       entry.conditionFields.values.join(' '),
+      entry.conditionRationale,
+      entry.sourceChapter,
       entry.sourceReference,
       entry.explanation,
     ].join('\n');
@@ -435,6 +481,10 @@ extension on ReactionCompletionResult {
     List<String>? matchedKeywords,
     List<String>? candidateTitles,
     bool? usedModel,
+    List<String>? reactants,
+    List<String>? products,
+    String? reactionType,
+    String? conditionRationale,
   }) {
     return ReactionCompletionResult(
       query: query,
@@ -446,6 +496,10 @@ extension on ReactionCompletionResult {
       matchedKeywords: matchedKeywords ?? this.matchedKeywords,
       candidateTitles: candidateTitles ?? this.candidateTitles,
       usedModel: usedModel ?? this.usedModel,
+      reactants: reactants ?? this.reactants,
+      products: products ?? this.products,
+      reactionType: reactionType ?? this.reactionType,
+      conditionRationale: conditionRationale ?? this.conditionRationale,
     );
   }
 }

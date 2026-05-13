@@ -112,10 +112,20 @@
     };
   }
 
-  // 颜色标准化：去除空格，统一格式，便于匹配
+  // CSS 颜色名 → 规范形式（使 'white' 能匹配 color map 中的 rgb 键）
+  const COLOR_NAMES = {
+    white: 'rgb(255,255,255)', black: 'rgb(0,0,0)', red: 'rgb(255,0,0)',
+    green: 'rgb(0,128,0)', blue: 'rgb(0,0,255)', yellow: 'rgb(255,255,0)',
+    cyan: 'rgb(0,255,255)', magenta: 'rgb(255,0,255)', gray: 'rgb(128,128,128)',
+    grey: 'rgb(128,128,128)', silver: 'rgb(192,192,192)', orange: 'rgb(255,165,0)',
+    transparent: 'rgba(0,0,0,0)',
+  };
+  // 颜色标准化：去除空格，统一格式，颜色名转 RGB
   function normalizeColor(c) {
     if (!c) return '';
-    return c.replace(/\s+/g, '').toLowerCase();
+    const s = c.replace(/\s+/g, '').toLowerCase();
+    if (s in COLOR_NAMES) return COLOR_NAMES[s];
+    return s;
   }
   function isBlack(c) {
     const n = normalizeColor(c);
@@ -227,11 +237,66 @@
     }
   }
 
+  function remapBlackInAttr(el, attrName, bondColor) {
+    const raw = el.getAttribute(attrName);
+    if (raw && isBlack(raw)) {
+      el.setAttribute(attrName, bondColor);
+    } else if (!raw && attrName === 'fill') {
+      // SVG 默认 fill=black：无 fill 属性时显式设置
+      el.setAttribute('fill', bondColor);
+    }
+    const style = el.getAttribute('style');
+    if (!style) return;
+    const re = new RegExp(attrName + '\\s*:\\s*([^;]+)', 'i');
+    const m = style.match(re);
+    if (m && isBlack(m[1])) {
+      el.setAttribute('style', style.replace(re, attrName + ':' + bondColor));
+    }
+  }
+
+  // 检测 SMILES 按钮眼睛图标：大圆/椭圆白底 + 小圆/椭圆黑瞳
+  function findEyeFills(svg) {
+    const result = new Set();
+    // 同时搜索 circle 和 ellipse
+    const candidates = [
+      ...Array.from(svg.querySelectorAll('circle')).map((el) => ({
+        el, rx: Number(el.getAttribute('r') || '0'), ry: Number(el.getAttribute('r') || '0'),
+        cx: Number(el.getAttribute('cx') || '0'), cy: Number(el.getAttribute('cy') || '0'),
+        fill: normalizeColor(el.getAttribute('fill') || ''),
+      })),
+      ...Array.from(svg.querySelectorAll('ellipse')).map((el) => ({
+        el, rx: Number(el.getAttribute('rx') || '0'), ry: Number(el.getAttribute('ry') || '0'),
+        cx: Number(el.getAttribute('cx') || '0'), cy: Number(el.getAttribute('cy') || '0'),
+        fill: normalizeColor(el.getAttribute('fill') || ''),
+      })),
+    ];
+    for (let i = 0; i < candidates.length; i++) {
+      const outer = candidates[i];
+      const outerR = Math.max(outer.rx, outer.ry);
+      if (outerR < 4 || outerR > 20 || !isWhite(outer.fill)) continue;
+      for (let j = 0; j < candidates.length; j++) {
+        if (i === j) continue;
+        const inner = candidates[j];
+        const innerR = Math.max(inner.rx, inner.ry);
+        if (innerR >= 1 && innerR <= outerR * 0.6 && isBlack(inner.fill)) {
+          const dx = Math.abs(outer.cx - inner.cx);
+          const dy = Math.abs(outer.cy - inner.cy);
+          if (dx < outerR && dy < outerR) {
+            result.add(outer.el);
+            result.add(inner.el);
+          }
+        }
+      }
+    }
+    return result;
+  }
+
   function applySvgSkin() {
     const root = document.getElementById('jsme_container');
     if (!root) return;
     const palette = themePalette();
-    const svgs = root.querySelectorAll('svg');
+    const colorMap = state.theme === 'light' ? SVG_COLOR_MAP_LIGHT : SVG_COLOR_MAP_DARK;
+    const svgs = document.querySelectorAll('svg');
 
     svgs.forEach((svg) => {
       const r = svg.getBoundingClientRect();
@@ -242,71 +307,41 @@
       const isCanvas = isMainCanvasSvg(svg);
 
       if (isCanvas) {
-        // ── 主画布：改背景 + 重映射所有黑色元素（分子键、环、箭头）──
+        // ── 主画布：改背景 + 重映射所有黑色元素 ──
         const bgRect = findLargestRect(svg);
         if (bgRect) {
           const fill = bgRect.getAttribute('fill') || '';
-          if (isWhite(fill)) {
-            bgRect.setAttribute('fill', palette.svgCanvasBg);
-          }
-          const style = bgRect.getAttribute('style') || '';
-          if (style && /fill\s*:\s*(white|#fff|rgb\(255\))/i.test(style)) {
-            bgRect.setAttribute('style', style.replace(/fill:\s*[^;]+/i, 'fill:' + palette.svgCanvasBg));
-          }
+          if (isWhite(fill)) bgRect.setAttribute('fill', palette.svgCanvasBg);
         }
-
         if (state.theme === 'dark') {
           const bondColor = '#e0e8f0';
-          // line（分子键、箭头线）
-          svg.querySelectorAll('line').forEach((el) => {
-            remapBlackInAttr(el, 'stroke', bondColor);
-          });
-          // path（环结构、箭头头部、分子轮廓）
-          svg.querySelectorAll('path').forEach((el) => {
-            remapBlackInAttr(el, 'stroke', bondColor);
-            remapBlackInAttr(el, 'fill', bondColor);
-          });
-          // circle（原子节点、键端点）
-          svg.querySelectorAll('circle').forEach((el) => {
-            remapBlackInAttr(el, 'fill', bondColor);
-          });
-          // ellipse
-          svg.querySelectorAll('ellipse').forEach((el) => {
-            remapBlackInAttr(el, 'fill', bondColor);
-            remapBlackInAttr(el, 'stroke', bondColor);
-          });
-          // polygon / polyline（环结构可能用这些元素）
-          svg.querySelectorAll('polygon, polyline').forEach((el) => {
-            remapBlackInAttr(el, 'stroke', bondColor);
-            remapBlackInAttr(el, 'fill', bondColor);
-          });
-          // text（分子标签）
-          svg.querySelectorAll('text').forEach((el) => {
-            const fill = el.getAttribute('fill') || '';
-            if (isBlack(fill)) el.setAttribute('fill', bondColor);
-          });
+          svg.querySelectorAll('line').forEach((el) => remapBlackInAttr(el, 'stroke', bondColor));
+          svg.querySelectorAll('path').forEach((el) => { remapBlackInAttr(el, 'stroke', bondColor); remapBlackInAttr(el, 'fill', bondColor); });
+          svg.querySelectorAll('circle').forEach((el) => remapBlackInAttr(el, 'fill', bondColor));
+          svg.querySelectorAll('ellipse').forEach((el) => { remapBlackInAttr(el, 'fill', bondColor); remapBlackInAttr(el, 'stroke', bondColor); });
+          svg.querySelectorAll('polygon, polyline').forEach((el) => { remapBlackInAttr(el, 'stroke', bondColor); remapBlackInAttr(el, 'fill', bondColor); });
+          svg.querySelectorAll('text').forEach((el) => { const f = el.getAttribute('fill'); if (!f || isBlack(f)) el.setAttribute('fill', bondColor); });
         }
         return;
       }
 
-      // ── 工具栏/侧栏：仅改背景色，保留图标原色 ──
-      // 这样 SMILES 按钮眼睛（白色+黑色）、化学环图标、箭头图标均保持原色
-      const bgRect = findLargestRect(svg);
-      if (bgRect) {
-        const fill = bgRect.getAttribute('fill') || '';
-        // JSME 默认灰色背景 → 主题背景色
-        if (isWhite(fill) || /rgb\(192\s*,\s*192\s*,\s*192\)/i.test(fill) || /rgb\(220\s*,\s*220\s*,\s*220\)/i.test(fill)) {
-          bgRect.setAttribute('fill', palette.svgPanelBg);
-        }
-        const style = bgRect.getAttribute('style') || '';
-        if (style && /fill\s*:/i.test(style)) {
-          const styleFill = style.replace(/.*fill:\s*/, '').replace(/;.*/, '');
-          if (isWhite(styleFill) || /rgb\(192\s*,\s*192\s*,\s*192\)/i.test(styleFill)) {
-            bgRect.setAttribute('style', style.replace(/fill:\s*[^;]+/i, 'fill:' + palette.svgPanelBg));
-          }
-        }
+      // ── 工具栏/侧栏：重映射全部元素，仅保留 SMILES 眼睛原色 ──
+      const eyeSet = findEyeFills(svg);
+
+      function remapAttr(el, attr) {
+        const raw = el.getAttribute(attr);
+        if (!raw) return;
+        const mapped = mapColor(raw, colorMap);
+        if (mapped !== raw) el.setAttribute(attr, mapped);
       }
-      // 不触碰 line/path/circle/text — 保持工具栏图标的原始配色
+
+      svg.querySelectorAll('rect').forEach((el) => remapAttr(el, 'fill'));
+      svg.querySelectorAll('line').forEach((el) => remapAttr(el, 'stroke'));
+      svg.querySelectorAll('path').forEach((el) => { remapAttr(el, 'stroke'); remapAttr(el, 'fill'); });
+      svg.querySelectorAll('ellipse').forEach((el) => { remapAttr(el, 'fill'); remapAttr(el, 'stroke'); });
+      svg.querySelectorAll('polygon').forEach((el) => { remapAttr(el, 'stroke'); remapAttr(el, 'fill'); });
+      svg.querySelectorAll('text').forEach((el) => el.setAttribute('fill', palette.svgToolbarText));
+      svg.querySelectorAll('circle').forEach((el) => { if (!eyeSet.has(el)) remapAttr(el, 'fill'); });
     });
   }
 
@@ -401,17 +436,16 @@
   }
 
   function watchLegacyUiMutations() {
-    const root = document.getElementById('jsme_container');
-    if (!root || state.skinObserver) return;
+    if (state.skinObserver) return;
     state.skinObserver = new MutationObserver(() => {
       if (state.skinApplying) return;
       scheduleLegacySkinApply();
     });
-    state.skinObserver.observe(root, {
+    state.skinObserver.observe(document.body, {
       childList: true,
       subtree: true,
       attributes: true,
-      attributeFilter: ['fill', 'stroke', 'style'],
+      attributeFilter: ['fill', 'stroke', 'style', 'class'],
     });
   }
 

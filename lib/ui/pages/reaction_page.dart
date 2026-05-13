@@ -48,11 +48,16 @@ class _ReactionPageState extends State<ReactionPage> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _keywordsController = TextEditingController();
   final TextEditingController _equationController = TextEditingController();
+  final TextEditingController _reactantsController = TextEditingController();
+  final TextEditingController _productsController = TextEditingController();
+  final TextEditingController _reactionTypeController = TextEditingController();
   final TextEditingController _temperatureController = TextEditingController();
   final TextEditingController _catalystController = TextEditingController();
   final TextEditingController _solventController = TextEditingController();
   final TextEditingController _otherController = TextEditingController();
+  final TextEditingController _conditionRationaleController = TextEditingController();
   final TextEditingController _sourceController = TextEditingController();
+  final TextEditingController _sourceChapterController = TextEditingController();
   final TextEditingController _explanationController = TextEditingController();
 
   final ReactionCompletionService _service = ReactionCompletionService();
@@ -89,11 +94,16 @@ class _ReactionPageState extends State<ReactionPage> {
     _titleController.dispose();
     _keywordsController.dispose();
     _equationController.dispose();
+    _reactantsController.dispose();
+    _productsController.dispose();
+    _reactionTypeController.dispose();
     _temperatureController.dispose();
     _catalystController.dispose();
     _solventController.dispose();
     _otherController.dispose();
+    _conditionRationaleController.dispose();
     _sourceController.dispose();
+    _sourceChapterController.dispose();
     _explanationController.dispose();
     super.dispose();
   }
@@ -181,6 +191,11 @@ class _ReactionPageState extends State<ReactionPage> {
       },
       sourceReference: source.isEmpty ? '未填写来源' : source,
       explanation: explanation.isEmpty ? '用户自定义知识库条目' : explanation,
+      reactants: _splitKeywords(_reactantsController.text),
+      products: _splitKeywords(_productsController.text),
+      reactionType: _reactionTypeController.text.trim(),
+      conditionRationale: _conditionRationaleController.text.trim(),
+      sourceChapter: _sourceChapterController.text.trim(),
     );
 
     try {
@@ -530,11 +545,16 @@ class _ReactionPageState extends State<ReactionPage> {
     _titleController.clear();
     _keywordsController.clear();
     _equationController.clear();
+    _reactantsController.clear();
+    _productsController.clear();
+    _reactionTypeController.clear();
     _temperatureController.clear();
     _catalystController.clear();
     _solventController.clear();
     _otherController.clear();
+    _conditionRationaleController.clear();
     _sourceController.clear();
+    _sourceChapterController.clear();
     _explanationController.clear();
   }
 
@@ -543,11 +563,16 @@ class _ReactionPageState extends State<ReactionPage> {
     _titleController.text = entry.title;
     _keywordsController.text = entry.keywords.join('，');
     _equationController.text = entry.completedEquation;
+    _reactantsController.text = entry.reactants.join('，');
+    _productsController.text = entry.products.join('，');
+    _reactionTypeController.text = entry.reactionType;
     _temperatureController.text = entry.conditionFields['temperature'] ?? '';
     _catalystController.text = entry.conditionFields['catalyst'] ?? '';
     _solventController.text = entry.conditionFields['solvent'] ?? '';
     _otherController.text = entry.conditionFields['other'] ?? '';
+    _conditionRationaleController.text = entry.conditionRationale;
     _sourceController.text = entry.sourceReference;
+    _sourceChapterController.text = entry.sourceChapter;
     _explanationController.text = entry.explanation;
   }
 
@@ -683,6 +708,31 @@ class _ReactionPageState extends State<ReactionPage> {
                   fontWeight: FontWeight.w700,
                 ),
           ),
+          if (result.reactants.isNotEmpty || result.products.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 6,
+              runSpacing: 4,
+              children: [
+                if (result.reactants.isNotEmpty)
+                  _buildChemChip(
+                    context,
+                    '反应物: ${result.reactants.join(' + ')}',
+                    AppColors.aqua,
+                  ),
+                if (result.products.isNotEmpty)
+                  _buildChemChip(
+                    context,
+                    '产物: ${result.products.join(' + ')}',
+                    AppColors.amber,
+                  ),
+              ],
+            ),
+          ],
+          if (result.reactionType.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            _buildChemChip(context, '反应类型: ${result.reactionType}', AppColors.aqua),
+          ],
           const SizedBox(height: 12),
           Text('条件字段', style: Theme.of(context).textTheme.bodySmall),
           const SizedBox(height: 8),
@@ -690,6 +740,17 @@ class _ReactionPageState extends State<ReactionPage> {
           _fieldRow(context, '催化剂', result.conditionFields['catalyst']),
           _fieldRow(context, '溶剂', result.conditionFields['solvent']),
           _fieldRow(context, '其他', result.conditionFields['other']),
+          if (result.conditionRationale.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text('条件推断依据', style: Theme.of(context).textTheme.bodySmall),
+            const SizedBox(height: 4),
+            Text(
+              result.conditionRationale,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textPrimary.withValues(alpha: 0.85),
+                  ),
+            ),
+          ],
           const SizedBox(height: 12),
           Text('推理说明', style: Theme.of(context).textTheme.bodySmall),
           const SizedBox(height: 6),
@@ -978,6 +1039,29 @@ class _ReactionPageState extends State<ReactionPage> {
             children: [
               Expanded(
                 child: TextField(
+                  controller: _reactantsController,
+                  decoration: const InputDecoration(hintText: '反应物，逗号分隔，如：乙酸,乙醇'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  controller: _productsController,
+                  decoration: const InputDecoration(hintText: '产物，逗号分隔，如：乙酸乙酯,水'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _reactionTypeController,
+            decoration: const InputDecoration(hintText: '反应类型，如：化合/分解/置换/复分解/酯化/氧化还原'),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
                   controller: _temperatureController,
                   decoration: const InputDecoration(hintText: '温度/热源'),
                 ),
@@ -1011,8 +1095,28 @@ class _ReactionPageState extends State<ReactionPage> {
           ),
           const SizedBox(height: 10),
           TextField(
-            controller: _sourceController,
-            decoration: const InputDecoration(hintText: '来源引用，例如：人教版高中化学选择性必修2 第xx页'),
+            controller: _conditionRationaleController,
+            maxLines: 2,
+            minLines: 1,
+            decoration: const InputDecoration(hintText: '条件推断依据（为什么需要该条件，如：吸热反应需高温提供活化能）'),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _sourceController,
+                  decoration: const InputDecoration(hintText: '来源引用，如：人教版选必2 P52'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: TextField(
+                  controller: _sourceChapterController,
+                  decoration: const InputDecoration(hintText: '教材章节，如：人教版必修1 第三章'),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 10),
           TextField(
@@ -1088,6 +1192,16 @@ class _ReactionPageState extends State<ReactionPage> {
                             ),
                             const SizedBox(height: 4),
                             Text(entry.completedEquation, style: Theme.of(context).textTheme.bodyMedium),
+                            if (entry.reactionType.isNotEmpty) ...[
+                              const SizedBox(height: 4),
+                              Text(
+                                '类型: ${entry.reactionType}',
+                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                      color: AppColors.aqua,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                              ),
+                            ],
                             const SizedBox(height: 6),
                             Text(
                               '条件: ${entry.conditionFields.entries.where((e) => e.value.trim().isNotEmpty).map((e) => '${e.key}=${e.value}').join(' · ')}',
@@ -1103,7 +1217,9 @@ class _ReactionPageState extends State<ReactionPage> {
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              entry.sourceReference,
+                              entry.sourceChapter.isNotEmpty
+                                  ? '${entry.sourceChapter} · ${entry.sourceReference}'
+                                  : entry.sourceReference,
                               style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.aqua),
                             ),
                           ],
@@ -1141,6 +1257,24 @@ class _ReactionPageState extends State<ReactionPage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildChemChip(BuildContext context, String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
       ),
     );
   }

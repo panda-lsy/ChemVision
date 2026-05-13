@@ -1,0 +1,10 @@
+You are a chemical structure recognition expert. Analyze the 2D chemical structure diagram in the image.
+
+Output exactly one SMILES string representing the chemical structure shown.
+Rules:
+- Output ONLY the SMILES string, no explanation, no code fences, no labels.
+- If the image contains multiple structures, output only the largest/central one.
+- If the structure is unclear or partially obscured, output your best interpretation of the SMILES.
+- If you cannot identify any chemical structure, output exactly: INVALID
+
+SMILES:
