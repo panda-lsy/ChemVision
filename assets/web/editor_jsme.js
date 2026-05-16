@@ -1,7 +1,7 @@
 (function () {
   const params = new URLSearchParams(window.location.search);
   const channel = params.get('channel') || 'chemvision-jsme';
-  const initialTheme = (params.get('theme') || 'dark').toLowerCase() === 'light'
+  const initialTheme = (params.get('theme') || window.__chemvisionTheme || 'dark').toLowerCase() === 'light'
     ? 'light'
     : 'dark';
   const state = {
@@ -203,7 +203,14 @@
     const r = svg.getBoundingClientRect();
     const w = r.width || 0;
     const h = r.height || 0;
-    return w > 200 && h > 100 && (w / h > 1.5);
+    // 宽松判定：面积足够大，且不含工具栏特征文本
+    if (w < 120 || h < 80) return false;
+    const area = w * h;
+    if (area < 20000) return false;
+    // 排除工具栏 SVG（通常较扁或包含按钮文字）
+    const texts = svg.querySelectorAll('text');
+    if (texts.length > 12) return false;
+    return true;
   }
 
   // 获取 SVG 中面积最大的 <rect>（通常是背景）
@@ -310,8 +317,30 @@
         // ── 主画布：改背景 + 重映射所有黑色元素 ──
         const bgRect = findLargestRect(svg);
         if (bgRect) {
-          const fill = bgRect.getAttribute('fill') || '';
-          if (isWhite(fill)) bgRect.setAttribute('fill', palette.svgCanvasBg);
+          // 读取 fill：优先属性，其次 style，最后 computedStyle
+          let fill = bgRect.getAttribute('fill') || '';
+          if (!fill) {
+            const st = bgRect.getAttribute('style') || '';
+            const m = st.match(/fill\s*:\s*([^;]+)/i);
+            if (m) fill = m[1].trim();
+          }
+          if (!fill) {
+            try { fill = window.getComputedStyle(bgRect).fill || ''; } catch (_) {}
+          }
+          const shouldRemap = state.theme === 'dark'
+            ? true  // 深色模式下无条件重映射最大 rect（即画布背景）
+            : isWhite(fill);
+          if (shouldRemap) {
+            bgRect.setAttribute('fill', palette.svgCanvasBg);
+            // 同步清除 style 中可能覆盖的 fill
+            const st = bgRect.getAttribute('style') || '';
+            if (/fill\s*:/i.test(st)) {
+              bgRect.setAttribute('style', st.replace(/fill\s*:\s*[^;]+/i, 'fill:' + palette.svgCanvasBg));
+            }
+          }
+        } else if (state.theme === 'dark') {
+          // 没有找到 rect，直接设 SVG 自身背景
+          svg.style.background = palette.svgCanvasBg;
         }
         if (state.theme === 'dark') {
           const bondColor = '#e0e8f0';

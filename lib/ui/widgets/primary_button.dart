@@ -31,10 +31,15 @@ class PrimaryButton extends StatelessWidget {
           gradient: enabled
               ? activeGradient
               : LinearGradient(
-                  colors: [
-                    Colors.white.withValues(alpha: 0.08),
-                    Colors.white.withValues(alpha: 0.04),
-                  ],
+                  colors: isDark
+                      ? [
+                          Colors.white.withValues(alpha: 0.08),
+                          Colors.white.withValues(alpha: 0.04),
+                        ]
+                      : [
+                          AppColors.dayBluePrimary.withValues(alpha: 0.10),
+                          AppColors.dayBluePrimary.withValues(alpha: 0.06),
+                        ],
                 ),
           boxShadow: enabled
               ? [

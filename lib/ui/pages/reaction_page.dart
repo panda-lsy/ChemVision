@@ -704,7 +704,9 @@ class _ReactionPageState extends State<ReactionPage> {
           SelectableText(
             result.completedEquation,
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: const Color(0xFFF9F3DD),
+                  color: Theme.of(context).brightness == Brightness.light
+                      ? AppColors.dayBluePrimary
+                      : const Color(0xFFF9F3DD),
                   fontWeight: FontWeight.w700,
                 ),
           ),
@@ -747,7 +749,9 @@ class _ReactionPageState extends State<ReactionPage> {
             Text(
               result.conditionRationale,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textPrimary.withValues(alpha: 0.85),
+                    color: Theme.of(context).brightness == Brightness.light
+                        ? AppColors.dayTextPrimary.withValues(alpha: 0.85)
+                        : AppColors.textPrimary.withValues(alpha: 0.85),
                   ),
             ),
           ],
@@ -899,7 +903,10 @@ class _ReactionPageState extends State<ReactionPage> {
           const SizedBox(height: 8),
           Text(
             '当前显示 ${filteredEntries.length} / ${_knowledgeEntries.length} 条',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).brightness == Brightness.light
+                    ? AppColors.dayTextMuted
+                    : AppColors.textMuted),
           ),
           const SizedBox(height: 8),
           Wrap(
@@ -1154,9 +1161,14 @@ class _ReactionPageState extends State<ReactionPage> {
                         width: double.infinity,
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: AppColors.glass,
+                          color: Theme.of(context).brightness == Brightness.light
+                              ? AppColors.dayGlassStrong
+                              : AppColors.glass,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                          border: Border.all(
+                              color: Theme.of(context).brightness == Brightness.light
+                                  ? AppColors.dayBluePrimary.withValues(alpha: 0.12)
+                                  : Colors.white.withValues(alpha: 0.08)),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1186,7 +1198,9 @@ class _ReactionPageState extends State<ReactionPage> {
                                 IconButton(
                                   onPressed: () => _deleteKnowledgeEntry(entry.id),
                                   icon: const Icon(Icons.delete_outline),
-                                  color: AppColors.textMuted,
+                                  color: Theme.of(context).brightness == Brightness.light
+                                      ? AppColors.dayTextMuted
+                                      : AppColors.textMuted,
                                 ),
                               ],
                             ),
@@ -1197,7 +1211,9 @@ class _ReactionPageState extends State<ReactionPage> {
                               Text(
                                 '类型: ${entry.reactionType}',
                                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: AppColors.aqua,
+                                      color: Theme.of(context).brightness == Brightness.light
+                                          ? AppColors.dayBluePrimary
+                                          : AppColors.aqua,
                                       fontWeight: FontWeight.w600,
                                     ),
                               ),
@@ -1205,7 +1221,10 @@ class _ReactionPageState extends State<ReactionPage> {
                             const SizedBox(height: 6),
                             Text(
                               '条件: ${entry.conditionFields.entries.where((e) => e.value.trim().isNotEmpty).map((e) => '${e.key}=${e.value}').join(' · ')}',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textMuted),
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context).brightness == Brightness.light
+                                      ? AppColors.dayTextMuted
+                                      : AppColors.textMuted),
                             ),
                             const SizedBox(height: 6),
                             Wrap(
@@ -1220,7 +1239,10 @@ class _ReactionPageState extends State<ReactionPage> {
                               entry.sourceChapter.isNotEmpty
                                   ? '${entry.sourceChapter} · ${entry.sourceReference}'
                                   : entry.sourceReference,
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.aqua),
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: Theme.of(context).brightness == Brightness.light
+                                      ? AppColors.dayBluePrimary
+                                      : AppColors.aqua),
                             ),
                           ],
                         ),
@@ -1246,7 +1268,9 @@ class _ReactionPageState extends State<ReactionPage> {
             child: Text(
               label,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: AppColors.textMuted,
+                    color: Theme.of(context).brightness == Brightness.light
+                        ? AppColors.dayTextMuted
+                        : AppColors.textMuted,
                   ),
             ),
           ),

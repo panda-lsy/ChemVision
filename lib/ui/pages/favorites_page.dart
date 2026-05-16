@@ -26,6 +26,7 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final state = ref.watch(favoritesControllerProvider);
     final items = state.filteredItems;
 
@@ -48,16 +49,17 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
           // Search bar
           TextField(
             controller: _searchController,
-            cursorColor: AppColors.aqua,
-            style: const TextStyle(color: AppColors.textPrimary),
+            cursorColor: isDark ? AppColors.aqua : AppColors.dayBluePrimary,
+            style: TextStyle(
+                color: isDark ? AppColors.textPrimary : AppColors.dayTextPrimary),
             decoration: InputDecoration(
               hintText: '搜索名称、分子式...',
-              prefixIcon:
-                  const Icon(Icons.search, color: AppColors.textSecondary),
+              prefixIcon: Icon(Icons.search,
+                  color: isDark ? AppColors.textSecondary : AppColors.dayTextSecondary),
               suffixIcon: _searchController.text.isNotEmpty
                   ? IconButton(
                       icon: const Icon(Icons.clear, size: 18),
-                      color: AppColors.textMuted,
+                      color: isDark ? AppColors.textMuted : AppColors.dayTextMuted,
                       onPressed: () {
                         _searchController.clear();
                         ref
@@ -93,19 +95,32 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
                             .read(favoritesControllerProvider.notifier)
                             .filterByCategory(null);
                       },
-                      backgroundColor: AppColors.glass,
-                      selectedColor: AppColors.aqua.withOpacity(0.2),
+                      backgroundColor: isDark
+                          ? AppColors.glass
+                          : AppColors.dayGlassStrong,
+                      selectedColor: (isDark
+                              ? AppColors.aqua
+                              : AppColors.dayBluePrimary)
+                          .withValues(alpha: 0.2),
                       labelStyle:
                           Theme.of(context).textTheme.bodySmall?.copyWith(
                                 color: all
-                                    ? AppColors.aqua
-                                    : AppColors.textSecondary,
+                                    ? (isDark
+                                        ? AppColors.aqua
+                                        : AppColors.dayBluePrimary)
+                                    : (isDark
+                                        ? AppColors.textSecondary
+                                        : AppColors.dayTextSecondary),
                                 fontWeight: FontWeight.w600,
                               ),
                       side: BorderSide(
                           color: all
-                              ? AppColors.aqua.withOpacity(0.4)
-                              : Colors.white.withOpacity(0.1)),
+                              ? (isDark
+                                      ? AppColors.aqua
+                                      : AppColors.dayBluePrimary)
+                                  .withValues(alpha: 0.4)
+                              : (isDark ? Colors.white : Colors.black)
+                                  .withValues(alpha: 0.1)),
                       shape: const StadiumBorder(),
                     );
                   }
@@ -119,19 +134,32 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
                           .read(favoritesControllerProvider.notifier)
                           .filterByCategory(cat);
                     },
-                    backgroundColor: AppColors.glass,
-                    selectedColor: AppColors.aqua.withOpacity(0.2),
+                    backgroundColor: isDark
+                        ? AppColors.glass
+                        : AppColors.dayGlassStrong,
+                    selectedColor: (isDark
+                            ? AppColors.aqua
+                            : AppColors.dayBluePrimary)
+                        .withValues(alpha: 0.2),
                     labelStyle:
                         Theme.of(context).textTheme.bodySmall?.copyWith(
                               color: sel
-                                  ? AppColors.aqua
-                                  : AppColors.textSecondary,
+                                  ? (isDark
+                                      ? AppColors.aqua
+                                      : AppColors.dayBluePrimary)
+                                  : (isDark
+                                      ? AppColors.textSecondary
+                                      : AppColors.dayTextSecondary),
                               fontWeight: FontWeight.w600,
                             ),
                     side: BorderSide(
                         color: sel
-                            ? AppColors.aqua.withOpacity(0.4)
-                            : Colors.white.withOpacity(0.1)),
+                            ? (isDark
+                                    ? AppColors.aqua
+                                    : AppColors.dayBluePrimary)
+                                .withValues(alpha: 0.4)
+                            : (isDark ? Colors.white : Colors.black)
+                                .withValues(alpha: 0.1)),
                     shape: const StadiumBorder(),
                   );
                 },
@@ -147,7 +175,10 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(Icons.star_border,
-                            size: 48, color: AppColors.textMuted),
+                            size: 48,
+                            color: isDark
+                                ? AppColors.textMuted
+                                : AppColors.dayTextMuted),
                         const SizedBox(height: 12),
                         Text(
                           state.searchQuery != null
@@ -156,7 +187,10 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
                           style: Theme.of(context)
                               .textTheme
                               .bodyMedium
-                              ?.copyWith(color: AppColors.textMuted),
+                              ?.copyWith(
+                                  color: isDark
+                                      ? AppColors.textMuted
+                                      : AppColors.dayTextMuted),
                         ),
                       ],
                     ),
@@ -200,8 +234,10 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
                                               .bodyLarge
                                               ?.copyWith(
                                                   fontWeight: FontWeight.w600,
-                                                  color: AppColors
-                                                      .textPrimary),
+                                                  color: isDark
+                                                      ? AppColors.textPrimary
+                                                      : AppColors
+                                                          .dayTextPrimary),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
                                         ),
@@ -218,7 +254,10 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
                                               .bodyMedium
                                               ?.copyWith(
                                                 fontWeight: FontWeight.w500,
-                                                color: AppColors.textSecondary,
+                                                color: isDark
+                                                    ? AppColors.textSecondary
+                                                    : AppColors
+                                                        .dayTextSecondary,
                                               ),
                                           maxLines: 1,
                                           overflow: TextOverflow.ellipsis,
@@ -234,7 +273,10 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
                                                 .textTheme
                                                 .bodySmall
                                                 ?.copyWith(
-                                                    color: AppColors.aqua,
+                                                    color: isDark
+                                                        ? AppColors.aqua
+                                                        : AppColors
+                                                            .dayBluePrimary,
                                                     fontWeight:
                                                         FontWeight.w600),
                                           ),
@@ -246,8 +288,10 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
                                                   .textTheme
                                                   .bodySmall
                                                   ?.copyWith(
-                                                      color: AppColors
-                                                          .textMuted),
+                                                      color: isDark
+                                                          ? AppColors.textMuted
+                                                          : AppColors
+                                                              .dayTextMuted),
                                             ),
                                           ],
                                         ],
@@ -260,7 +304,9 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
                                             .textTheme
                                             .bodySmall
                                             ?.copyWith(
-                                              color: AppColors.textMuted,
+                                              color: isDark
+                                                  ? AppColors.textMuted
+                                                  : AppColors.dayTextMuted,
                                               fontSize: 11,
                                             ),
                                         maxLines: 1,
@@ -274,7 +320,10 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 8, vertical: 3),
                                     decoration: BoxDecoration(
-                                      color: AppColors.aqua.withOpacity(0.12),
+                                      color: (isDark
+                                              ? AppColors.aqua
+                                              : AppColors.dayBluePrimary)
+                                          .withValues(alpha: 0.12),
                                       borderRadius:
                                           BorderRadius.circular(8),
                                     ),
@@ -284,7 +333,9 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
                                           .textTheme
                                           .bodySmall
                                           ?.copyWith(
-                                            color: AppColors.aqua,
+                                            color: isDark
+                                                ? AppColors.aqua
+                                                : AppColors.dayBluePrimary,
                                             fontSize: 10,
                                           ),
                                     ),

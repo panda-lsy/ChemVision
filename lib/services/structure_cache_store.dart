@@ -46,4 +46,14 @@ class StructureCacheStore {
     final encoded = base64UrlEncode(utf8.encode(normalized));
     return '$_prefix$encoded';
   }
+
+  Future<int> clearAll() async {
+    final prefs = await SharedPreferences.getInstance();
+    final keys =
+        prefs.getKeys().where((k) => k.startsWith(_prefix)).toList();
+    for (final key in keys) {
+      await prefs.remove(key);
+    }
+    return keys.length;
+  }
 }

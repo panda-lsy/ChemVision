@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 import 'package:hive/hive.dart';
 
@@ -88,5 +90,32 @@ class FavoritesService {
 
   String exportToMol(FavoriteItem item) {
     return SdfExportUtil.generateMolBlock(item.structureResult);
+  }
+
+  Future<void> clearAll() async {
+    await _box.clear();
+    await _box.flush();
+  }
+
+  String exportToJson() {
+    final items = getAll();
+    return jsonEncode(items.map((i) => i.toJson()).toList());
+  }
+
+  Future<int> importFromJson(String jsonString,
+      {bool overwrite = false}) async {
+    final list = jsonDecode(jsonString) as List;
+    int count = 0;
+    for (final item in list) {
+      final fav = FavoriteItem.fromJson(item as Map<String, dynamic>);
+      final exists = _box.values.any(
+          (e) => e.structureResult.smiles == fav.structureResult.smiles);
+      if (overwrite || !exists) {
+        await _box.put(fav.id, fav);
+        count++;
+      }
+    }
+    await _box.flush();
+    return count;
   }
 }

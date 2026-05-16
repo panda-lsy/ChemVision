@@ -338,16 +338,12 @@ String _encodeBytes(Uint8List bytes) {
           const SizedBox(height: 16),
           PrimaryButton(label: '生成结构', onPressed: _submit),
           const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () => Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const StructureRecognitionPage(),
-                ),
+          PrimaryButton(
+            label: '印刷体结构识别',
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const StructureRecognitionPage(),
               ),
-              icon: const Icon(Icons.document_scanner_outlined, size: 18),
-              label: const Text('印刷体结构识别'),
             ),
           ),
           const SizedBox(height: 14),

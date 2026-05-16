@@ -28,4 +28,21 @@ class FavoriteItem {
       query: query,
     );
   }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'structureResult': structureResult.toJson(),
+        'createdAt': createdAt.toIso8601String(),
+        'category': category,
+        'query': query,
+      };
+
+  factory FavoriteItem.fromJson(Map<String, dynamic> json) => FavoriteItem(
+        id: json['id'] as String,
+        structureResult: StructureResult.fromJson(
+            json['structureResult'] as Map<String, dynamic>),
+        createdAt: DateTime.parse(json['createdAt'] as String),
+        category: json['category'] as String?,
+        query: json['query'] as String,
+      );
 }

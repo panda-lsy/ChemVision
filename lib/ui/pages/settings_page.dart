@@ -1,11 +1,18 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
+import '../../main.dart';
 import '../../providers/theme_mode_provider.dart';
 import '../../config/ai_models.dart';
 import '../../services/ai_settings_store.dart';
+import '../../services/app_version_service.dart';
+import '../../services/structure_cache_store.dart';
 import '../../services/vivo_aigc_client.dart';
 import '../../theme/app_colors.dart';
 import '../widgets/accent_pill.dart';
@@ -371,7 +378,326 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ],
             ),
           ),
+          const SizedBox(height: 16),
+          // ── 存储管理 ──
+          Text('存储管理', style: Theme.of(context).textTheme.headlineMedium),
+          const SizedBox(height: 16),
+          GlassPanel(
+            padding: EdgeInsets.zero,
+            child: ExpansionTile(
+              collapsedIconColor: AppColors.textSecondary,
+              iconColor: AppColors.aqua,
+              tilePadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              title: Text('数据管理',
+                  style: Theme.of(context).textTheme.titleMedium),
+              childrenPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              children: [
+                _buildStorageSection(context, isDark),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          // ── 关于 ──
+          Text('关于', style: Theme.of(context).textTheme.headlineMedium),
+          const SizedBox(height: 16),
+          _buildAboutSection(context, isDark),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  // ── 存储管理区 ──
+
+  Widget _buildStorageSection(BuildContext context, bool isDark) {
+    final favoritesService = ref.read(favoritesServiceProvider);
+    final historyService = ref.read(searchHistoryServiceProvider);
+    final favCount = favoritesService.count;
+    final historyCount = historyService.count;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 数据统计
+        Row(
+          children: [
+            _buildStatChip(context, isDark, '收藏', favCount),
+            const SizedBox(width: 10),
+            _buildStatChip(context, isDark, '历史', historyCount),
+          ],
+        ),
+        const SizedBox(height: 16),
+        // 导出收藏
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: Icon(Icons.upload_outlined,
+              color: isDark ? AppColors.aqua : AppColors.dayBluePrimary),
+          title: const Text('导出收藏数据'),
+          subtitle: const Text('导出为 JSON 文件，可分享或备份'),
+          onTap: () => _exportFavorites(context),
+        ),
+        // 导入收藏
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: Icon(Icons.download_outlined,
+              color: isDark ? AppColors.aqua : AppColors.dayBluePrimary),
+          title: const Text('导入收藏数据'),
+          subtitle: const Text('从 JSON 文件导入收藏'),
+          onTap: () => _importFavorites(context),
+        ),
+        const Divider(height: 24),
+        // 清除搜索历史
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.delete_outline, color: AppColors.amber),
+          title: const Text('清除搜索历史'),
+          subtitle: Text('当前 $historyCount 条记录'),
+          onTap: historyCount > 0
+              ? () => _confirmClear(
+                    context,
+                    title: '清除搜索历史',
+                    message: '将删除全部 $historyCount 条搜索记录，此操作不可撤销。',
+                    onConfirm: () async {
+                      await historyService.clear();
+                      ref.invalidate(searchHistoryListProvider);
+                      if (mounted) setState(() {});
+                    },
+                  )
+              : null,
+        ),
+        // 清除结构缓存
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.cached, color: AppColors.amber),
+          title: const Text('清除结构缓存'),
+          subtitle: const Text('清除已缓存的结构解析结果'),
+          onTap: () => _confirmClear(
+            context,
+            title: '清除结构缓存',
+            message: '将清除所有缓存的结构解析结果，下次查询需重新请求。',
+            onConfirm: () async {
+              final cache = StructureCacheStore();
+              final count = await cache.clearAll();
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('已清除 $count 条缓存')),
+                );
+              }
+            },
+          ),
+        ),
+        const Divider(height: 24),
+        // 清除所有数据
+        ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.delete_forever, color: Colors.redAccent),
+          title: Text('清除所有数据',
+              style: TextStyle(color: Colors.redAccent.shade200)),
+          subtitle: const Text('收藏、历史、缓存全部清除'),
+          onTap: () => _confirmClear(
+            context,
+            title: '清除所有数据',
+            message: '将删除全部收藏（$favCount 条）、搜索历史（$historyCount 条）和结构缓存。此操作不可撤销！',
+            isDangerous: true,
+            onConfirm: () async {
+              await favoritesService.clearAll();
+              await historyService.clear();
+              final cache = StructureCacheStore();
+              await cache.clearAll();
+              ref.invalidate(favoritesControllerProvider);
+              ref.invalidate(searchHistoryListProvider);
+              if (mounted) {
+                setState(() {});
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('所有数据已清除')),
+                );
+              }
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatChip(
+      BuildContext context, bool isDark, String label, int count) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+      decoration: BoxDecoration(
+        color: isDark
+            ? AppColors.glassStrong
+            : AppColors.dayGlassStrong,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: isDark
+                        ? AppColors.textSecondary
+                        : AppColors.dayTextSecondary,
+                  )),
+          const SizedBox(width: 8),
+          Text('$count',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? AppColors.aqua : AppColors.dayBluePrimary,
+                  )),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _exportFavorites(BuildContext context) async {
+    try {
+      final service = ref.read(favoritesServiceProvider);
+      final json = service.exportToJson();
+      final dir = await getTemporaryDirectory();
+      final file = File(
+          '${dir.path}/chemvision_favorites_${DateTime.now().millisecondsSinceEpoch}.json');
+      await file.writeAsString(json);
+      await Share.shareXFiles(
+        [XFile(file.path)],
+        text: 'ChemVISION 收藏数据',
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('导出失败: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _importFavorites(BuildContext context) async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['json'],
+      );
+      if (result == null || result.files.isEmpty) return;
+
+      final file = File(result.files.first.path!);
+      final jsonString = await file.readAsString();
+      final service = ref.read(favoritesServiceProvider);
+      final count = await service.importFromJson(jsonString);
+
+      if (mounted) {
+        ref.invalidate(favoritesControllerProvider);
+        setState(() {});
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('成功导入 $count 条收藏')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('导入失败: $e')),
+        );
+      }
+    }
+  }
+
+  void _confirmClear(
+    BuildContext context, {
+    required String title,
+    required String message,
+    required VoidCallback onConfirm,
+    bool isDangerous = false,
+  }) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              onConfirm();
+            },
+            style: isDangerous
+                ? TextButton.styleFrom(foregroundColor: Colors.redAccent)
+                : null,
+            child: const Text('确认'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── 关于区 ──
+
+  Widget _buildAboutSection(BuildContext context, bool isDark) {
+    final versionService = AppVersionService();
+    return GlassPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.science_outlined,
+                  size: 28,
+                  color: isDark ? AppColors.aqua : AppColors.dayBluePrimary),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('ChemVISION',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w700)),
+                  Text(versionService.fullVersion,
+                      style: Theme.of(context).textTheme.bodySmall),
+                ],
+              ),
+              const Spacer(),
+              Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? AppColors.glassStrong
+                      : AppColors.dayGlassStrong,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(versionService.platformInfo,
+                    style: Theme.of(context).textTheme.bodySmall),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text('化学结构式智能生成、编辑与学习助手',
+              style: Theme.of(context).textTheme.bodyMedium),
           const SizedBox(height: 12),
+          Text(
+            '输入化学名称、分子式或用途描述，自动生成可编辑的结构式。'
+            '支持语音输入、图片识别、反应方程式补全、印刷体结构识别等功能。',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: isDark
+                      ? AppColors.textSecondary
+                      : AppColors.dayTextSecondary,
+                ),
+          ),
+          const SizedBox(height: 16),
+          const Divider(height: 1),
+          const SizedBox(height: 12),
+          Text('© 2026 ChemVISION Team',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.textMuted,
+                  )),
+          const SizedBox(height: 4),
+          Text('基于 vivo 蓝心大模型（BlueLM）',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.textMuted,
+                  )),
         ],
       ),
     );

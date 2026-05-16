@@ -78,6 +78,7 @@ class _JsmeEditorViewState extends State<JsmeEditorView> {
       callback: (args) {
         _bridgeReady = true;
         _loadTimeout?.cancel();
+        _lastSentTheme = '';
         _markPageReady();
         _sendSmiles(widget.smiles);
         _sendTheme(widget.themeMode);
@@ -173,30 +174,27 @@ class _JsmeEditorViewState extends State<JsmeEditorView> {
 
   Future<void> _loadEditorHtml(InAppWebViewController controller) async {
     try {
-      debugPrint('[JSME][mobile] loading editor via loadFile...');
-      await controller.loadFile(
-        assetFilePath: AppConfig.localJsmeEditorEntry,
+      debugPrint('[JSME][mobile] loading editor via loadData with theme...');
+      final rawHtml = _cachedHtml ??= await rootBundle.loadString(
+        AppConfig.localJsmeEditorEntry,
       );
-      debugPrint('[JSME][mobile] loadFile completed');
+      final theme =
+          widget.themeMode.toLowerCase() == 'light' ? 'light' : 'dark';
+      // Inject theme before any script runs so initial render uses correct palette
+      final themedHtml = rawHtml.replaceFirst(
+        '<head>',
+        '<head><script>window.__chemvisionTheme = \'$theme\';</script>',
+      );
+      await controller.loadData(
+        data: themedHtml,
+        mimeType: 'text/html',
+        encoding: 'utf-8',
+        baseUrl: WebUri('file:///android_asset/flutter_assets/assets/web/'),
+      );
+      debugPrint('[JSME][mobile] loadData with theme=$theme completed');
     } catch (e) {
-      debugPrint('[JSME][mobile] loadFile failed: $e');
-      // 回退：尝试 loadData + baseUrl
-      try {
-        debugPrint('[JSME][mobile] fallback: loadData with baseUrl...');
-        final html = _cachedHtml ??= await rootBundle.loadString(
-          AppConfig.localJsmeEditorEntry,
-        );
-        await controller.loadData(
-          data: html,
-          mimeType: 'text/html',
-          encoding: 'utf-8',
-          baseUrl: WebUri('file:///android_asset/flutter_assets/assets/web/'),
-        );
-        debugPrint('[JSME][mobile] loadData fallback completed');
-      } catch (e2) {
-        debugPrint('[JSME][mobile] loadData fallback also failed: $e2');
-        widget.onError?.call('无法加载编辑器: $e2');
-      }
+      debugPrint('[JSME][mobile] loadData failed: $e');
+      widget.onError?.call('无法加载编辑器: $e');
     }
   }
 
@@ -250,6 +248,15 @@ class _JsmeEditorViewState extends State<JsmeEditorView> {
           },
           onLoadStop: (controller, url) {
             debugPrint('[JSME][mobile] onLoadStop: $url');
+            // Inject opaque background as fallback in case CSS variables fail to load
+            final isDark = widget.themeMode.toLowerCase() != 'light';
+            final bgColor = isDark ? '#0f172a' : '#f4f8ff';
+            final panelBg = isDark ? 'rgba(20,29,46,0.82)' : 'rgba(255,255,255,0.95)';
+            controller.evaluateJavascript(source:
+              "document.body.style.background='$bgColor';"
+              "var r=document.getElementById('jsme-root');if(r)r.style.background='$bgColor';"
+              "var c=document.getElementById('editor-card');if(c)c.style.background='$panelBg';",
+            );
             // 主题和 SMILES 由 onBridgeReady 统一发送，避免 onLoadStop 时序问题
             _loadTimeout?.cancel();
             _loadTimeout = Timer(const Duration(seconds: 10), () {
