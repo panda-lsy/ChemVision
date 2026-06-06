@@ -5,13 +5,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:record/record.dart';
 
-// 条件导入：只在非 Web 平台使用 dart:io 和 path_provider
-import 'dart:io' if (dart.library.html) 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../services/ai_settings_store.dart';
 import '../services/asr_service.dart';
+import '../utils/platform_file_reader.dart';
 
 enum AsrStatus { idle, recording, processing, done, error }
 
@@ -179,18 +178,11 @@ class AsrController extends StateNotifier<AsrState> {
 
       if (path != null && !kIsWeb) {
         try {
-          // Web 平台不使用 File API
-          if (!kIsWeb) {
-            final file = File(path);
-            if (await file.exists()) {
-              final bytes = await file.readAsBytes();
-              debugPrint('[ASR] 音频文件大小：${bytes.length} bytes');
-              await _asrService?.sendAudio(bytes);
-              debugPrint('[ASR] 音频数据已发送');
-            } else {
-              debugPrint('[ASR] 警告：音频文件不存在');
-            }
-          }
+          // 通过平台抽象读取文件，避免直接使用 dart:io
+          final bytes = await readFileBytes(path);
+          debugPrint('[ASR] 音频文件大小：${bytes.length} bytes');
+          await _asrService?.sendAudio(bytes);
+          debugPrint('[ASR] 音频数据已发送');
         } catch (e) {
           debugPrint('[ASR] 发送音频失败：$e');
         }

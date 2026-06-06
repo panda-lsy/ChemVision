@@ -1313,9 +1313,9 @@ class OpsinClient {
               ),
             );
 
-  // On web, use the local proxy to avoid CORS; on other platforms, direct.
+  // On web, use the proxy to avoid CORS; on other platforms, direct.
   static final String _baseUrl = kIsWeb
-      ? '${AppConfig.proxyBaseUrl}/opsin'
+      ? AppConfig.webOpsinProxyBaseUrl
       : 'https://opsin.ch.cam.ac.uk/opsin';
   final Dio _dio;
 

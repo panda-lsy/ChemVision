@@ -1,11 +1,7 @@
 import 'dart:async';
-import 'dart:io';
 
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:share_plus/share_plus.dart';
 
 import '../../main.dart';
 import '../../providers/theme_mode_provider.dart';
@@ -15,6 +11,7 @@ import '../../services/app_version_service.dart';
 import '../../services/structure_cache_store.dart';
 import '../../services/vivo_aigc_client.dart';
 import '../../theme/app_colors.dart';
+import '../../utils/favorites_export.dart';
 import '../widgets/accent_pill.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/glass_panel.dart';
@@ -551,36 +548,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   }
 
   Future<void> _exportFavorites(BuildContext context) async {
-    try {
-      final service = ref.read(favoritesServiceProvider);
-      final json = service.exportToJson();
-      final dir = await getTemporaryDirectory();
-      final file = File(
-          '${dir.path}/chemvision_favorites_${DateTime.now().millisecondsSinceEpoch}.json');
-      await file.writeAsString(json);
-      await Share.shareXFiles(
-        [XFile(file.path)],
-        text: 'ChemVISION 收藏数据',
-      );
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('导出失败: $e')),
-        );
-      }
-    }
+    final service = ref.read(favoritesServiceProvider);
+    final json = service.exportToJson();
+    await exportFavorites(json, context);
   }
 
   Future<void> _importFavorites(BuildContext context) async {
     try {
-      final result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['json'],
-      );
-      if (result == null || result.files.isEmpty) return;
+      final jsonString = await pickFavoritesFile();
+      if (jsonString == null) return;
 
-      final file = File(result.files.first.path!);
-      final jsonString = await file.readAsString();
       final service = ref.read(favoritesServiceProvider);
       final count = await service.importFromJson(jsonString);
 

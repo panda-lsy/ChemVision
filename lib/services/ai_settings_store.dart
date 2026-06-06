@@ -108,15 +108,16 @@ class AiSettingsStore {
         (trimmed.startsWith('localhost') || trimmed.startsWith('10.0.2.2'))) {
       trimmed = 'http://$trimmed';
     }
-    // On Web, keep localhost:8787 — the proxy is required for CORS.
+    // On Web, keep localhost:8787 or worker URL — the proxy is required for CORS.
     if (kIsWeb &&
         (trimmed.startsWith('http://localhost:8787') ||
-            trimmed.startsWith('http://10.0.2.2:8787'))) {
+            trimmed.startsWith('http://10.0.2.2:8787') ||
+            trimmed.contains('.workers.dev'))) {
       return trimmed;
     }
     // On Web, if stored value is a direct external URL, force proxy.
     if (kIsWeb && trimmed.startsWith('https://api-ai.vivo.com.cn')) {
-      return AppConfig.proxyBaseUrl;
+      return AppConfig.webProxyBaseUrl;
     }
     // On non-Web, migrate away from localhost:8787 to the direct URL.
     if (!kIsWeb &&
@@ -137,7 +138,7 @@ class AiSettingsStore {
   /// On Android, use the direct Vivo URL.
   String _defaultAigcBaseUrl() {
     if (kIsWeb) {
-      return AppConfig.proxyBaseUrl;
+      return AppConfig.webProxyBaseUrl;
     }
     return defaultAigcBaseUrl;
   }
