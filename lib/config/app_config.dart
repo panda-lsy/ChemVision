@@ -12,7 +12,7 @@ class AppConfig {
 
   /// Cloudflare Worker CORS 代理地址（部署后替换为实际 URL）
   /// 部署方式：cd cloudflare-worker && npx wrangler deploy
-  static const String cloudflareWorkerUrl = 'https://chemvision-proxy.example.workers.dev';
+  static const String cloudflareWorkerUrl = 'https://chemvision.chainguard.qzz.io';
 
   /// Web 端默认使用 Cloudflare Worker 代理，本地开发时可用 localhost:8787
   static const String webProxyBaseUrl = cloudflareWorkerUrl;
