@@ -2,19 +2,19 @@
  * ChemVISION CORS Proxy Worker
  *
  * 转发 vivo AI API 请求并添加 CORS 响应头，解决浏览器跨域限制。
+ * 自动注入 Authorization header（通过 Cloudflare Secret 配置），
+ * 前端无需手动输入 API Key。
  *
  * 部署方式：
- *   npm install -g wrangler
+ *   cd cloudflare-worker
  *   npx wrangler deploy
- *
- * 部署后在 ChemVISION 设置页的「自定义 Base URL」中填入 Worker URL，
- * 例如：https://chemvision-proxy.your-subdomain.workers.dev
+ *   npx wrangler secret put API_KEY   # 输入 API Key
  */
 
 const TARGET_BASE = 'https://api-ai.vivo.com.cn';
 
 export default {
-  async fetch(request) {
+  async fetch(request, env) {
     const url = new URL(request.url);
 
     // 处理 CORS 预检请求
@@ -28,10 +28,17 @@ export default {
     // 构建目标 URL：保留路径和查询参数
     const targetUrl = TARGET_BASE + url.pathname + url.search;
 
-    // 复制原始请求的 method、headers、body
+    // 复制原始请求的 headers
+    const headers = filterHeaders(request.headers);
+
+    // 注入 Authorization：优先使用 Worker Secret，前端传的 header 覆盖
+    if (env.API_KEY) {
+      headers.set('Authorization', `Bearer ${env.API_KEY}`);
+    }
+
     const init = {
       method: request.method,
-      headers: filterHeaders(request.headers),
+      headers,
       redirect: 'follow',
     };
 
