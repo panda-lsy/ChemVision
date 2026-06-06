@@ -83,3 +83,6 @@ assets/web/deferredjs/
 
 # Skill
 chemvision-skill/
+
+# Cloudflare Workers
+.wrangler/
