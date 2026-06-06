@@ -3,10 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../main.dart';
 import '../../theme/app_colors.dart';
+import '../pages/edit_hub_page.dart';
 import '../pages/favorites_page.dart';
 import '../pages/history_page.dart';
 import '../pages/input_page.dart';
-import '../pages/reaction_page.dart';
 import '../pages/settings_page.dart';
 
 class BottomNavShell extends ConsumerStatefulWidget {
@@ -19,7 +19,7 @@ class BottomNavShell extends ConsumerStatefulWidget {
 class _BottomNavShellState extends ConsumerState<BottomNavShell> {
   static const _pages = <Widget>[
     InputPage(),
-    ReactionPage(),
+    EditHubPage(),
     HistoryPage(),
     FavoritesPage(),
     SettingsPage(),
@@ -64,9 +64,9 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell> {
               label: '识别',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.device_thermostat_outlined),
-              activeIcon: Icon(Icons.device_thermostat),
-              label: '反应',
+              icon: Icon(Icons.edit_note_outlined),
+              activeIcon: Icon(Icons.edit_note),
+              label: '编辑',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.history_outlined),

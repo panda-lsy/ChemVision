@@ -4,6 +4,12 @@ class AppConfig {
   static const String renderEngineName = 'WebView + smiles-drawer';
   static const String localWebEntry = 'assets/web/index.html';
   static const String localJsmeEditorEntry = 'assets/web/editor_jsme.html';
+
+  /// Ketcher 编辑器入口（移动端使用 asset 路径）
+  static const String ketcherEntry = 'assets/web/ketcher/index.html';
+
+  /// Ketcher 编辑器入口（Web 端，Flutter 构建后实际路径多一层 assets/）
+  static const String ketcherWebEntry = 'assets/assets/web/ketcher/index.html';
   static const String vivoAigcBaseUrl = 'https://api-ai.vivo.com.cn/v1';
   static const String vivoTextGenerationPath = '/chat/completions';
   static const String vivoTextGenerationUrl =
