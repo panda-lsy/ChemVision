@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart' show rootBundle;
 
 import '../config/app_config.dart';
@@ -27,7 +28,8 @@ class ImageStructureService {
     String dataUri,
   ) async {
     final settings = await _settingsStore.load();
-    if (settings.apiKey.trim().isEmpty) {
+    // Web 端 API Key 由 Cloudflare Worker 自动注入，无需前端配置
+    if (!kIsWeb && settings.apiKey.trim().isEmpty) {
       return StructureRecognitionResult.invalid(
         message: '请先在设置中配置 API Key',
       );

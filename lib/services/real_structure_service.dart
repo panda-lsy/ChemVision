@@ -72,8 +72,12 @@ class NameToStructureService implements StructureService {
     final useInfer = forceInfer ?? _looksLikeDescription(trimmed);
     final apiKey = settings.apiKey.trim();
     final model = settings.textModel.trim();
-    if (apiKey.isEmpty || model.isEmpty) {
+    // Web 端 API Key 由 Cloudflare Worker 自动注入，无需前端配置
+    if (!kIsWeb && (apiKey.isEmpty || model.isEmpty)) {
       return StructureResult.invalid(message: '请先在设置中配置 API Key 与模型');
+    }
+    if (kIsWeb && model.isEmpty) {
+      return StructureResult.invalid(message: '请先在设置中配置模型');
     }
 
     final cacheMode = useInfer ? 'infer' : 'exact';

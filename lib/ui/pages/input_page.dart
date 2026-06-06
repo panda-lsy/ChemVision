@@ -152,7 +152,8 @@ class _InputPageState extends ConsumerState<InputPage> {
       final base64Image = await compute(_encodeBytes, bytes);
 
       final settings = await AiSettingsStore().load();
-      if (settings.apiKey.isEmpty) {
+      // Web 端 API Key 由 Cloudflare Worker 自动注入
+      if (!kIsWeb && settings.apiKey.isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('请先在设置中配置 API Key')),

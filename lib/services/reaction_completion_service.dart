@@ -34,7 +34,8 @@ class ReactionCompletionService {
     );
     final fallback = _buildFallbackResult(normalized, matches);
 
-    if (settings.apiKey.trim().isEmpty) {
+    // Web 端 API Key 由 Worker 注入，不阻断
+    if (!kIsWeb && settings.apiKey.trim().isEmpty) {
       return fallback.copyWith(usedModel: false);
     }
 
@@ -364,7 +365,8 @@ $kbContext
     ReactionKnowledgeEntry entry, {
     required AiSettings settings,
   }) async {
-    if (settings.apiKey.trim().isEmpty) {
+    // Web 端 API Key 由 Worker 注入
+    if (!kIsWeb && settings.apiKey.trim().isEmpty) {
       return entry;
     }
 

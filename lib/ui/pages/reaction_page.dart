@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 
@@ -493,7 +494,8 @@ class _ReactionPageState extends State<ReactionPage> {
     }
 
     final settings = await AiSettingsStore().load();
-    if (settings.apiKey.trim().isEmpty) {
+    // Web 端 API Key 由 Worker 注入
+    if (!kIsWeb && settings.apiKey.trim().isEmpty) {
       messenger.showSnackBar(
         const SnackBar(content: Text('请先在设置里配置 API Key 才能生成向量')),
       );
