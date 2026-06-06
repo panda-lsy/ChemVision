@@ -77,7 +77,7 @@ class _StructureViewState extends State<StructureView> {
   void _registerViewFactory() {
     ui.platformViewRegistry.registerViewFactory(_viewType, (int viewId) {
       final iframe = html.IFrameElement()
-        ..src = 'assets/web/index.html?channel=$_channel&compact=${widget.compact ? 1 : 0}&readOnly=${widget.readOnly ? 1 : 0}'
+        ..src = 'assets/assets/web/index.html?channel=$_channel&compact=${widget.compact ? 1 : 0}&readOnly=${widget.readOnly ? 1 : 0}'
         ..style.border = 'none'
         ..style.width = '100%'
         ..style.height = '100%'

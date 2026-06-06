@@ -75,7 +75,7 @@ class _JsmeEditorViewState extends State<JsmeEditorView> {
     ui.platformViewRegistry.registerViewFactory(_viewType, (int viewId) {
       final theme = widget.themeMode.toLowerCase() == 'light' ? 'light' : 'dark';
       final iframe = html.IFrameElement()
-        ..src = 'assets/web/editor_jsme.html?channel=$_channel&theme=$theme'
+        ..src = 'assets/assets/web/editor_jsme.html?channel=$_channel&theme=$theme'
         ..style.border = 'none'
         ..style.width = '100%'
         ..style.height = '100%'
