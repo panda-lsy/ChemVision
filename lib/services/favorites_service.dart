@@ -21,15 +21,11 @@ class FavoritesService {
       (i) => i.structureResult.smiles == item.structureResult.smiles,
       orElse: () => item,
     );
-    
+
     if (existing.id != item.id) {
       // 已存在相同结构，更新它（保留原 ID 和创建时间）
-      final updated = FavoriteItem(
-        id: existing.id,
-        structureResult: item.structureResult,
-        createdAt: existing.createdAt,
-        category: item.category ?? existing.category,
-        query: item.query,
+      final updated = existing.copyWith(
+        category: item.category,
       );
       await _box.put(existing.id, updated);
       debugPrint('[FavoritesService] 更新收藏：${updated.query}');
@@ -38,10 +34,15 @@ class FavoritesService {
       await _box.put(item.id, item);
       debugPrint('[FavoritesService] 添加新收藏：${item.query}');
     }
-    
+
     // 确保数据立即持久化（特别是 Web 平台）
     await _box.flush();
     debugPrint('[FavoritesService] 数据已持久化，当前收藏数：${_box.length}');
+  }
+
+  Future<void> update(FavoriteItem item) async {
+    await _box.put(item.id, item);
+    await _box.flush();
   }
 
   Future<void> delete(String id) async {
@@ -63,7 +64,10 @@ class FavoritesService {
           r.englishName?.toLowerCase().contains(q) == true ||
           r.chineseName?.toLowerCase().contains(q) == true ||
           r.molecularFormula.toLowerCase().contains(q) ||
-          item.query.toLowerCase().contains(q);
+          r.smiles.toLowerCase().contains(q) ||
+          item.query.toLowerCase().contains(q) ||
+          item.tags.any((t) => t.toLowerCase().contains(q)) ||
+          (item.notes?.toLowerCase().contains(q) == true);
     }).toList();
   }
 
@@ -80,6 +84,22 @@ class FavoritesService {
         .toList()
       ..sort();
     return cats;
+  }
+
+  List<FavoriteItem> getByTag(String tag) {
+    return getAll()
+        .where((item) => item.tags.contains(tag))
+        .toList();
+  }
+
+  List<String> getAllTags() {
+    final tags = _box.values
+        .expand((item) => item.tags)
+        .where((t) => t.isNotEmpty)
+        .toSet()
+        .toList()
+      ..sort();
+    return tags;
   }
 
   int get count => _box.length;

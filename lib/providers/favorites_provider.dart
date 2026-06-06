@@ -14,7 +14,9 @@ class FavoritesState {
     this.filteredItems = const [],
     this.searchQuery,
     this.selectedCategory,
+    this.selectedTag,
     this.categories = const [],
+    this.allTags = const [],
     this.isLoading = true,
   });
 
@@ -22,7 +24,9 @@ class FavoritesState {
   final List<FavoriteItem> filteredItems;
   final String? searchQuery;
   final String? selectedCategory;
+  final String? selectedTag;
   final List<String> categories;
+  final List<String> allTags;
   final bool isLoading;
 
   FavoritesState copyWith({
@@ -30,10 +34,13 @@ class FavoritesState {
     List<FavoriteItem>? filteredItems,
     String? searchQuery,
     String? selectedCategory,
+    String? selectedTag,
     List<String>? categories,
+    List<String>? allTags,
     bool? isLoading,
     bool clearSearch = false,
     bool clearCategory = false,
+    bool clearTag = false,
   }) {
     return FavoritesState(
       items: items ?? this.items,
@@ -41,7 +48,9 @@ class FavoritesState {
       searchQuery: clearSearch ? null : (searchQuery ?? this.searchQuery),
       selectedCategory:
           clearCategory ? null : (selectedCategory ?? this.selectedCategory),
+      selectedTag: clearTag ? null : (selectedTag ?? this.selectedTag),
       categories: categories ?? this.categories,
+      allTags: allTags ?? this.allTags,
       isLoading: isLoading ?? this.isLoading,
     );
   }
@@ -57,13 +66,16 @@ class FavoritesController extends StateNotifier<FavoritesState> {
   void load() {
     final items = _service.getAll();
     final categories = _service.getAllCategories();
+    final tags = _service.getAllTags();
     state = state.copyWith(
       items: items,
       filteredItems: items,
       categories: categories,
+      allTags: tags,
       isLoading: false,
       clearSearch: true,
       clearCategory: true,
+      clearTag: true,
     );
   }
 
@@ -96,6 +108,26 @@ class FavoritesController extends StateNotifier<FavoritesState> {
       filteredItems: results,
       selectedCategory: category,
     );
+  }
+
+  void filterByTag(String? tag) {
+    if (tag == null) {
+      state = state.copyWith(
+        filteredItems: state.items,
+        clearTag: true,
+      );
+      return;
+    }
+    final results = _service.getByTag(tag);
+    state = state.copyWith(
+      filteredItems: results,
+      selectedTag: tag,
+    );
+  }
+
+  Future<void> updateItem(FavoriteItem item) async {
+    await _service.update(item);
+    load();
   }
 
   Future<void> add(StructureResult result, String query,

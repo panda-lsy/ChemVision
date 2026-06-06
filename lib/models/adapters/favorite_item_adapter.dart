@@ -20,13 +20,17 @@ class FavoriteItemAdapter extends TypeAdapter<FavoriteItem> {
       createdAt: fields[2] as DateTime,
       category: fields[3] as String?,
       query: fields[4] as String,
+      tags: fields[5] != null
+          ? (fields[5] as List).cast<String>()
+          : const [],
+      notes: fields[6] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, FavoriteItem obj) {
     writer
-      ..writeByte(5)
+      ..writeByte(7)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -36,6 +40,10 @@ class FavoriteItemAdapter extends TypeAdapter<FavoriteItem> {
       ..writeByte(3)
       ..write(obj.category)
       ..writeByte(4)
-      ..write(obj.query);
+      ..write(obj.query)
+      ..writeByte(5)
+      ..write(obj.tags)
+      ..writeByte(6)
+      ..write(obj.notes);
   }
 }

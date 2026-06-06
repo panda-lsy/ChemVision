@@ -6,6 +6,8 @@ class FavoriteItem {
   final DateTime createdAt;
   final String? category;
   final String query;
+  final List<String> tags;
+  final String? notes;
 
   const FavoriteItem({
     required this.id,
@@ -13,7 +15,27 @@ class FavoriteItem {
     required this.createdAt,
     this.category,
     required this.query,
+    this.tags = const [],
+    this.notes,
   });
+
+  FavoriteItem copyWith({
+    String? category,
+    List<String>? tags,
+    String? notes,
+    bool clearCategory = false,
+    bool clearNotes = false,
+  }) {
+    return FavoriteItem(
+      id: id,
+      structureResult: structureResult,
+      createdAt: createdAt,
+      category: clearCategory ? null : (category ?? this.category),
+      query: query,
+      tags: tags ?? this.tags,
+      notes: clearNotes ? null : (notes ?? this.notes),
+    );
+  }
 
   factory FavoriteItem.fromResult({
     required StructureResult result,
@@ -35,6 +57,8 @@ class FavoriteItem {
         'createdAt': createdAt.toIso8601String(),
         'category': category,
         'query': query,
+        'tags': tags,
+        'notes': notes,
       };
 
   factory FavoriteItem.fromJson(Map<String, dynamic> json) => FavoriteItem(
@@ -44,5 +68,10 @@ class FavoriteItem {
         createdAt: DateTime.parse(json['createdAt'] as String),
         category: json['category'] as String?,
         query: json['query'] as String,
+        tags: (json['tags'] as List<dynamic>?)
+                ?.map((e) => e as String)
+                .toList() ??
+            const [],
+        notes: json['notes'] as String?,
       );
 }

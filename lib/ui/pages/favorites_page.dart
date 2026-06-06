@@ -166,6 +166,84 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
               ),
             ),
           ],
+          // Tag filter chips
+          if (state.allTags.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            SizedBox(
+              height: 28,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: state.allTags.length + 1,
+                separatorBuilder: (_, __) => const SizedBox(width: 6),
+                itemBuilder: (context, index) {
+                  if (index == 0) {
+                    final all = state.selectedTag == null;
+                    return FilterChip(
+                      label: const Text('标签', style: TextStyle(fontSize: 11)),
+                      selected: all,
+                      onSelected: (_) {
+                        ref
+                            .read(favoritesControllerProvider.notifier)
+                            .filterByTag(null);
+                      },
+                      visualDensity: VisualDensity.compact,
+                      selectedColor: (isDark
+                              ? AppColors.aqua
+                              : AppColors.dayBluePrimary)
+                          .withValues(alpha: 0.2),
+                      labelStyle: TextStyle(
+                        fontSize: 11,
+                        color: all
+                            ? (isDark
+                                ? AppColors.aqua
+                                : AppColors.dayBluePrimary)
+                            : (isDark
+                                ? AppColors.textSecondary
+                                : AppColors.dayTextSecondary),
+                      ),
+                      side: BorderSide(
+                          color: (isDark ? Colors.white : Colors.black)
+                              .withValues(alpha: 0.08)),
+                    );
+                  }
+                  final tag = state.allTags[index - 1];
+                  final sel = state.selectedTag == tag;
+                  return FilterChip(
+                    label: Text(tag, style: const TextStyle(fontSize: 11)),
+                    selected: sel,
+                    onSelected: (_) {
+                      ref
+                          .read(favoritesControllerProvider.notifier)
+                          .filterByTag(tag);
+                    },
+                    visualDensity: VisualDensity.compact,
+                    selectedColor: (isDark
+                            ? AppColors.aqua
+                            : AppColors.dayBluePrimary)
+                        .withValues(alpha: 0.2),
+                    labelStyle: TextStyle(
+                      fontSize: 11,
+                      color: sel
+                          ? (isDark
+                              ? AppColors.aqua
+                              : AppColors.dayBluePrimary)
+                          : (isDark
+                              ? AppColors.textSecondary
+                              : AppColors.dayTextSecondary),
+                    ),
+                    side: BorderSide(
+                        color: sel
+                            ? (isDark
+                                    ? AppColors.aqua
+                                    : AppColors.dayBluePrimary)
+                                .withValues(alpha: 0.4)
+                            : (isDark ? Colors.white : Colors.black)
+                                .withValues(alpha: 0.08)),
+                  );
+                },
+              ),
+            ),
+          ],
           const SizedBox(height: 14),
           // List
           Expanded(
@@ -312,6 +390,90 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
                                       ),
+                                      // Tags
+                                      if (item.tags.isNotEmpty) ...[
+                                        const SizedBox(height: 4),
+                                        Wrap(
+                                          spacing: 4,
+                                          runSpacing: 2,
+                                          children: [
+                                            for (final tag in item.tags.take(3))
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 6,
+                                                        vertical: 1),
+                                                decoration: BoxDecoration(
+                                                  color: (isDark
+                                                          ? AppColors.aqua
+                                                          : AppColors
+                                                              .dayBluePrimary)
+                                                      .withValues(alpha: 0.10),
+                                                  borderRadius:
+                                                      BorderRadius.circular(6),
+                                                ),
+                                                child: Text(
+                                                  tag,
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .bodySmall
+                                                      ?.copyWith(
+                                                        fontSize: 10,
+                                                        color: isDark
+                                                            ? AppColors.aqua
+                                                            : AppColors
+                                                                .dayBluePrimary,
+                                                      ),
+                                                ),
+                                              ),
+                                            if (item.tags.length > 3)
+                                              Text(
+                                                '+${item.tags.length - 3}',
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .bodySmall
+                                                    ?.copyWith(
+                                                      fontSize: 10,
+                                                      color: AppColors
+                                                          .textMuted,
+                                                    ),
+                                              ),
+                                          ],
+                                        ),
+                                      ],
+                                      // Notes indicator
+                                      if (item.notes != null &&
+                                          item.notes!.isNotEmpty) ...[
+                                        const SizedBox(height: 4),
+                                        Row(
+                                          children: [
+                                            Icon(Icons.notes,
+                                                size: 12,
+                                                color: isDark
+                                                    ? AppColors.textMuted
+                                                    : AppColors.dayTextMuted),
+                                            const SizedBox(width: 4),
+                                            Expanded(
+                                              child: Text(
+                                                item.notes!,
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .bodySmall
+                                                    ?.copyWith(
+                                                      fontSize: 10,
+                                                      color: isDark
+                                                          ? AppColors.textMuted
+                                                          : AppColors
+                                                              .dayTextMuted,
+                                                    ),
+                                                maxLines: 1,
+                                                overflow:
+                                                    TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
                                     ],
                                   ),
                                 ),
