@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - feature/web-deploy
   pull_request:
 
 jobs:
@@ -108,7 +109,7 @@ jobs:
 
   deploy-web:
     needs: build-web
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/web-deploy')
     runs-on: ubuntu-latest
     permissions:
       pages: write
