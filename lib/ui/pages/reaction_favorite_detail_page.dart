@@ -1,0 +1,352 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../models/reaction_favorite_item.dart';
+import '../../providers/reaction_favorites_provider.dart';
+import '../../theme/app_colors.dart';
+import '../widgets/accent_pill.dart';
+import '../widgets/app_scaffold.dart';
+import '../widgets/glass_panel.dart';
+import '../widgets/primary_button.dart';
+import 'reaction_editor_page.dart';
+
+class ReactionFavoriteDetailPage extends ConsumerStatefulWidget {
+  const ReactionFavoriteDetailPage({super.key, required this.item});
+
+  final ReactionFavoriteItem item;
+
+  @override
+  ConsumerState<ReactionFavoriteDetailPage> createState() =>
+      _ReactionFavoriteDetailPageState();
+}
+
+class _ReactionFavoriteDetailPageState
+    extends ConsumerState<ReactionFavoriteDetailPage> {
+  late TextEditingController _notesController;
+  late TextEditingController _categoryController;
+  late TextEditingController _tagInputController;
+  late List<String> _tags;
+  bool _isDirty = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _notesController = TextEditingController(text: widget.item.notes ?? '');
+    _categoryController =
+        TextEditingController(text: widget.item.category ?? '');
+    _tagInputController = TextEditingController();
+    _tags = List<String>.from(widget.item.tags);
+  }
+
+  @override
+  void dispose() {
+    _notesController.dispose();
+    _categoryController.dispose();
+    _tagInputController.dispose();
+    super.dispose();
+  }
+
+  void _markDirty() {
+    if (!_isDirty) setState(() => _isDirty = true);
+  }
+
+  void _addTag(String tag) {
+    final t = tag.trim();
+    if (t.isNotEmpty && !_tags.contains(t)) {
+      setState(() {
+        _tags.add(t);
+        _isDirty = true;
+      });
+    }
+    _tagInputController.clear();
+  }
+
+  void _removeTag(String tag) {
+    setState(() {
+      _tags.remove(tag);
+      _isDirty = true;
+    });
+  }
+
+  Future<void> _save() async {
+    final updated = widget.item.copyWith(
+      category: _categoryController.text.trim().isNotEmpty
+          ? _categoryController.text.trim()
+          : null,
+      tags: _tags,
+      notes: _notesController.text.trim().isNotEmpty
+          ? _notesController.text.trim()
+          : null,
+      clearCategory: _categoryController.text.trim().isEmpty,
+      clearNotes: _notesController.text.trim().isEmpty,
+    );
+    await ref
+        .read(reactionFavoritesControllerProvider.notifier)
+        .updateItem(updated);
+    setState(() => _isDirty = false);
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('已保存')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final eq = widget.item.equation;
+
+    return AppScaffold(
+      scroll: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text('ChemVISION',
+                  style: Theme.of(context).textTheme.labelLarge),
+              const Spacer(),
+              const AccentPill(label: '反应收藏'),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Text(
+            eq.title.isNotEmpty ? eq.title : '未命名反应',
+            style: Theme.of(context).textTheme.headlineMedium,
+          ),
+          if (eq.conditionSummary.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              '条件: ${eq.conditionSummary}',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+          const SizedBox(height: 16),
+
+          // SVG 预览（如果有）
+          if (eq.svgString != null && eq.svgString!.isNotEmpty)
+            GlassPanel(
+              padding: const EdgeInsets.all(16),
+              radius: 20,
+              child: Container(
+                width: double.infinity,
+                constraints: const BoxConstraints(minHeight: 120),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? AppColors.glass
+                      : AppColors.dayGlassStrong,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(
+                  child: Text(
+                    '反应方程式预览',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: isDark
+                              ? AppColors.textMuted
+                              : AppColors.dayTextMuted,
+                        ),
+                  ),
+                ),
+              ),
+            ),
+          const SizedBox(height: 16),
+
+          // 分类编辑
+          GlassPanel(
+            padding: const EdgeInsets.all(16),
+            radius: 20,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('分类', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _categoryController,
+                  onChanged: (_) => _markDirty(),
+                  decoration: const InputDecoration(
+                    hintText: '输入分类，如：有机反应、氧化还原',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // 标签编辑
+          GlassPanel(
+            padding: const EdgeInsets.all(16),
+            radius: 20,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('标签', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 8),
+                if (_tags.isNotEmpty)
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 4,
+                    children: _tags
+                        .map((tag) => Chip(
+                              label: Text(tag,
+                                  style: const TextStyle(fontSize: 12)),
+                              deleteIcon:
+                                  const Icon(Icons.close, size: 14),
+                              onDeleted: () => _removeTag(tag),
+                              visualDensity: VisualDensity.compact,
+                            ))
+                        .toList(),
+                  ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _tagInputController,
+                  onSubmitted: _addTag,
+                  decoration: InputDecoration(
+                    hintText: '输入标签，回车添加',
+                    suffixIcon: IconButton(
+                      icon: const Icon(Icons.add, size: 18),
+                      onPressed: () => _addTag(_tagInputController.text),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // 笔记
+          GlassPanel(
+            padding: const EdgeInsets.all(16),
+            radius: 20,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('笔记', style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _notesController,
+                  onChanged: (_) => _markDirty(),
+                  maxLines: 3,
+                  minLines: 2,
+                  decoration: const InputDecoration(
+                    hintText: '记录反应要点...',
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+
+          // 操作按钮
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 48,
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor:
+                          isDark ? AppColors.textPrimary : AppColors.dayTextPrimary,
+                      side: BorderSide(
+                        color: (isDark ? Colors.white : Colors.black)
+                            .withValues(alpha: 0.2),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                    ),
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('返回'),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: SizedBox(
+                  height: 48,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.edit, size: 16),
+                    label: const Text('编辑方程式'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: isDark
+                          ? AppColors.aqua
+                          : AppColors.dayBluePrimary,
+                      side: BorderSide(
+                        color: (isDark ? AppColors.aqua : AppColors.dayBluePrimary)
+                            .withValues(alpha: 0.3),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                    ),
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => ReactionEditorPage(
+                          initialEquation: eq,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: SizedBox(
+                  height: 48,
+                  child: PrimaryButton(
+                    label: _isDirty ? '保存' : '已保存',
+                    onPressed: _isDirty ? _save : null,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              SizedBox(
+                height: 48,
+                width: 48,
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.redAccent,
+                    side: const BorderSide(color: Colors.redAccent),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    padding: EdgeInsets.zero,
+                  ),
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('删除收藏'),
+                        content: const Text('确定删除此反应收藏？'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('取消'),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              ref
+                                  .read(reactionFavoritesControllerProvider
+                                      .notifier)
+                                  .delete(widget.item.id);
+                              Navigator.of(context).pop();
+                            },
+                            style: TextButton.styleFrom(
+                                foregroundColor: Colors.redAccent),
+                            child: const Text('删除'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  child: const Icon(Icons.delete_outline, size: 18),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+}

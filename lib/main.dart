@@ -6,10 +6,14 @@ import 'package:permission_handler/permission_handler.dart';
 
 import 'app.dart';
 import 'models/adapters/favorite_item_adapter.dart';
+import 'models/adapters/reaction_equation_adapter.dart';
+import 'models/adapters/reaction_favorite_item_adapter.dart';
 import 'models/adapters/structure_candidate_adapter.dart';
 import 'models/adapters/structure_result_adapter.dart';
 import 'providers/favorites_provider.dart';
+import 'providers/reaction_favorites_provider.dart';
 import 'services/favorites_service.dart';
+import 'services/reaction_favorites_service.dart';
 import 'services/search_history_service.dart';
 import 'services/app_version_service.dart';
 
@@ -92,6 +96,7 @@ class _InitializationWrapper extends StatefulWidget {
 
 class _InitializationWrapperState extends State<_InitializationWrapper> {
   FavoritesService? _favoritesService;
+  ReactionFavoritesService? _reactionFavoritesService;
   SearchHistoryService? _searchHistoryService;
   bool _initialized = false;
 
@@ -117,10 +122,17 @@ class _InitializationWrapperState extends State<_InitializationWrapper> {
         Hive.registerAdapter(StructureResultAdapter());
         Hive.registerAdapter(StructureCandidateAdapter());
         Hive.registerAdapter(FavoriteItemAdapter());
+        Hive.registerAdapter(ReactionMoleculeAdapter());
+        Hive.registerAdapter(ArrowTypeAdapter());
+        Hive.registerAdapter(ReactionEquationAdapter());
+        Hive.registerAdapter(ReactionFavoriteItemAdapter());
 
         // 初始化服务
         _favoritesService = FavoritesService();
         await _favoritesService!.init();
+
+        _reactionFavoritesService = ReactionFavoritesService();
+        await _reactionFavoritesService!.init();
 
         _searchHistoryService = SearchHistoryService();
         await _searchHistoryService!.init();
@@ -155,6 +167,7 @@ class _InitializationWrapperState extends State<_InitializationWrapper> {
     return ProviderScope(
       overrides: [
         favoritesServiceProvider.overrideWithValue(_favoritesService!),
+        reactionFavoritesServiceProvider.overrideWithValue(_reactionFavoritesService!),
         searchHistoryServiceProvider.overrideWithValue(_searchHistoryService!),
       ],
       child: const ChemVisionApp(),
