@@ -1,9 +1,41 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="theme-color" content="#000000"/><meta name="description" content="Ketcher is a web-based chemical structure editor"/><link rel="shortcut icon" type="image/x-icon" href="./favicon.ico"/><link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png"/><link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16.png"/><link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png"/><link rel="manifest" href="./manifest.json"/><title>Ketcher 889697f</title><script>/* ★ 在所有 JS 加载前设置暗色主题，确保键线颜色正确 */
-      (function(){
+<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="theme-color" content="#000000"/><meta name="description" content="Ketcher is a web-based chemical structure editor"/><link rel="shortcut icon" type="image/x-icon" href="./favicon.ico"/><link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png"/><link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16.png"/><link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png"/><link rel="manifest" href="./manifest.json"/><title>Ketcher 889697f</title><script>(function(){
         var p=new URLSearchParams(window.location.search);
         var t=p.get('theme');
         if(t==='dark'){document.documentElement.setAttribute('data-theme','dark');}
         else if(t!=='light'&&window.matchMedia('(prefers-color-scheme:dark)').matches){
           document.documentElement.setAttribute('data-theme','dark');
         }
-      })();</script><script defer="defer" src="./static/js/main.0d933a56.js"></script><link href="./static/css/main.6ea49138.css" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div></body></html>
+      })();</script><style>:root[data-theme="dark"]{color-scheme:dark}
+      :root[data-theme="dark"],:root[data-theme="dark"] body,:root[data-theme="dark"] #root{background:#0d1627!important;color:#e9eef5!important}
+      :root[data-theme="dark"] [class*="module"]{background:#0d1627!important}
+      :root[data-theme="dark"] .cliparea,:root[data-theme="dark"] [class*="StructEditor"]{background:#0f172a!important}
+      :root[data-theme="dark"] [class*="LeftToolbar"],:root[data-theme="dark"] [class*="RightToolbar"],:root[data-theme="dark"] [class*="BottomToolbar"]{background:#0f172a!important;border-color:rgba(255,255,255,.06)!important}
+      :root[data-theme="dark"] [class*="toolbar"] button,:root[data-theme="dark"] [class*="Toolbar"] button{color:#b9c7de!important;background:transparent!important;border-color:transparent!important}
+      :root[data-theme="dark"] [class*="toolbar"] button:hover,:root[data-theme="dark"] [class*="Toolbar"] button:hover{background:rgba(255,255,255,.08)!important;color:#e9eef5!important}
+      :root[data-theme="dark"] button[aria-pressed="true"],:root[data-theme="dark"] button.active{background:rgba(56,213,193,.2)!important;color:#38d5c1!important}
+      :root[data-theme="dark"] [class*="ArrowScroll"]{background:#0f172a!important;color:#b9c7de!important}
+      :root[data-theme="dark"] [class*="ArrowScroll"]:hover{background:rgba(56,213,193,.12)!important;color:#38d5c1!important}
+      :root[data-theme="dark"] [class*="Modal"],:root[data-theme="dark"] [class*="Dialog"],:root[data-theme="dark"] [class*="ContextMenu"],:root[data-theme="dark"] [class*="InfoModal"]{background:#0f172a!important;color:#e9eef5!important;border-color:rgba(255,255,255,.1)!important;box-shadow:0 4px 24px rgba(0,0,0,.5)!important}
+      :root[data-theme="dark"] [class*="MenuItem"],:root[data-theme="dark"] [class*="menu"] li{color:#b9c7de!important}
+      :root[data-theme="dark"] [class*="MenuItem"]:hover,:root[data-theme="dark"] [class*="menu"] li:hover{background:rgba(56,213,193,.15)!important;color:#e9eef5!important}
+      :root[data-theme="dark"] select,:root[data-theme="dark"] [class*="Select"]{background:#0f172a!important;color:#e9eef5!important;border-color:rgba(255,255,255,.12)!important}
+      :root[data-theme="dark"] input,:root[data-theme="dark"] textarea{background:rgba(255,255,255,.05)!important;color:#e9eef5!important;border-color:rgba(255,255,255,.12)!important}
+      :root[data-theme="dark"] input:focus,:root[data-theme="dark"] textarea:focus{border-color:#38d5c1!important}
+      :root[data-theme="dark"] input::placeholder,:root[data-theme="dark"] textarea::placeholder{color:#a9b6cb!important}
+      :root[data-theme="dark"] input[type="checkbox"],:root[data-theme="dark"] input[type="radio"]{accent-color:#38d5c1!important}
+      :root[data-theme="dark"] button:not([aria-pressed="true"]):not(.active){background:rgba(255,255,255,.06)!important;color:#e9eef5!important;border-color:rgba(255,255,255,.1)!important}
+      :root[data-theme="dark"] button:not([aria-pressed="true"]):not(.active):hover{background:rgba(255,255,255,.1)!important}
+      :root[data-theme="dark"] [role="tab"]{color:#a9b6cb!important;border-bottom-color:transparent!important}
+      :root[data-theme="dark"] [role="tab"]:hover{color:#e9eef5!important;background:rgba(255,255,255,.04)!important}
+      :root[data-theme="dark"] [role="tab"][aria-selected="true"]{color:#38d5c1!important;border-bottom-color:#38d5c1!important}
+      :root[data-theme="dark"] label,:root[data-theme="dark"] legend,:root[data-theme="dark"] span,:root[data-theme="dark"] p,:root[data-theme="dark"] h1,:root[data-theme="dark"] h2,:root[data-theme="dark"] h3,:root[data-theme="dark"] h4,:root[data-theme="dark"] h5,:root[data-theme="dark"] h6{color:#e9eef5!important}
+      :root[data-theme="dark"] a{color:#5ce0d0!important}
+      :root[data-theme="dark"] a:hover{color:#38d5c1!important}
+      :root[data-theme="dark"] hr,:root[data-theme="dark"] [class*="divider"]{border-color:rgba(255,255,255,.06)!important}
+      :root[data-theme="dark"] [class*="Settings"]{background:#0d1627!important}
+      :root[data-theme="dark"] [class*="Accordion"],:root[data-theme="dark"] [class*="accordion"]{background:#0f172a!important;border-color:rgba(255,255,255,.08)!important}
+      :root[data-theme="dark"] [class*="Tooltip"]{background:#1a2540!important;color:#e9eef5!important;border-color:rgba(255,255,255,.12)!important}
+      :root[data-theme="dark"] ::-webkit-scrollbar{width:8px;height:8px}
+      :root[data-theme="dark"] ::-webkit-scrollbar-track{background:#0d1627}
+      :root[data-theme="dark"] ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:4px}
+      :root[data-theme="dark"] ::selection{background:rgba(56,213,193,.3)!important;color:#e9eef5!important}</style><script defer="defer" src="./static/js/main.29267078.js"></script><link href="./static/css/main.6ea49138.css" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div></body></html>

@@ -53,10 +53,10 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
     final isReaction = smiles.contains('>');
 
     if (isReaction) {
-      // 反应式：直接添加到收藏夹
-      Navigator.of(context).pop({'smiles': smiles, 'name': '', 'isReaction': true});
+      // 反应式：直接返回 SMILES
+      Navigator.of(context).pop(smiles);
     } else {
-      // 结构式：弹出命名页面（AI 推测）
+      // 结构式：弹出命名页面（AI 推测），然后返回 SMILES
       final result = await Navigator.of(context).push<Map<String, String>>(
         MaterialPageRoute(
           fullscreenDialog: true,
@@ -67,7 +67,8 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
         ),
       );
       if (result != null && mounted) {
-        Navigator.of(context).pop({...result, 'isReaction': false});
+        // 返回 SMILES 字符串（兼容 result_page.dart 的 push<String>）
+        Navigator.of(context).pop(result['smiles'] ?? smiles);
       }
     }
   }
