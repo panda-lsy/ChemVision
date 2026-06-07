@@ -55,6 +55,9 @@
       :root[data-theme="dark"] .MuiPopover-paper [class*="ModeControl"],:root[data-theme="dark"] .MuiPopover-paper [class*="DropDownContent"]{background:#0f172a!important;color:#e9eef5!important}
       :root[data-theme="dark"] .MuiPopover-paper [class*="ModeControl"]:hover,:root[data-theme="dark"] .MuiPopover-paper [class*="ModeControlButton"]:hover{background:rgba(56,213,193,.15)!important}
       :root[data-theme="dark"] .MuiPopover-paper span{color:#e9eef5!important}
+      :root[data-theme="dark"] .MuiPopover-paper button{color:#b9c7de!important}
+      :root[data-theme="dark"] .MuiPopover-paper button:hover{background:rgba(56,213,193,.15)!important;color:#e9eef5!important}
+      :root[data-theme="dark"] .MuiTooltip-tooltip{background:#1a2540!important;color:#e9eef5!important;border:1px solid rgba(255,255,255,.12)!important}
       :root[data-theme="dark"] select option{background:#0f172a!important;color:#e9eef5!important}</style><script>/* ★ 运行时 DOM 翻译 - 中文本地化 */
       (function(){
         var zh={
@@ -155,10 +158,29 @@
           document.querySelectorAll('[placeholder]').forEach(function(e){var v=e.getAttribute('placeholder');if(v&&zh[v])e.setAttribute('placeholder',zh[v]);});
           document.querySelectorAll('[aria-label]').forEach(function(e){var v=e.getAttribute('aria-label');if(v&&zh[v])e.setAttribute('aria-label',zh[v]);});
         }
+        function fixDark(){
+          if(!document.documentElement.getAttribute('data-theme'))return;
+          document.querySelectorAll('.MuiPopover-paper *').forEach(function(el){
+            var bg=getComputedStyle(el).backgroundColor;
+            if(bg==='rgb(255, 255, 255)'||bg==='white'){
+              el.style.setProperty('background','#0f172a','important');
+              el.style.setProperty('background-color','#0f172a','important');
+            }
+            var color=getComputedStyle(el).color;
+            if(color==='rgb(0, 0, 0)'||color==='rgb(51, 51, 51)'){
+              el.style.setProperty('color','#e9eef5','important');
+            }
+          });
+          document.querySelectorAll('.MuiTooltip-tooltip').forEach(function(el){
+            el.style.setProperty('background','#1a2540','important');
+            el.style.setProperty('color','#e9eef5','important');
+          });
+        }
         function start(){
-          tr();
-          new MutationObserver(tr).observe(document.body,{childList:true,subtree:true,characterData:true});
-          var count=0;var iv=setInterval(function(){tr();count++;if(count>20)clearInterval(iv);},500);
+          tr();fixDark();
+          new MutationObserver(function(){tr();fixDark();}).observe(document.body,{childList:true,subtree:true,characterData:true});
+          var count=0;var iv=setInterval(function(){tr();fixDark();count++;if(count>20)clearInterval(iv);},500);
+          new MutationObserver(function(){tr();fixDark();}).observe(document.body,{childList:true});
         }
         if(document.body){start();}else{document.addEventListener('DOMContentLoaded',start);}
       })();</script><script defer="defer" src="./static/js/main.54140c15.js"></script><link href="./static/css/main.6ea49138.css" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div></body></html>

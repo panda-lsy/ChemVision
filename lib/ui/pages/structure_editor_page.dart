@@ -208,7 +208,7 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
                   child: PrimaryButton(
                       label: '保存并返回',
                       onPressed: _saveAndBack,
-                      fontSize: 14),
+                      fontSize: 13),
                 ),
               ),
             ],

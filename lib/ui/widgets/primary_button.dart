@@ -58,7 +58,7 @@ class PrimaryButton extends StatelessWidget {
             borderRadius: BorderRadius.circular(18),
             onTap: onPressed,
             child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 14),
+              padding: const EdgeInsets.symmetric(vertical: 10),
               child: Center(
                 child: Text(
                   label,
