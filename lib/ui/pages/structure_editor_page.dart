@@ -166,28 +166,17 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
     }
   }
 
-  /// 取消按钮：确认弹窗
+  /// 取消按钮：确认（使用 Navigator.push 避免 iframe z-index 问题）
   Future<void> _cancel() async {
     if (!_isDirty) {
       Navigator.of(context).pop();
       return;
     }
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('取消编辑'),
-        content: const Text('编辑内容尚未保存，确定取消？'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('继续编辑'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('确定取消'),
-          ),
-        ],
+    final confirmed = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (ctx) => _ConfirmCancelPage(),
       ),
     );
 
@@ -336,6 +325,92 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// 全屏确认页面（避免 iframe z-index 问题）
+class _ConfirmCancelPage extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF0d1627) : Colors.white,
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.warning_amber_rounded,
+                  size: 64,
+                  color: isDark ? AppColors.amber : Colors.orange,
+                ),
+                const SizedBox(height: 24),
+                Text(
+                  '取消编辑',
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  '编辑内容尚未保存，确定取消？',
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: isDark
+                            ? AppColors.textSecondary
+                            : AppColors.dayTextSecondary,
+                      ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 32),
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 48,
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: isDark
+                                ? AppColors.textPrimary
+                                : AppColors.dayTextPrimary,
+                            side: BorderSide(
+                              color: (isDark ? Colors.white : Colors.black)
+                                  .withValues(alpha: 0.2),
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                          ),
+                          onPressed: () => Navigator.pop(context, false),
+                          child: const Text('继续编辑'),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: SizedBox(
+                        height: 48,
+                        child: ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.redAccent,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                          ),
+                          onPressed: () => Navigator.pop(context, true),
+                          child: const Text('确定取消'),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

@@ -49,9 +49,7 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
   @override
   void didUpdateWidget(covariant KetcherEditorView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.initialSmiles != widget.initialSmiles && _pageReady) {
-      _postMessage('setMolecule', {'data': widget.initialSmiles});
-    }
+    // 不在 didUpdateWidget 中调用 setMolecule，避免 Ketcher 规范化 SMILES 后的反馈循环
     // 主题变化时通知 iframe
     if (oldWidget.themeMode != widget.themeMode && _pageReady) {
       final mode = widget.themeMode == ThemeMode.dark ? 'dark' : 'light';
