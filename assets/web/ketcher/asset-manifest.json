@@ -1,17 +1,17 @@
 {
   "files": {
-    "main.css": "./static/css/main.bdf7ea17.css",
-    "main.js": "./static/js/main.8f1d38b5.js",
-    "popup.css": "./static/css/popup.bdf7ea17.css",
-    "popup.js": "./static/js/popup.dfa13cc7.js",
-    "duo.css": "./static/css/duo.81575437.css",
-    "duo.js": "./static/js/duo.215e5f56.js",
-    "closable.css": "./static/css/closable.bdf7ea17.css",
-    "closable.js": "./static/js/closable.644f1d1c.js",
-    "static/js/535.c5fc3b49.chunk.js": "./static/js/535.c5fc3b49.chunk.js",
-    "static/css/622.0b48f186.chunk.css": "./static/css/622.0b48f186.chunk.css",
-    "static/js/622.93ea96d7.chunk.js": "./static/js/622.93ea96d7.chunk.js",
-    "static/js/157.41d5a402.chunk.js": "./static/js/157.41d5a402.chunk.js",
+    "main.css": "./static/css/main.931efcc1.css",
+    "main.js": "./static/js/main.3ff45c0e.js",
+    "popup.css": "./static/css/popup.ec618801.css",
+    "popup.js": "./static/js/popup.5d97d47a.js",
+    "duo.css": "./static/css/duo.5b6d8801.css",
+    "duo.js": "./static/js/duo.8a6eb5a4.js",
+    "closable.css": "./static/css/closable.ec618801.css",
+    "closable.js": "./static/js/closable.19b9b716.js",
+    "static/js/535.a9a1dcc1.chunk.js": "./static/js/535.a9a1dcc1.chunk.js",
+    "static/css/622.6d0c2d59.chunk.css": "./static/css/622.6d0c2d59.chunk.css",
+    "static/js/622.08b4ee80.chunk.js": "./static/js/622.08b4ee80.chunk.js",
+    "static/js/489.1fe2c925.chunk.js": "./static/js/489.1fe2c925.chunk.js",
     "closable.html": "./closable.html",
     "popup.html": "./popup.html",
     "duo.html": "./duo.html",
@@ -19,7 +19,7 @@
     "serve.json": "./serve.json"
   },
   "entrypoints": [
-    "static/css/main.bdf7ea17.css",
-    "static/js/main.8f1d38b5.js"
+    "static/css/main.931efcc1.css",
+    "static/js/main.3ff45c0e.js"
   ]
 }

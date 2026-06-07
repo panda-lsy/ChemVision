@@ -60,9 +60,12 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
 
   void _registerViewFactory() {
     ui.platformViewRegistry.registerViewFactory(_viewType, (int viewId) {
+      // 检测系统暗色模式
+      final isDark = html.window.matchMedia('(prefers-color-scheme: dark)').matches;
+      final themeParam = isDark ? '&theme=dark' : '&theme=light';
+
       final iframe = html.IFrameElement()
-        // Flutter Web 构建后 assets 路径为 assets/assets/web/ketcher/
-        ..src = 'assets/assets/web/ketcher/index.html?channel=$_channel'
+        ..src = 'assets/assets/web/ketcher/index.html?channel=$_channel$themeParam'
         ..style.border = 'none'
         ..style.width = '100%'
         ..style.height = '100%'
