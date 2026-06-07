@@ -38,7 +38,12 @@
       :root[data-theme="dark"] ::-webkit-scrollbar{width:8px;height:8px}
       :root[data-theme="dark"] ::-webkit-scrollbar-track{background:#0d1627}
       :root[data-theme="dark"] ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:4px}
-      :root[data-theme="dark"] ::selection{background:rgba(56,213,193,.3)!important;color:#e9eef5!important}</style><script>/* ★ 运行时 DOM 翻译 - 中文本地化 */
+      :root[data-theme="dark"] ::selection{background:rgba(56,213,193,.3)!important;color:#e9eef5!important}
+      :root[data-theme="dark"] svg line,:root[data-theme="dark"] svg path,:root[data-theme="dark"] svg polyline,:root[data-theme="dark"] svg polygon{stroke:#e9eef5!important}
+      :root[data-theme="dark"] svg text{fill:#e9eef5!important}
+      :root[data-theme="dark"] svg circle,:root[data-theme="dark"] svg ellipse{stroke:#e9eef5!important}
+      :root[data-theme="dark"] svg [fill="#000"],:root[data-theme="dark"] svg [fill="black"]{fill:#e9eef5!important}
+      :root[data-theme="dark"] svg [stroke="#000"],:root[data-theme="dark"] svg [stroke="black"]{stroke:#e9eef5!important}</style><script>/* ★ 运行时 DOM 翻译 - 中文本地化 */
       (function(){
         var zh={
           'Hand tool':'手形工具','Rectangle Selection':'矩形选择','Lasso Selection':'套索选择',
@@ -93,6 +98,10 @@
           document.querySelectorAll('[placeholder]').forEach(function(e){var v=e.getAttribute('placeholder');if(v&&zh[v])e.setAttribute('placeholder',zh[v]);});
           document.querySelectorAll('[aria-label]').forEach(function(e){var v=e.getAttribute('aria-label');if(v&&zh[v])e.setAttribute('aria-label',zh[v]);});
         }
-        function start(){tr();new MutationObserver(tr).observe(document.body,{childList:true,subtree:true});}
+        function start(){
+          tr();
+          new MutationObserver(tr).observe(document.body,{childList:true,subtree:true,characterData:true});
+          var count=0;var iv=setInterval(function(){tr();count++;if(count>20)clearInterval(iv);},500);
+        }
         if(document.body){start();}else{document.addEventListener('DOMContentLoaded',start);}
-      })();</script><script defer="defer" src="./static/js/main.7a3d81db.js"></script><link href="./static/css/main.6ea49138.css" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div></body></html>
+      })();</script><script defer="defer" src="./static/js/main.4955011f.js"></script><link href="./static/css/main.6ea49138.css" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div></body></html>
