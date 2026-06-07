@@ -81,6 +81,10 @@ flutter:
     - icon4prototype.png
     - assets/icon.png
     - assets/web/
+    - assets/web/ketcher/
+    - assets/web/ketcher/static/
+    - assets/web/ketcher/static/css/
+    - assets/web/ketcher/static/js/
     - assets/js/
     - assets/prompts/
 
