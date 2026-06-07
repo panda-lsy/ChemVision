@@ -221,7 +221,6 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardTint = isDark ? AppColors.glass : AppColors.dayGlassStrong;
     final title = widget.title ?? '结构编辑器';
 
     return AppScaffold(
@@ -229,124 +228,108 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── 标题栏 ──
           Row(
             children: [
               IconButton(
                 onPressed: _cancel,
                 icon: const Icon(Icons.arrow_back),
-                color:
-                    isDark ? AppColors.textPrimary : AppColors.dayTextPrimary,
+                color: isDark ? AppColors.textPrimary : AppColors.dayTextPrimary,
               ),
               const SizedBox(width: 4),
               Expanded(
-                child: Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleLarge,
-                  overflow: TextOverflow.ellipsis,
-                ),
+                child: Text(title, style: Theme.of(context).textTheme.titleLarge, overflow: TextOverflow.ellipsis),
               ),
-              // 导出 SVG 按钮
               IconButton(
                 onPressed: _exportSvg,
                 icon: const Icon(Icons.download, size: 20),
                 tooltip: '导出 SVG',
-                color:
-                    isDark ? AppColors.textSecondary : AppColors.dayTextSecondary,
+                color: isDark ? AppColors.textSecondary : AppColors.dayTextSecondary,
               ),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 6),
+
+          // ── Ketcher 编辑器（最大化高度） ──
           Expanded(
-            child: GlassPanel(
-              padding: const EdgeInsets.all(12),
-              radius: 20,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '使用 Ketcher 编辑器绘制化学结构。支持原子、键、环、模板等工具。',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: isDark
-                              ? AppColors.textMuted
-                              : AppColors.dayTextMuted,
-                        ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF0f172a) : Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : AppColors.dayBluePrimary.withValues(alpha: 0.12),
                   ),
-                  const SizedBox(height: 10),
-                  Expanded(
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(12),
-                      child: KetcherEditorView(
-                        initialSmiles: _currentSmiles,
-                        onControllerReady: (controller) {
-                          _controller = controller;
-                        },
-                        onSmilesUpdated: (smiles) {
-                          setState(() {
-                            _currentSmiles = smiles;
-                            _isDirty = true;
-                          });
-                        },
-                        onError: (message) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(message)),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Container(
-                    width: double.infinity,
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: cardTint,
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      'SMILES: $_currentSmiles',
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: isDark
-                                ? AppColors.textMuted
-                                : AppColors.dayTextMuted,
-                          ),
-                    ),
-                  ),
-                ],
+                ),
+                child: KetcherEditorView(
+                  initialSmiles: _currentSmiles,
+                  onControllerReady: (controller) {
+                    _controller = controller;
+                  },
+                  onSmilesUpdated: (smiles) {
+                    setState(() {
+                      _currentSmiles = smiles;
+                      _isDirty = true;
+                    });
+                  },
+                  onError: (message) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(message)),
+                    );
+                  },
+                ),
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 6),
+
+          // ── SMILES 显示（紧凑） ──
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.glass : AppColors.dayGlassStrong,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              _currentSmiles.isEmpty ? 'SMILES: （画板为空）' : 'SMILES: $_currentSmiles',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: isDark ? AppColors.textMuted : AppColors.dayTextMuted,
+                    fontFamily: 'monospace',
+                  ),
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // ── 操作按钮 ──
           Row(
             children: [
               Expanded(
                 child: SizedBox(
-                  height: 48,
+                  height: 44,
                   child: OutlinedButton(
                     style: OutlinedButton.styleFrom(
-                      foregroundColor:
-                          isDark ? AppColors.textPrimary : AppColors.dayTextPrimary,
-                      side: BorderSide(
-                        color: (isDark ? Colors.white : Colors.black)
-                            .withValues(alpha: 0.2),
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(18),
-                      ),
+                      foregroundColor: isDark ? AppColors.textPrimary : AppColors.dayTextPrimary,
+                      side: BorderSide(color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.2)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     ),
                     onPressed: _cancel,
                     child: const Text('取消'),
                   ),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 flex: 2,
-                child: PrimaryButton(
-                  label: '保存并返回',
-                  onPressed: _saveAndBack,
+                child: SizedBox(
+                  height: 44,
+                  child: PrimaryButton(label: '保存并返回', onPressed: _saveAndBack),
                 ),
               ),
             ],

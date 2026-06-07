@@ -169,13 +169,24 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
       final isDark = html.window.matchMedia('(prefers-color-scheme: dark)').matches;
       _postMessage('setTheme', {'mode': isDark ? 'dark' : 'light'});
       if (widget.initialSmiles.isNotEmpty) {
-        // 延迟设置分子，确保 Ketcher 完全初始化
-        Future.delayed(const Duration(milliseconds: 500), () {
-          _postMessage('setMolecule', {'data': widget.initialSmiles});
+        // 延迟 1.5s 确保 Ketcher 编辑器内部完全就绪后传入 SMILES
+        Future.delayed(const Duration(milliseconds: 1500), () {
+          if (mounted) {
+            _postMessage('setMolecule', {'data': widget.initialSmiles});
+          }
         });
       }
       if (widget.readOnly) {
         _postMessage('setReadOnly', {'readOnly': true});
+      }
+      return;
+    }
+
+    // SMILES 传入成功确认
+    if (type == 'onSetMoleculeSuccess' && payload is Map) {
+      final smiles = payload['smiles']?.toString();
+      if (smiles != null && smiles.isNotEmpty) {
+        widget.onSmilesUpdated?.call(smiles);
       }
       return;
     }
