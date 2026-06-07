@@ -162,9 +162,7 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
     if (type == 'onBridgeReady') {
       _pageReady = true;
       _ensureController();
-      // 应用暗色主题
-      final brightness = MediaQuery.platformBrightnessOf(html.window);
-      // 通过 JS 判断当前是否暗色模式
+      // 通过 matchMedia 判断当前是否暗色模式
       final isDark = html.window.matchMedia('(prefers-color-scheme: dark)').matches;
       _postMessage('setTheme', {'mode': isDark ? 'dark' : 'light'});
       if (widget.initialSmiles.isNotEmpty) {
