@@ -39,25 +39,12 @@ class EditHubPage extends ConsumerWidget {
           _buildEntryCard(
             context,
             isDark: isDark,
-            icon: Icons.science,
-            title: '结构式编辑器',
-            subtitle: '绘制、编辑化学结构式，支持导出 SVG',
+            icon: Icons.edit_note,
+            title: 'Ketcher 编辑器',
+            subtitle: '绘制化学结构式与反应方程式，支持导出',
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (_) => const StructureEditorPage(),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          _buildEntryCard(
-            context,
-            isDark: isDark,
-            icon: Icons.device_thermostat,
-            title: '反应式编辑器',
-            subtitle: '编辑反应方程式，支持反应物/产物/条件/箭头',
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => const ReactionEditorPage(),
               ),
             ),
           ),

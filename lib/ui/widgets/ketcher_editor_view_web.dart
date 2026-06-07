@@ -143,6 +143,9 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
           onTimeout: () => null,
         );
       },
+      triggerSave: () {
+        _postMessage('triggerSave', {});
+      },
     );
     widget.onControllerReady?.call(_controller!);
   }
@@ -172,6 +175,15 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
       }
       if (widget.readOnly) {
         _postMessage('setReadOnly', {'readOnly': true});
+      }
+      return;
+    }
+
+    // 处理源码级 SMILES 轮询更新（无 channel）
+    if (data['type'] == 'onSmilesUpdated' && data['payload'] is Map) {
+      final smiles = data['payload']['smiles']?.toString();
+      if (smiles != null && smiles.isNotEmpty) {
+        widget.onSmilesUpdated?.call(smiles);
       }
       return;
     }
