@@ -1,0 +1,13 @@
+# Third-Party Notices
+
+This project uses the following open-source libraries:
+
+## Ketcher
+- **License**: Apache License 2.0
+- **Copyright**: EPAM Systems
+- **Repository**: https://github.com/epam/ketcher
+- **Description**: Web-based chemical structure editor
+- **Modifications**: Chinese localization, dark mode theme, custom bridge script for Flutter integration
+
+## Other Dependencies
+See `pubspec.yaml` for a full list of Dart/Flutter package dependencies and their licenses.

@@ -3,10 +3,11 @@ import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 
 class PrimaryButton extends StatelessWidget {
-  const PrimaryButton({super.key, required this.label, this.onPressed});
+  const PrimaryButton({super.key, required this.label, this.onPressed, this.fontSize});
 
   final String label;
   final VoidCallback? onPressed;
+  final double? fontSize;
 
   @override
   Widget build(BuildContext context) {
@@ -68,6 +69,7 @@ class PrimaryButton extends StatelessWidget {
                                 ? AppColors.textMuted
                                 : AppColors.dayTextMuted),
                         fontWeight: FontWeight.w700,
+                        fontSize: fontSize,
                       ),
                 ),
               ),

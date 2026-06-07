@@ -50,7 +50,12 @@
       :root[data-theme="dark"] [class*="StructEditor"] svg [stroke="#000"]{stroke:#e9eef5!important}
       :root[data-theme="dark"] [class*="dropdown"],:root[data-theme="dark"] [class*="Dropdown"],:root[data-theme="dark"] [class*="popover"],:root[data-theme="dark"] [class*="Popover"]{background:#0f172a!important;color:#e9eef5!important;border-color:rgba(255,255,255,.1)!important;z-index:1000!important}
       :root[data-theme="dark"] [class*="dropdown"] li,:root[data-theme="dark"] [class*="Dropdown"] li,:root[data-theme="dark"] [class*="dropdown"] option,:root[data-theme="dark"] [class*="Dropdown"] option{color:#e9eef5!important;background:#0f172a!important}
-      :root[data-theme="dark"] [class*="dropdown"] li:hover,:root[data-theme="dark"] [class*="Dropdown"] li:hover{background:rgba(56,213,193,.15)!important}</style><script>/* ★ 运行时 DOM 翻译 - 中文本地化 */
+      :root[data-theme="dark"] [class*="dropdown"] li:hover,:root[data-theme="dark"] [class*="Dropdown"] li:hover{background:rgba(56,213,193,.15)!important}
+      :root[data-theme="dark"] .MuiPopover-paper{background:#0f172a!important;color:#e9eef5!important;border-color:rgba(255,255,255,.1)!important}
+      :root[data-theme="dark"] .MuiPopover-paper [class*="ModeControl"],:root[data-theme="dark"] .MuiPopover-paper [class*="DropDownContent"]{background:#0f172a!important;color:#e9eef5!important}
+      :root[data-theme="dark"] .MuiPopover-paper [class*="ModeControl"]:hover,:root[data-theme="dark"] .MuiPopover-paper [class*="ModeControlButton"]:hover{background:rgba(56,213,193,.15)!important}
+      :root[data-theme="dark"] .MuiPopover-paper span{color:#e9eef5!important}
+      :root[data-theme="dark"] select option{background:#0f172a!important;color:#e9eef5!important}</style><script>/* ★ 运行时 DOM 翻译 - 中文本地化 */
       (function(){
         var zh={
           'Hand tool':'手形工具','Rectangle Selection':'矩形选择','Lasso Selection':'套索选择',
@@ -113,7 +118,34 @@
           'Atom tool':'原子工具','Ring tool':'环工具','Chain tool':'链工具',
           'Reaction tool':'反应工具','Arrow tool':'箭头工具',
           'Flip horizontal':'水平翻转','Flip vertical':'垂直翻转',
-          'Center':'居中','Absolute':'绝对','And/Or':'与/或','Bonds only':'仅键'
+          'Center':'居中','Absolute':'绝对','And/Or':'与/或','Bonds only':'仅键',
+          'Clear Canvas':'清空画布','Paste':'粘贴',
+          'Reset to select tool':'重置为选择工具',
+          'Switch to Ketcher mode':'切换到分子模式','Switch to Macromolecule mode':'切换到大分子模式',
+          'Molecules':'分子模式','Macromolecules':'大分子模式',
+          'Image resolution':'图片分辨率','High':'高','Medium':'中','Low':'低',
+          'Generate Image':'生成图片','Download as SVG':'下载SVG','Download as PNG':'下载PNG',
+          'Save to SDF':'保存为SDF',
+          'Structure will be loaded as fragment and added to Clipboard':'结构将作为片段加载并添加到剪贴板',
+          'Click to add to canvas':'点击添加到画布',
+          'Functional Groups':'官能团','Functional Group Templates':'官能团模板',
+          'Structure Library':'结构库','Template Library':'模板库',
+          'Salts and Solvents':'盐和溶剂',
+          'Extended Table':'扩展元素表','Periodic Table':'元素周期表',
+          'Select descriptors':'选择描述符','3D Viewer':'3D查看器',
+          'Import Structure from Image':'从图片导入结构',
+          'Text Editor':'文本编辑器','Structure Check':'结构检查',
+          'Show stereo flags':'显示立体化学标志','Show atom indices':'显示原子索引',
+          'Show bond indices':'显示键索引','Show valence warnings':'显示化合价警告',
+          'Atom coloring':'原子着色','Hide implicit hydrogens':'隐藏隐式氢',
+          'Show charge':'显示电荷','Carbon explicitly':'显式碳',
+          'Auto-scale':'自动缩放','Rotation step':'旋转步长',
+          'Font size':'字体大小','Font':'字体','Color':'颜色','Background':'背景',
+          'Miew':'3D视图','Options':'选项','Advanced':'高级','Debug':'调试',
+          'Recognize':'识别','Analyse':'分析','Check':'检查',
+          'Add atom':'添加原子','Add bond':'添加键','Add ring':'添加环',
+          'Select tool':'选择工具','Erase tool':'擦除工具','Bond tool':'键工具',
+          'Atom tool':'原子工具','Ring tool':'环工具','Chain tool':'链工具'
         };
         function tr(){
           if(!document.body)return;
@@ -129,4 +161,4 @@
           var count=0;var iv=setInterval(function(){tr();count++;if(count>20)clearInterval(iv);},500);
         }
         if(document.body){start();}else{document.addEventListener('DOMContentLoaded',start);}
-      })();</script><script defer="defer" src="./static/js/main.fa3f0a07.js"></script><link href="./static/css/main.6ea49138.css" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div></body></html>
+      })();</script><script defer="defer" src="./static/js/main.54140c15.js"></script><link href="./static/css/main.6ea49138.css" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div></body></html>
