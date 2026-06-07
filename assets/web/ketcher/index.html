@@ -39,11 +39,18 @@
       :root[data-theme="dark"] ::-webkit-scrollbar-track{background:#0d1627}
       :root[data-theme="dark"] ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:4px}
       :root[data-theme="dark"] ::selection{background:rgba(56,213,193,.3)!important;color:#e9eef5!important}
-      :root[data-theme="dark"] svg line,:root[data-theme="dark"] svg path,:root[data-theme="dark"] svg polyline,:root[data-theme="dark"] svg polygon{stroke:#e9eef5!important}
-      :root[data-theme="dark"] svg text{fill:#e9eef5!important}
-      :root[data-theme="dark"] svg circle,:root[data-theme="dark"] svg ellipse{stroke:#e9eef5!important}
-      :root[data-theme="dark"] svg [fill="#000"],:root[data-theme="dark"] svg [fill="black"]{fill:#e9eef5!important}
-      :root[data-theme="dark"] svg [stroke="#000"],:root[data-theme="dark"] svg [stroke="black"]{stroke:#e9eef5!important}</style><script>/* ★ 运行时 DOM 翻译 - 中文本地化 */
+      :root[data-theme="dark"] .cliparea svg line,:root[data-theme="dark"] .cliparea svg path,:root[data-theme="dark"] .cliparea svg polyline,:root[data-theme="dark"] .cliparea svg polygon{stroke:#e9eef5!important}
+      :root[data-theme="dark"] .cliparea svg text{fill:#e9eef5!important}
+      :root[data-theme="dark"] .cliparea svg circle,:root[data-theme="dark"] .cliparea svg ellipse{stroke:#e9eef5!important}
+      :root[data-theme="dark"] .cliparea svg [fill="#000"],:root[data-theme="dark"] .cliparea svg [fill="black"]{fill:#e9eef5!important}
+      :root[data-theme="dark"] .cliparea svg [stroke="#000"],:root[data-theme="dark"] .cliparea svg [stroke="black"]{stroke:#e9eef5!important}
+      :root[data-theme="dark"] [class*="StructEditor"] svg line,:root[data-theme="dark"] [class*="StructEditor"] svg path{stroke:#e9eef5!important}
+      :root[data-theme="dark"] [class*="StructEditor"] svg text{fill:#e9eef5!important}
+      :root[data-theme="dark"] [class*="StructEditor"] svg [fill="#000"]{fill:#e9eef5!important}
+      :root[data-theme="dark"] [class*="StructEditor"] svg [stroke="#000"]{stroke:#e9eef5!important}
+      :root[data-theme="dark"] [class*="dropdown"],:root[data-theme="dark"] [class*="Dropdown"],:root[data-theme="dark"] [class*="popover"],:root[data-theme="dark"] [class*="Popover"]{background:#0f172a!important;color:#e9eef5!important;border-color:rgba(255,255,255,.1)!important;z-index:1000!important}
+      :root[data-theme="dark"] [class*="dropdown"] li,:root[data-theme="dark"] [class*="Dropdown"] li,:root[data-theme="dark"] [class*="dropdown"] option,:root[data-theme="dark"] [class*="Dropdown"] option{color:#e9eef5!important;background:#0f172a!important}
+      :root[data-theme="dark"] [class*="dropdown"] li:hover,:root[data-theme="dark"] [class*="Dropdown"] li:hover{background:rgba(56,213,193,.15)!important}</style><script>/* ★ 运行时 DOM 翻译 - 中文本地化 */
       (function(){
         var zh={
           'Hand tool':'手形工具','Rectangle Selection':'矩形选择','Lasso Selection':'套索选择',
@@ -88,7 +95,25 @@
           'Template Library':'模板库','Functional Group Templates':'官能团模板',
           'Salts and Solvents':'盐和溶剂',
           'Benzene':'苯','Pyridine':'吡啶','Cyclohexane':'环己烷',
-          'Furan':'呋喃','Pyrrole':'吡咯','Thiophene':'噻吩','Naphthalene':'萘','Indole':'吲哚'
+          'Furan':'呋喃','Pyrrole':'吡咯','Thiophene':'噻吩','Naphthalene':'萘','Indole':'吲哚',
+          'Reset to select tool':'重置为选择工具','Paste from clipboard':'从剪贴板粘贴',
+          'Structure Library':'结构库','Functional Group Templates':'官能团模板',
+          'Template Library':'模板库','Clean Up':'整理结构','Clean up':'整理结构',
+          'Show stereo flags':'显示立体化学标志','Show atom indices':'显示原子索引',
+          'Show bond indices':'显示键索引','Show valence warnings':'显示化合价警告',
+          'Atom coloring':'原子着色','Hide implicit hydrogens':'隐藏隐式氢',
+          'Show charge':'显示电荷','Carbon explicitly':'显式碳',
+          'Auto-scale':'自动缩放','Rotation step':'旋转步长',
+          'Font size':'字体大小','Font':'字体','Color':'颜色','Background':'背景',
+          'Miew':'3D视图','Zoom In':'放大','Zoom Out':'缩小','Zoom to Fit':'适应窗口',
+          'Recognize':'识别','Analyse':'分析','Check':'检查',
+          'Options':'选项','Advanced':'高级','Debug':'调试',
+          'Add atom':'添加原子','Add bond':'添加键','Add ring':'添加环',
+          'Select tool':'选择工具','Erase tool':'擦除工具','Bond tool':'键工具',
+          'Atom tool':'原子工具','Ring tool':'环工具','Chain tool':'链工具',
+          'Reaction tool':'反应工具','Arrow tool':'箭头工具',
+          'Flip horizontal':'水平翻转','Flip vertical':'垂直翻转',
+          'Center':'居中','Absolute':'绝对','And/Or':'与/或','Bonds only':'仅键'
         };
         function tr(){
           if(!document.body)return;
@@ -104,4 +129,4 @@
           var count=0;var iv=setInterval(function(){tr();count++;if(count>20)clearInterval(iv);},500);
         }
         if(document.body){start();}else{document.addEventListener('DOMContentLoaded',start);}
-      })();</script><script defer="defer" src="./static/js/main.4955011f.js"></script><link href="./static/css/main.6ea49138.css" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div></body></html>
+      })();</script><script defer="defer" src="./static/js/main.fa3f0a07.js"></script><link href="./static/css/main.6ea49138.css" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div></body></html>
