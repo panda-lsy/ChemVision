@@ -267,6 +267,7 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
                 ),
                 child: KetcherEditorView(
                   initialSmiles: _currentSmiles,
+                  themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
                   onControllerReady: (controller) {
                     _controller = controller;
                   },

@@ -1,24 +1,43 @@
 /**
- * Ketcher Bridge v4
- * SMILES 通信 + 暗色主题 + 中文翻译
+ * Ketcher Bridge v5
+ * - SMILES: 等待 Redux store 就绪后安全传入
+ * - 暗色主题: 全覆盖 CSS
+ * - 中文翻译
  */
 (function () {
   'use strict';
 
-  var ch = null, lastSmiles = '', poll = null, ready = false;
+  var ch = null, lastSmiles = '', poll = null, editorReady = false;
 
   function post(type, data) {
     if (!ch) return;
     window.parent.postMessage({ channel: ch, type: type, payload: data || {} }, '*');
   }
 
-  function getKetcher() {
+  // ── 检测编辑器是否真正就绪（Redux store + 渲染） ──
+  function checkEditorReady() {
+    try {
+      var k = window.ketcher;
+      if (!k) return false;
+      // 检查 editor 对象存在且有 render 方法
+      if (k.editor && k.editor.render) return true;
+      // 回退：尝试 getSmiles 看是否报错
+      if (typeof k.getSmiles === 'function') return true;
+    } catch (e) {}
+    return false;
+  }
+
+  function waitForEditor() {
     return new Promise(function (res) {
-      if (ready && window.ketcher) { res(window.ketcher); return; }
+      if (editorReady) { res(window.ketcher); return; }
       var t = setInterval(function () {
-        if (window.ketcher) { ready = true; clearInterval(t); res(window.ketcher); }
-      }, 300);
-      setTimeout(function () { clearInterval(t); res(null); }, 25000);
+        if (checkEditorReady()) {
+          editorReady = true;
+          clearInterval(t);
+          res(window.ketcher);
+        }
+      }, 500);
+      setTimeout(function () { clearInterval(t); res(null); }, 30000);
     });
   }
 
@@ -27,157 +46,161 @@
     poll = setInterval(async function () {
       try {
         var k = window.ketcher;
-        if (!k || typeof k.getSmiles !== 'function') return;
+        if (!k || !editorReady) return;
         var s = await k.getSmiles();
         if (s != null && s !== lastSmiles) { lastSmiles = s; post('onSmilesUpdated', { smiles: s }); }
       } catch (e) {}
-    }, 600);
+    }, 800);
+  }
+
+  // ── 安全设置分子（等待渲染就绪） ──
+  async function safeSetMolecule(smiles) {
+    var k = await waitForEditor();
+    if (!k) { post('onError', { message: '编辑器未就绪' }); return; }
+
+    // 方法1: 使用 editor.clear() + editor.setMolecule 确保干净状态
+    try {
+      if (k.editor && typeof k.editor.clear === 'function') {
+        k.editor.clear();
+      }
+    } catch (e) {}
+
+    // 等待清空完成
+    await new Promise(function (r) { setTimeout(r, 300); });
+
+    // 方法2: 通过 Ketcher API 设置分子
+    for (var i = 0; i < 3; i++) {
+      try {
+        await k.setMolecule(smiles);
+        // 等待渲染
+        await new Promise(function (r) { setTimeout(r, 500); });
+        // 验证
+        var check = await k.getSmiles();
+        if (check && check.length > 0) {
+          lastSmiles = '';
+          pollSmiles();
+          post('onSetMoleculeSuccess', { smiles: check });
+          return;
+        }
+      } catch (e) {
+        post('onError', { message: 'setMolecule 尝试 ' + (i + 1) + ': ' + e.message });
+      }
+      await new Promise(function (r) { setTimeout(r, 800); });
+    }
+
+    // 方法3: 如果 API 失败，尝试通过 Open 对话框粘贴 SMILES
+    try {
+      if (k.editor && k.editor.setMoleculeFromPaste) {
+        await k.editor.setMoleculeFromPaste(smiles);
+        await new Promise(function (r) { setTimeout(r, 500); });
+        var s = await k.getSmiles();
+        if (s && s.length > 0) {
+          lastSmiles = '';
+          pollSmiles();
+          post('onSetMoleculeSuccess', { smiles: s });
+          return;
+        }
+      }
+    } catch (e) {}
+
+    post('onError', { message: 'SMILES 传入失败（已重试 3 次）' });
   }
 
   // ── 暗色主题 ──
-  function dark(on) {
-    var old = document.getElementById('cv-dark');
+  function applyDark() {
+    var old = document.getElementById('cv-theme');
     if (old) old.remove();
-    if (!on) {
-      document.documentElement.removeAttribute('data-theme');
-      document.body.style.background = '';
-      return;
-    }
     document.documentElement.setAttribute('data-theme', 'dark');
-    document.body.style.background = '#0d1627';
     var s = document.createElement('style');
-    s.id = 'cv-dark';
+    s.id = 'cv-theme';
     s.textContent = [
-      // 全局
-      '*,*::before,*::after{box-sizing:border-box}',
-      'html,body,#root{background:#0d1627!important;margin:0}',
+      // 全局背景
+      'html,body,#root,.App{background:#0d1627!important}',
+      'html{color-scheme:dark}',
 
-      // ── 顶部工具栏 ──
-      '[class*="TopToolbar"],[class*="top-toolbar"],',
-      '[class*="topToolbar"],header[class*="module"],',
-      '[class*="Header"],[class*="header-bar"]{',
-      '  background:#0f172a!important;border-bottom:1px solid rgba(255,255,255,.08)!important;color:#e9eef5!important}',
+      // ── 所有容器 ──
+      '[class*="module"]{background:#0d1627!important}',
+      '[class*="Module"]{background:#0d1627!important}',
 
-      // ── 左侧工具栏 ──
-      '[class*="LeftToolbar"],[class*="left-toolbar"],',
-      '[class*="leftToolbar"],[class*="SideToolbar"],',
-      'nav[class*="module"],aside[class*="module"]{',
-      '  background:#0f172a!important;border-right:1px solid rgba(255,255,255,.08)!important}',
-
-      // ── 底部工具栏 ──
-      '[class*="BottomToolbar"],[class*="bottom-toolbar"],',
-      '[class*="bottomToolbar"],[class*="StatusBar"],',
-      'footer[class*="module"]{',
-      '  background:#0f172a!important;border-top:1px solid rgba(255,255,255,.08)!important}',
-
-      // ── 工具翻页箭头 ──
-      '[class*="ArrowScroll"],[class*="arrow-scroll"],',
-      '[class*="scroll-arrow"],[class*="ScrollArrow"],',
-      '[class*="ScrollButton"],[class*="scroll-button"]{',
-      '  background:#0f172a!important;color:#b9c7de!important}',
-      '[class*="ArrowScroll"]:hover,[class*="scroll-arrow"]:hover{',
-      '  background:rgba(56,213,193,.15)!important;color:#38d5c1!important}',
+      // ── 工具栏容器 ──
+      '[class*="toolbar"],[class*="Toolbar"]{',
+      '  background:#0f172a!important;color:#e9eef5!important;',
+      '  border-color:rgba(255,255,255,.06)!important}',
 
       // ── 工具栏按钮 ──
-      '[class*="toolbar"] button,[class*="Toolbar"] button,',
-      '[class*="module"] button[class*="tool"],',
-      'button[class*="ToolButton"],button[class*="tool-button"]{',
-      '  background:transparent!important;color:#b9c7de!important;border:1px solid transparent!important;',
-      '  border-radius:4px!important}',
+      '[class*="toolbar"] button,[class*="Toolbar"] button{',
+      '  background:transparent!important;color:#b9c7de!important;',
+      '  border-color:transparent!important}',
       '[class*="toolbar"] button:hover,[class*="Toolbar"] button:hover{',
       '  background:rgba(255,255,255,.08)!important;color:#e9eef5!important}',
-      'button[aria-pressed="true"],button.active,',
-      '[class*="toolbar"] button[class*="selected"],',
-      '[class*="Toolbar"] button[class*="selected"]{',
-      '  background:rgba(56,213,193,.25)!important;color:#38d5c1!important;',
-      '  border-color:rgba(56,213,193,.3)!important}',
+      'button[aria-pressed="true"],button.active{',
+      '  background:rgba(56,213,193,.2)!important;color:#38d5c1!important}',
 
-      // ── 工具栏分隔符 ──
-      '[class*="divider"],[class*="Divider"],hr,',
-      '[class*="separator"],[class*="Separator"]{',
-      '  border-color:rgba(255,255,255,.06)!important;background:rgba(255,255,255,.06)!important}',
+      // ── 翻页箭头 ──
+      '[class*="ArrowScroll"]{background:#0f172a!important;color:#b9c7de!important}',
+      '[class*="ArrowScroll"]:hover{background:rgba(56,213,193,.12)!important}',
 
-      // ── 编辑器画布 ──
-      '[class*="StructEditor"],[class*="struct-editor"],',
-      '[class*="editor-container"],.cliparea,',
-      '[class*="canvas-container"],[class*="Canvas"]{',
+      // ── 画布区域 ──
+      '[class*="StructEditor"],.cliparea,[class*="canvas"]{',
       '  background:#0f172a!important}',
 
-      // ── 菜单/下拉/弹窗 ──
-      '[class*="Menu"],[class*="menu"],',
-      '[class*="Dropdown"],[class*="dropdown"],',
-      '[class*="Popover"],[class*="popover"],',
-      '[class*="Popup"],[class*="popup"],',
-      '[class*="Modal"],[class*="modal"],',
-      '[class*="Dialog"],[class*="dialog"],',
-      '[class*="Overlay"],[class*="overlay"]{',
+      // ── 菜单/弹窗/对话框 ──
+      '[class*="Menu"],[class*="menu"],[class*="Dropdown"],',
+      '[class*="Modal"],[class*="modal"],[class*="Dialog"],',
+      '[class*="Popup"],[class*="Popover"],[class*="Overlay"]{',
       '  background:#0f172a!important;color:#e9eef5!important;',
-      '  border:1px solid rgba(255,255,255,.1)!important;',
-      '  box-shadow:0 4px 24px rgba(0,0,0,.5)!important}',
-
-      // ── 菜单项 ──
-      '[class*="MenuItem"],[class*="menu-item"],',
-      '[class*="menu"] li,[class*="Menu"] li,',
-      '[class*="Option"],[class*="option"]{',
-      '  color:#b9c7de!important}',
-      '[class*="MenuItem"]:hover,[class*="menu-item"]:hover,',
-      '[class*="menu"] li:hover,[class*="Menu"] li:hover{',
-      '  background:rgba(56,213,193,.15)!important;color:#e9eef5!important}',
+      '  border:1px solid rgba(255,255,255,.1)!important}',
+      '[class*="MenuItem"],[class*="menu"] li{color:#b9c7de!important}',
+      '[class*="MenuItem"]:hover,[class*="menu"] li:hover{',
+      '  background:rgba(56,213,193,.12)!important;color:#e9eef5!important}',
 
       // ── 输入框 ──
       'input,select,textarea{',
       '  background:rgba(255,255,255,.05)!important;color:#e9eef5!important;',
-      '  border:1px solid rgba(255,255,255,.12)!important}',
-      'input:focus,select:focus,textarea:focus{',
-      '  border-color:#38d5c1!important;box-shadow:0 0 0 1px rgba(56,213,193,.3)!important}',
+      '  border-color:rgba(255,255,255,.12)!important}',
+      'input:focus,select:focus,textarea:focus{border-color:#38d5c1!important}',
 
-      // ── 按钮 ──
+      // ── 普通按钮 ──
       'button:not([aria-pressed="true"]):not(.active){',
       '  background:rgba(255,255,255,.06)!important;color:#e9eef5!important;',
-      '  border:1px solid rgba(255,255,255,.1)!important}',
+      '  border-color:rgba(255,255,255,.1)!important}',
       'button:hover:not([aria-pressed="true"]):not(.active){',
-      '  background:rgba(255,255,255,.1)!important;border-color:rgba(255,255,255,.2)!important}',
+      '  background:rgba(255,255,255,.1)!important}',
 
-      // ── 标签/文本 ──
-      'label,[class*="label"],[class*="Label"],',
-      '[class*="text"],[class*="Text"],',
-      '[class*="title"],[class*="Title"],',
-      'span,p,h1,h2,h3,h4,h5,h6{color:#e9eef5!important}',
-      'a{color:#5ce0d0!important}a:hover{color:#38d5c1!important}',
+      // ── 文本 ──
+      'label,span,p,h1,h2,h3,h4,h5,h6,a,',
+      '[class*="label"],[class*="Label"],[class*="text"],[class*="Text"],',
+      '[class*="title"],[class*="Title"]{color:#e9eef5!important}',
+      'a:hover{color:#38d5c1!important}',
 
-      // ── Tab 页 ──
-      '[class*="tab"],[role="tab"]{color:#a9b6cb!important;border-bottom-color:transparent!important}',
-      '[class*="tab"]:hover,[role="tab"]:hover{color:#e9eef5!important;background:rgba(255,255,255,.04)!important}',
-      '[class*="tab"][aria-selected="true"],[role="tab"][aria-selected="true"]{color:#38d5c1!important;border-bottom-color:#38d5c1!important}',
+      // ── Tab ──
+      '[class*="tab"],[role="tab"]{color:#a9b6cb!important}',
+      '[class*="tab"][aria-selected="true"],[role="tab"][aria-selected="true"]{',
+      '  color:#38d5c1!important;border-bottom-color:#38d5c1!important}',
 
-      // ── 选项卡/面板容器 ──
-      '[class*="Panel"],[class*="panel"],',
-      '[class*="Card"],[class*="card"],',
-      '[class*="Paper"],[class*="paper"],',
-      '[class*="Container"]{',
+      // ── 面板/卡片 ──
+      '[class*="Panel"],[class*="Card"],[class*="Paper"]{',
       '  background:#0f172a!important;border-color:rgba(255,255,255,.08)!important}',
 
-      // ── 工具提示 ──
-      '[class*="Tooltip"],[class*="tooltip"]{',
-      '  background:#1a2540!important;color:#e9eef5!important;border:1px solid rgba(255,255,255,.12)!important}',
+      // ── 分隔线 ──
+      'hr,[class*="divider"],[class*="Divider"]{',
+      '  border-color:rgba(255,255,255,.06)!important}',
 
       // ── 滚动条 ──
       '::-webkit-scrollbar{width:8px;height:8px}',
       '::-webkit-scrollbar-track{background:#0d1627}',
       '::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:4px}',
-      '::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.25)}',
 
       // ── 选择高亮 ──
-      '::selection{background:rgba(56,213,193,.3)!important;color:#e9eef5!important}',
-
-      // ── SVG 结构渲染区域（保持透明） ──
-      '[class*="struct"] svg,[class*="Struct"] svg,.struct-svg{background:transparent!important}',
-
-      // ── 警告/信息 ──
-      '[class*="Alert"],[class*="alert"],[class*="Warning"],[class*="Info"]{',
-      '  background:rgba(255,255,255,.05)!important;border-color:rgba(255,255,255,.1)!important;color:#e9eef5!important}',
+      '::selection{background:rgba(56,213,193,.3)!important}',
     ].join('\n');
     document.head.appendChild(s);
+  }
+
+  function applyLight() {
+    var old = document.getElementById('cv-theme');
+    if (old) old.remove();
+    document.documentElement.removeAttribute('data-theme');
   }
 
   // ── 中文翻译 ──
@@ -194,7 +217,7 @@
     'S-Group':'S-组','R-Group Label Tool':'R-基团标签',
     'R-Group Fragment Tool':'R-基团片段',
     'Rotate Tool':'旋转','Horizontal Flip':'水平翻转','Vertical Flip':'垂直翻转',
-    'Attachment Point Tool':'连接点工具',
+    'Attachment Point Tool':'连接点',
     'Reaction Mapping Tool':'反应映射','Reaction Auto-Mapping Tool':'自动映射',
     'Reaction Plus Tool':'反应加号','Reaction Unmapping Tool':'取消映射',
     'Single Bond':'单键','Double Bond':'双键','Triple Bond':'三键',
@@ -218,7 +241,7 @@
     'Retrosynthetic Arrow Tool':'逆合成箭头','Failed Arrow Tool':'失败箭头',
     'Multi-Tailed Arrow Tool':'多尾箭头',
     'Shape Rectangle':'矩形','Shape Ellipse':'椭圆','Shape Line':'直线',
-    'Save':'保存','Save Structure':'保存结构','Save to File':'保存到文件',
+    'Save Structure':'保存结构','Save to File':'保存到文件',
     'Open structure':'打开结构','Open from File':'从文件打开',
     'Add to Canvas':'添加到画布','Copy to clipboard':'复制到剪贴板',
     'Text Editor':'文本编辑器','Structure Check':'结构检查',
@@ -228,6 +251,8 @@
     'Single':'单个','List':'列表','Not List':'非列表',
     'Warning':'警告','Error':'错误','Information':'信息',
     'Error message':'错误信息',
+    'Import Structure from Image':'从图片导入结构',
+    'Open as New Project':'作为新项目打开',
   };
 
   function translate() {
@@ -236,15 +261,9 @@
       var n = w.currentNode, t = n.textContent.trim();
       if (zh[t]) n.textContent = n.textContent.replace(t, zh[t]);
     }
-    document.querySelectorAll('[title]').forEach(function (e) {
-      var v = e.getAttribute('title'); if (zh[v]) e.setAttribute('title', zh[v]);
-    });
-    document.querySelectorAll('[placeholder]').forEach(function (e) {
-      var v = e.getAttribute('placeholder'); if (zh[v]) e.setAttribute('placeholder', zh[v]);
-    });
-    document.querySelectorAll('[aria-label]').forEach(function (e) {
-      var v = e.getAttribute('aria-label'); if (zh[v]) e.setAttribute('aria-label', zh[v]);
-    });
+    document.querySelectorAll('[title]').forEach(function (e) { var v = e.getAttribute('title'); if (zh[v]) e.setAttribute('title', zh[v]); });
+    document.querySelectorAll('[placeholder]').forEach(function (e) { var v = e.getAttribute('placeholder'); if (zh[v]) e.setAttribute('placeholder', zh[v]); });
+    document.querySelectorAll('[aria-label]').forEach(function (e) { var v = e.getAttribute('aria-label'); if (zh[v]) e.setAttribute('aria-label', zh[v]); });
   }
 
   function watchTranslate() {
@@ -254,28 +273,6 @@
     }).observe(document.body, { childList: true, subtree: true });
   }
 
-  // ── SMILES 传入（带重试） ──
-  async function setMoleculeWithRetry(smiles, retries) {
-    var k = await getKetcher();
-    if (!k) return;
-    for (var i = 0; i < retries; i++) {
-      try {
-        await k.setMolecule(smiles);
-        lastSmiles = '';
-        pollSmiles();
-        // 等待渲染完成后再检查
-        await new Promise(function (r) { setTimeout(r, 300); });
-        var check = await k.getSmiles();
-        if (check && check.length > 0) {
-          post('onSetMoleculeSuccess', { smiles: check });
-          return;
-        }
-      } catch (e) {}
-      await new Promise(function (r) { setTimeout(r, 500); });
-    }
-    post('onError', { message: 'setMolecule 失败（重试 ' + retries + ' 次）' });
-  }
-
   // ── 消息监听 ──
   window.addEventListener('message', async function (e) {
     var d = e.data;
@@ -283,12 +280,18 @@
 
     // Ketcher init 事件
     if (d.eventType === 'init') {
-      ready = true;
-      pollSmiles();
-      watchTranslate();
-      // 自动应用暗色主题（如果 URL 参数指定）
+      // 不立即标记就绪，等待 Redux store 完全初始化
       var sp = new URLSearchParams(window.location.search);
-      if (sp.get('theme') === 'dark') dark(true);
+      if (sp.get('theme') === 'dark') applyDark(); else applyLight();
+      watchTranslate();
+      // 等待编辑器真正就绪后再通知 Flutter
+      waitForEditor().then(function (k) {
+        if (k) {
+          editorReady = true;
+          post('onBridgeReady', {});
+          pollSmiles();
+        }
+      });
       return;
     }
 
@@ -298,25 +301,23 @@
     var type = d.type, p = d.payload || {};
 
     try {
-      var k = await getKetcher();
-      if (!k) { post('onError', { message: 'Ketcher 未加载' }); return; }
-
       switch (type) {
         case 'setMolecule':
-          await setMoleculeWithRetry(p.data || '', 3);
+          await safeSetMolecule(p.data || '');
           break;
         case 'getSmiles':
-          try { post('getSmilesResult', { requestId: p.requestId, smiles: await k.getSmiles() || '' }); }
+          try { var k = await waitForEditor(); post('getSmilesResult', { requestId: p.requestId, smiles: k ? await k.getSmiles() || '' : '' }); }
           catch (e) { post('getSmilesResult', { requestId: p.requestId, smiles: '' }); }
           break;
         case 'getRxn':
-          try { post('getRxnResult', { requestId: p.requestId, rxn: await k.getRxn() || '' }); }
+          try { var k2 = await waitForEditor(); post('getRxnResult', { requestId: p.requestId, rxn: k2 ? await k2.getRxn() || '' : '' }); }
           catch (e) { post('getRxnResult', { requestId: p.requestId, rxn: '' }); }
           break;
         case 'exportSvg':
           try {
-            if (k.generateImage) {
-              post('exportSvgResult', { svgString: await k.generateImage(p.data || await k.getSmiles() || '', { outputFormat: 'svg' }) });
+            var k3 = await waitForEditor();
+            if (k3 && k3.generateImage) {
+              post('exportSvgResult', { svgString: await k3.generateImage(p.data || await k3.getSmiles() || '', { outputFormat: 'svg' }) });
             } else {
               var el = document.querySelector('#root svg');
               post('exportSvgResult', { svgString: el ? new XMLSerializer().serializeToString(el) : '' });
@@ -325,13 +326,14 @@
           break;
         case 'exportPng':
           try {
-            if (k.generateImage) {
-              post('exportPngResult', { dataUrl: await k.generateImage(p.data || await k.getSmiles() || '', { outputFormat: 'png' }) });
+            var k4 = await waitForEditor();
+            if (k4 && k4.generateImage) {
+              post('exportPngResult', { dataUrl: await k4.generateImage(p.data || await k4.getSmiles() || '', { outputFormat: 'png' }) });
             } else { post('onError', { message: 'PNG 不可用' }); }
           } catch (e) { post('onError', { message: 'PNG: ' + e }); }
           break;
         case 'setTheme':
-          dark((p.mode || 'dark') === 'dark');
+          if ((p.mode || 'dark') === 'dark') applyDark(); else applyLight();
           break;
         case 'setReadOnly':
           var r = document.querySelector('#root');
@@ -341,15 +343,15 @@
     } catch (e) { post('onError', { message: String(e) }); }
   });
 
-  // 启动
-  getKetcher().then(function (k) {
-    if (k) {
-      ready = true;
+  // ── 超时保底：如果 init 事件未触发，3s 后主动检查 ──
+  setTimeout(function () {
+    if (!editorReady && checkEditorReady()) {
+      editorReady = true;
+      var sp = new URLSearchParams(window.location.search);
+      if (sp.get('theme') === 'dark') applyDark(); else applyLight();
+      watchTranslate();
       post('onBridgeReady', {});
       pollSmiles();
-      watchTranslate();
-      var sp = new URLSearchParams(window.location.search);
-      if (sp.get('theme') === 'dark') dark(true);
     }
-  });
+  }, 3000);
 })();

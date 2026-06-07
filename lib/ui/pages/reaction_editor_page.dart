@@ -197,6 +197,7 @@ class _ReactionEditorPageState extends ConsumerState<ReactionEditorPage> {
                 borderRadius: BorderRadius.circular(16),
                 child: KetcherEditorView(
                   initialSmiles: _equation.rxnData ?? '',
+                  themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
                   onControllerReady: (controller) {
                     _controller = controller;
                   },

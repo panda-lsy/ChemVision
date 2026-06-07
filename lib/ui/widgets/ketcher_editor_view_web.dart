@@ -14,6 +14,7 @@ class KetcherEditorView extends StatefulWidget {
     this.onSmilesUpdated,
     this.onError,
     this.readOnly = false,
+    this.themeMode = ThemeMode.dark,
   });
 
   final String initialSmiles;
@@ -21,6 +22,7 @@ class KetcherEditorView extends StatefulWidget {
   final ValueChanged<String>? onSmilesUpdated;
   final ValueChanged<String>? onError;
   final bool readOnly;
+  final ThemeMode themeMode;
 
   @override
   State<KetcherEditorView> createState() => _KetcherEditorViewState();
@@ -50,6 +52,11 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
     if (oldWidget.initialSmiles != widget.initialSmiles && _pageReady) {
       _postMessage('setMolecule', {'data': widget.initialSmiles});
     }
+    // 主题变化时通知 iframe
+    if (oldWidget.themeMode != widget.themeMode && _pageReady) {
+      final mode = widget.themeMode == ThemeMode.dark ? 'dark' : 'light';
+      _postMessage('setTheme', {'mode': mode});
+    }
   }
 
   @override
@@ -58,23 +65,19 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
     super.dispose();
   }
 
+  String get _themeParam {
+    final mode = widget.themeMode == ThemeMode.dark ? 'dark' : 'light';
+    return '&theme=$mode';
+  }
+
   void _registerViewFactory() {
     ui.platformViewRegistry.registerViewFactory(_viewType, (int viewId) {
-      // 检测系统暗色模式
-      final isDark = html.window.matchMedia('(prefers-color-scheme: dark)').matches;
-      final themeParam = isDark ? '&theme=dark' : '&theme=light';
-
       final iframe = html.IFrameElement()
-        ..src = 'assets/assets/web/ketcher/index.html?channel=$_channel$themeParam'
+        ..src = 'assets/assets/web/ketcher/index.html?channel=$_channel$_themeParam'
         ..style.border = 'none'
         ..style.width = '100%'
         ..style.height = '100%'
         ..style.backgroundColor = 'transparent';
-
-      iframe.onLoad.listen((_) {
-        // Bridge script will send onBridgeReady
-      });
-
       _iframe = iframe;
       return iframe;
     });
@@ -165,16 +168,12 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
     if (type == 'onBridgeReady') {
       _pageReady = true;
       _ensureController();
-      // 通过 matchMedia 判断当前是否暗色模式
-      final isDark = html.window.matchMedia('(prefers-color-scheme: dark)').matches;
-      _postMessage('setTheme', {'mode': isDark ? 'dark' : 'light'});
+      // 通知主题
+      final mode = widget.themeMode == ThemeMode.dark ? 'dark' : 'light';
+      _postMessage('setTheme', {'mode': mode});
+      // 延迟传入 SMILES，等待 Ketcher 内部 Redux store 完全就绪
       if (widget.initialSmiles.isNotEmpty) {
-        // 延迟 1.5s 确保 Ketcher 编辑器内部完全就绪后传入 SMILES
-        Future.delayed(const Duration(milliseconds: 1500), () {
-          if (mounted) {
-            _postMessage('setMolecule', {'data': widget.initialSmiles});
-          }
-        });
+        _sendSmilesWithRetry(widget.initialSmiles, retries: 3);
       }
       if (widget.readOnly) {
         _postMessage('setReadOnly', {'readOnly': true});
@@ -182,7 +181,6 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
       return;
     }
 
-    // SMILES 传入成功确认
     if (type == 'onSetMoleculeSuccess' && payload is Map) {
       final smiles = payload['smiles']?.toString();
       if (smiles != null && smiles.isNotEmpty) {
@@ -222,6 +220,28 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
       completer?.complete(rxn);
       return;
     }
+  }
+
+  /// 带重试的 SMILES 传入
+  void _sendSmilesWithRetry(String smiles, {int retries = 3}) {
+    var attempt = 0;
+    void trySend() {
+      attempt++;
+      _postMessage('setMolecule', {'data': smiles});
+      // 等待确认，如果 2s 内没有成功确认且还有重试次数，则重试
+      if (attempt < retries) {
+        Future.delayed(const Duration(seconds: 2), () {
+          if (mounted && _pageReady) {
+            // 检查是否已收到成功确认（通过 _lastSmilesUpdated 判断）
+            trySend();
+          }
+        });
+      }
+    }
+    // 首次延迟 2s 等待 Redux store 就绪
+    Future.delayed(const Duration(seconds: 2), () {
+      if (mounted) trySend();
+    });
   }
 
   @override
