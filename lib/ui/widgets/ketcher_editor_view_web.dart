@@ -161,25 +161,27 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
 
   void _handleMessage(html.MessageEvent event) {
     final data = event.data;
-    if (data is! Map || data['channel'] != _channel) return;
-    final type = data['type'];
-    final payload = data['payload'];
+    if (data is! Map) return;
 
-    if (type == 'onBridgeReady') {
+    // 处理 Ketcher 源码发送的 init 事件（无 channel）
+    if (data['eventType'] == 'init') {
       _pageReady = true;
       _ensureController();
-      // 通知主题
       final mode = widget.themeMode == ThemeMode.dark ? 'dark' : 'light';
       _postMessage('setTheme', {'mode': mode});
-      // 延迟传入 SMILES，等待 Ketcher 内部 Redux store 完全就绪
       if (widget.initialSmiles.isNotEmpty) {
-        _sendSmilesWithRetry(widget.initialSmiles, retries: 3);
+        _postMessage('setMolecule', {'data': widget.initialSmiles});
       }
       if (widget.readOnly) {
         _postMessage('setReadOnly', {'readOnly': true});
       }
       return;
     }
+
+    // 处理带 channel 的消息
+    if (data['channel'] != _channel) return;
+    final type = data['type'];
+    final payload = data['payload'];
 
     if (type == 'onSetMoleculeSuccess' && payload is Map) {
       final smiles = payload['smiles']?.toString();
@@ -220,28 +222,6 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
       completer?.complete(rxn);
       return;
     }
-  }
-
-  /// 带重试的 SMILES 传入
-  void _sendSmilesWithRetry(String smiles, {int retries = 3}) {
-    var attempt = 0;
-    void trySend() {
-      attempt++;
-      _postMessage('setMolecule', {'data': smiles});
-      // 等待确认，如果 2s 内没有成功确认且还有重试次数，则重试
-      if (attempt < retries) {
-        Future.delayed(const Duration(seconds: 2), () {
-          if (mounted && _pageReady) {
-            // 检查是否已收到成功确认（通过 _lastSmilesUpdated 判断）
-            trySend();
-          }
-        });
-      }
-    }
-    // 首次延迟 2s 等待 Redux store 就绪
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted) trySend();
-    });
   }
 
   @override
