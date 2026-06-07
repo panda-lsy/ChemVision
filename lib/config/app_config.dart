@@ -3,7 +3,6 @@ class AppConfig {
   static const Duration mockDelay = Duration(milliseconds: 900);
   static const String renderEngineName = 'WebView + smiles-drawer';
   static const String localWebEntry = 'assets/web/index.html';
-  static const String localJsmeEditorEntry = 'assets/web/editor_jsme.html';
 
   /// Ketcher 编辑器入口（移动端使用 asset 路径）
   static const String ketcherEntry = 'assets/web/ketcher/index.html';

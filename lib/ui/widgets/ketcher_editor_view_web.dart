@@ -162,8 +162,16 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
     if (type == 'onBridgeReady') {
       _pageReady = true;
       _ensureController();
+      // 应用暗色主题
+      final brightness = MediaQuery.platformBrightnessOf(html.window);
+      // 通过 JS 判断当前是否暗色模式
+      final isDark = html.window.matchMedia('(prefers-color-scheme: dark)').matches;
+      _postMessage('setTheme', {'mode': isDark ? 'dark' : 'light'});
       if (widget.initialSmiles.isNotEmpty) {
-        _postMessage('setMolecule', {'data': widget.initialSmiles});
+        // 延迟设置分子，确保 Ketcher 完全初始化
+        Future.delayed(const Duration(milliseconds: 500), () {
+          _postMessage('setMolecule', {'data': widget.initialSmiles});
+        });
       }
       if (widget.readOnly) {
         _postMessage('setReadOnly', {'readOnly': true});

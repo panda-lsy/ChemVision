@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../config/app_config.dart';
+import '../../providers/structure_service_provider.dart';
 import '../../theme/app_colors.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/glass_panel.dart';
 import '../widgets/ketcher_editor_controller.dart';
 import '../widgets/ketcher_editor_view.dart';
 import '../widgets/primary_button.dart';
+import '../../utils/svg_export.dart';
 
 /// 结构式编辑器页面
 ///
 /// 使用 Ketcher 编辑器替代原 JSME。
 /// 支持：保存并返回（带命名）、取消确认、导出 SVG。
-class StructureEditorPage extends StatefulWidget {
+class StructureEditorPage extends ConsumerStatefulWidget {
   const StructureEditorPage({
     super.key,
     this.initialSmiles = '',
@@ -24,10 +26,10 @@ class StructureEditorPage extends StatefulWidget {
   final String? title;
 
   @override
-  State<StructureEditorPage> createState() => _StructureEditorPageState();
+  ConsumerState<StructureEditorPage> createState() => _StructureEditorPageState();
 }
 
-class _StructureEditorPageState extends State<StructureEditorPage> {
+class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
   KetcherEditorController? _controller;
   String _currentSmiles = '';
   bool _isDirty = false;
@@ -158,9 +160,7 @@ class _StructureEditorPageState extends State<StructureEditorPage> {
 
   dynamic _getStructureService() {
     try {
-      // 延迟导入避免循环依赖
-      // 通过 Provider 获取（需要 context 中有 ProviderScope）
-      return null; // TODO: 接入 structureServiceProvider
+      return ref.read(structureServiceProvider);
     } catch (_) {
       return null;
     }
@@ -202,15 +202,11 @@ class _StructureEditorPageState extends State<StructureEditorPage> {
     final svgString = await _controller!.exportSvg();
     if (svgString == null || !mounted) return;
 
-    // 使用平台文件下载工具
     try {
-      // 简单实现：Web 端通过 dart:html 下载
-      if (kIsWeb) {
-        _downloadSvgWeb(svgString);
-      } else {
-        // 移动端通过 share
+      await downloadSvg(svgString, 'structure_${DateTime.now().millisecondsSinceEpoch}.svg');
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('SVG 已生成，请使用分享功能')),
+          const SnackBar(content: Text('SVG 已导出')),
         );
       }
     } catch (e) {
@@ -220,16 +216,6 @@ class _StructureEditorPageState extends State<StructureEditorPage> {
         );
       }
     }
-  }
-
-  void _downloadSvgWeb(String svgString) {
-    // Web 端直接下载
-    // 这里需要 dart:html，但 StructureEditorPage 可能在非 Web 平台运行
-    // 通过条件导入或 kIsWeb 守卫处理
-    debugPrint('[结构编辑器] SVG 导出 (${svgString.length} chars)');
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('SVG 导出功能已就绪')),
-    );
   }
 
   @override

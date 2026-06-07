@@ -1,27 +1,8 @@
 /**
- * Ketcher Bridge Script
+ * Ketcher Bridge Script v2
  *
  * 在 Ketcher standalone iframe 中加载，提供 postMessage 通信接口。
- * 在 ketcher/index.html 的 </body> 前通过 <script src="../ketcher_bridge.js"> 引入。
- *
- * 通信协议：
- *   接收 (Flutter → Ketcher):
- *     { channel, type: 'setMolecule',  payload: { data: 'SMILES/MOL/RXN' } }
- *     { channel, type: 'getSmiles',    payload: { requestId } }
- *     { channel, type: 'getRxn',       payload: { requestId } }
- *     { channel, type: 'exportSvg',    payload: { data? } }
- *     { channel, type: 'exportPng',    payload: { data? } }
- *     { channel, type: 'setTheme',     payload: { mode: 'dark'/'light' } }
- *     { channel, type: 'setReadOnly',  payload: { readOnly: true/false } }
- *
- *   发送 (Ketcher → Flutter):
- *     { channel, type: 'onBridgeReady' }
- *     { channel, type: 'getSmilesResult', payload: { requestId, smiles } }
- *     { channel, type: 'getRxnResult',    payload: { requestId, rxn } }
- *     { channel, type: 'exportSvgResult', payload: { svgString } }
- *     { channel, type: 'exportPngResult', payload: { dataUrl } }
- *     { channel, type: 'onSmilesUpdated', payload: { smiles } }
- *     { channel, type: 'onError',         payload: { message } }
+ * 等待 Ketcher 的 init 事件后再暴露 API。
  */
 
 (function () {
@@ -30,6 +11,7 @@
   let currentChannel = null;
   let lastSmiles = '';
   let pollTimer = null;
+  let ketcherReady = false;
 
   function postToHost(type, payload) {
     if (!currentChannel) return;
@@ -41,22 +23,21 @@
 
   function waitForKetcher() {
     return new Promise((resolve) => {
-      if (window.ketcher) {
+      if (ketcherReady && window.ketcher) {
         resolve(window.ketcher);
         return;
       }
-      // Ketcher sets window.ketcher via onInit callback
       const check = setInterval(() => {
         if (window.ketcher) {
+          ketcherReady = true;
           clearInterval(check);
           resolve(window.ketcher);
         }
-      }, 200);
-      // Timeout after 15s
+      }, 300);
       setTimeout(() => {
         clearInterval(check);
         resolve(null);
-      }, 15000);
+      }, 20000);
     });
   }
 
@@ -65,21 +46,30 @@
     pollTimer = setInterval(async () => {
       try {
         const ketcher = window.ketcher;
-        if (!ketcher) return;
+        if (!ketcher || typeof ketcher.getSmiles !== 'function') return;
         const smiles = await ketcher.getSmiles();
-        if (smiles && smiles !== lastSmiles) {
+        if (smiles !== undefined && smiles !== null && smiles !== lastSmiles) {
           lastSmiles = smiles;
           postToHost('onSmilesUpdated', { smiles: smiles });
         }
       } catch (e) {
         // Ignore polling errors
       }
-    }, 500);
+    }, 600);
   }
 
+  // 监听 Ketcher 自身的 init 事件（由 main.js 中 onInit 回调发送）
+  window.addEventListener('message', function (e) {
+    if (e.data && e.data.eventType === 'init') {
+      ketcherReady = true;
+      startSmilesPolling();
+    }
+  });
+
+  // 监听 Flutter 发来的指令
   window.addEventListener('message', async function (e) {
     const data = e.data;
-    if (!data || !data.type) return;
+    if (!data || !data.type || !data.channel) return;
 
     currentChannel = data.channel;
     const type = data.type;
@@ -88,82 +78,175 @@
     try {
       const ketcher = await waitForKetcher();
       if (!ketcher) {
-        postToHost('onError', { message: 'Ketcher 未加载' });
+        postToHost('onError', { message: 'Ketcher 未加载（超时 20s）' });
         return;
       }
 
       switch (type) {
         case 'setMolecule': {
-          await ketcher.setMolecule(payload.data || '');
-          lastSmiles = '';
-          startSmilesPolling();
+          try {
+            await ketcher.setMolecule(payload.data || '');
+            lastSmiles = '';
+            startSmilesPolling();
+            postToHost('onSetMoleculeSuccess', {});
+          } catch (err) {
+            postToHost('onError', { message: 'setMolecule 失败: ' + String(err) });
+          }
           break;
         }
 
         case 'getSmiles': {
-          const smiles = await ketcher.getSmiles();
-          postToHost('getSmilesResult', {
-            requestId: payload.requestId,
-            smiles: smiles || '',
-          });
+          try {
+            const smiles = await ketcher.getSmiles();
+            postToHost('getSmilesResult', {
+              requestId: payload.requestId,
+              smiles: smiles || '',
+            });
+          } catch (err) {
+            postToHost('getSmilesResult', {
+              requestId: payload.requestId,
+              smiles: '',
+            });
+          }
           break;
         }
 
         case 'getRxn': {
-          const rxn = await ketcher.getRxn();
-          postToHost('getRxnResult', {
-            requestId: payload.requestId,
-            rxn: rxn || '',
-          });
+          try {
+            const rxn = await ketcher.getRxn();
+            postToHost('getRxnResult', {
+              requestId: payload.requestId,
+              rxn: rxn || '',
+            });
+          } catch (err) {
+            postToHost('getRxnResult', {
+              requestId: payload.requestId,
+              rxn: '',
+            });
+          }
           break;
         }
 
         case 'exportSvg': {
-          const structData = payload.data || (await ketcher.getSmiles()) || '';
-          if (ketcher.generateImage) {
-            const result = await ketcher.generateImage(structData, {
-              outputFormat: 'svg',
-            });
-            postToHost('exportSvgResult', { svgString: result });
-          } else {
-            // Fallback: get SVG from the editor's SVG element
-            const svgEl = document.querySelector('.Ketcher-root svg');
-            if (svgEl) {
-              const svgString = new XMLSerializer().serializeToString(svgEl);
-              postToHost('exportSvgResult', { svgString: svgString });
+          try {
+            // 使用 Ketcher 内置的 SVG 导出
+            if (ketcher.generateImage) {
+              const structData = payload.data || (await ketcher.getSmiles()) || '';
+              const result = await ketcher.generateImage(structData, { outputFormat: 'svg' });
+              postToHost('exportSvgResult', { svgString: result });
             } else {
-              postToHost('onError', { message: 'SVG 导出不可用' });
+              // 回退：从 DOM 中提取 SVG
+              const svgEl = document.querySelector('#root svg');
+              if (svgEl) {
+                const clone = svgEl.cloneNode(true);
+                clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+                const svgString = new XMLSerializer().serializeToString(clone);
+                postToHost('exportSvgResult', { svgString: svgString });
+              } else {
+                postToHost('onError', { message: 'SVG 导出不可用' });
+              }
             }
+          } catch (err) {
+            postToHost('onError', { message: 'SVG 导出失败: ' + String(err) });
           }
           break;
         }
 
         case 'exportPng': {
-          const structData2 = payload.data || (await ketcher.getSmiles()) || '';
-          if (ketcher.generateImage) {
-            const result = await ketcher.generateImage(structData2, {
-              outputFormat: 'png',
-              backgroundColor: '#0b0f1a',
-            });
-            postToHost('exportPngResult', { dataUrl: result });
-          } else {
-            postToHost('onError', { message: 'PNG 导出不可用' });
+          try {
+            if (ketcher.generateImage) {
+              const structData = payload.data || (await ketcher.getSmiles()) || '';
+              const result = await ketcher.generateImage(structData, {
+                outputFormat: 'png',
+                backgroundColor: '#0b0f1a',
+              });
+              postToHost('exportPngResult', { dataUrl: result });
+            } else {
+              postToHost('onError', { message: 'PNG 导出不可用' });
+            }
+          } catch (err) {
+            postToHost('onError', { message: 'PNG 导出失败: ' + String(err) });
           }
           break;
         }
 
         case 'setTheme': {
-          // Ketcher standalone may not have a public theme API,
-          // but we can try toggling CSS classes
           const mode = payload.mode || 'dark';
-          document.documentElement.setAttribute('data-theme', mode);
+          if (mode === 'dark') {
+            document.documentElement.style.setProperty('color-scheme', 'dark');
+            document.body.style.backgroundColor = '#0d1627';
+            // 注入暗色主题 CSS
+            let style = document.getElementById('cv-dark-theme');
+            if (!style) {
+              style = document.createElement('style');
+              style.id = 'cv-dark-theme';
+              style.textContent = `
+                :root { color-scheme: dark; }
+                body { background: #0d1627 !important; }
+                #root { background: #0d1627 !important; }
+                .Ketcher-module_editor__MWDZk,
+                .editor-container,
+                .polymer-editor-ref,
+                [class*="editor"],
+                [class*="canvas"] {
+                  background: #0f172a !important;
+                }
+                .Ketcher-module_toolbar__MWLPQ,
+                [class*="toolbar"],
+                [class*="menu"],
+                [class*="panel"],
+                [class*="sidebar"],
+                [class*="modal"],
+                [class*="dialog"],
+                [class*="dropdown"],
+                [class*="popup"] {
+                  background: #0f172a !important;
+                  color: #e9eef5 !important;
+                  border-color: rgba(255,255,255,0.1) !important;
+                }
+                [class*="button"],
+                button {
+                  background: rgba(255,255,255,0.08) !important;
+                  color: #e9eef5 !important;
+                  border-color: rgba(255,255,255,0.12) !important;
+                }
+                [class*="button"]:hover,
+                button:hover {
+                  background: rgba(56,213,193,0.2) !important;
+                }
+                input, select, textarea {
+                  background: rgba(255,255,255,0.05) !important;
+                  color: #e9eef5 !important;
+                  border-color: rgba(255,255,255,0.12) !important;
+                }
+                [class*="label"],
+                [class*="text"],
+                [class*="title"],
+                span, p, h1, h2, h3, h4, h5, h6 {
+                  color: #e9eef5 !important;
+                }
+                [class*="icon"],
+                svg:not([class*="struct"]):not([class*="molecule"]) {
+                  fill: #b9c7de !important;
+                }
+                .Ketcher-module_canvas__*,
+                [class*="canvas"] svg {
+                  background: #0f172a !important;
+                }
+              `;
+              document.head.appendChild(style);
+            }
+          } else {
+            document.documentElement.style.removeProperty('color-scheme');
+            document.body.style.backgroundColor = '';
+            const style = document.getElementById('cv-dark-theme');
+            if (style) style.remove();
+          }
           break;
         }
 
         case 'setReadOnly': {
-          // Ketcher doesn't have a direct read-only API in standalone mode
-          // We can disable pointer events on the editor container
-          const editor = document.querySelector('.Ketcher-root');
+          const editor = document.querySelector('#root');
           if (editor) {
             editor.style.pointerEvents = payload.readOnly ? 'none' : '';
           }
@@ -178,9 +261,12 @@
     }
   });
 
-  // Signal ready
-  waitForKetcher().then(() => {
-    postToHost('onBridgeReady', {});
-    startSmilesPolling();
+  // Signal ready when ketcher is available
+  waitForKetcher().then((ketcher) => {
+    if (ketcher) {
+      ketcherReady = true;
+      postToHost('onBridgeReady', {});
+      startSmilesPolling();
+    }
   });
 })();

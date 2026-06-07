@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/reaction_equation.dart';
+import '../../providers/reaction_favorites_provider.dart';
 import '../../theme/app_colors.dart';
+import '../../utils/svg_export.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/glass_panel.dart';
 import '../widgets/ketcher_editor_controller.dart';
@@ -14,7 +17,7 @@ import '../widgets/primary_button.dart';
 /// 使用 Ketcher 的反应模式编辑完整的反应方程式。
 /// 上半区：Ketcher 编辑器（反应模式）
 /// 下半区：元信息面板（标题、条件、导出、保存）
-class ReactionEditorPage extends StatefulWidget {
+class ReactionEditorPage extends ConsumerStatefulWidget {
   const ReactionEditorPage({
     super.key,
     this.initialEquation,
@@ -23,10 +26,10 @@ class ReactionEditorPage extends StatefulWidget {
   final ReactionEquation? initialEquation;
 
   @override
-  State<ReactionEditorPage> createState() => _ReactionEditorPageState();
+  ConsumerState<ReactionEditorPage> createState() => _ReactionEditorPageState();
 }
 
-class _ReactionEditorPageState extends State<ReactionEditorPage> {
+class _ReactionEditorPageState extends ConsumerState<ReactionEditorPage> {
   KetcherEditorController? _controller;
   late ReactionEquation _equation;
   final _titleController = TextEditingController();
@@ -77,12 +80,14 @@ class _ReactionEditorPageState extends State<ReactionEditorPage> {
     _equation.rxnData = rxn;
     _equation.svgString = svg;
 
-    // TODO: 保存到反应收藏 Hive box（Phase 6 实现）
+    // 保存到反应收藏 Hive box
+    await ref.read(reactionFavoritesControllerProvider.notifier).add(_equation);
+
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('反应方程式已保存')),
-      );
       setState(() => _isDirty = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('反应方程式已保存到收藏')),
+      );
     }
   }
 
@@ -118,22 +123,40 @@ class _ReactionEditorPageState extends State<ReactionEditorPage> {
   Future<void> _exportSvg() async {
     final svg = await _controller?.exportSvg();
     if (svg == null || !mounted) return;
-    if (kIsWeb) {
-      // Web: 触发浏览器下载
-      debugPrint('[反应编辑器] SVG 导出 (${svg.length} chars)');
+    try {
+      await downloadSvg(svg, 'reaction_${DateTime.now().millisecondsSinceEpoch}.svg');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('SVG 已导出')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('SVG 导出失败: $e')),
+        );
+      }
     }
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('SVG 已导出 (${svg.length} chars)')),
-    );
   }
 
   /// 导出 PNG
   Future<void> _exportPng() async {
     final png = await _controller?.exportPng();
     if (png == null || !mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('PNG 已导出')),
-    );
+    try {
+      await downloadDataUrl(png, 'reaction_${DateTime.now().millisecondsSinceEpoch}.png');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('PNG 已导出')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('PNG 导出失败: $e')),
+        );
+      }
+    }
   }
 
   @override
