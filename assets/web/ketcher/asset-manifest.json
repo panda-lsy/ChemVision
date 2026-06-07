@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "./static/css/main.6ea49138.css",
-    "main.js": "./static/js/main.29267078.js",
+    "main.js": "./static/js/main.cec883bd.js",
     "popup.css": "./static/css/popup.5d93dde8.css",
-    "popup.js": "./static/js/popup.35f8a09d.js",
+    "popup.js": "./static/js/popup.dc0eb326.js",
     "duo.css": "./static/css/duo.bcca1886.css",
-    "duo.js": "./static/js/duo.2445b1e3.js",
+    "duo.js": "./static/js/duo.e92ea99d.js",
     "closable.css": "./static/css/closable.5d93dde8.css",
-    "closable.js": "./static/js/closable.0ce04d30.js",
+    "closable.js": "./static/js/closable.7e78cb33.js",
     "static/js/535.a9a1dcc1.chunk.js": "./static/js/535.a9a1dcc1.chunk.js",
-    "static/js/549.c367376a.chunk.js": "./static/js/549.c367376a.chunk.js",
+    "static/js/581.d77c56d4.chunk.js": "./static/js/581.d77c56d4.chunk.js",
     "static/js/928.4ba7c435.chunk.js": "./static/js/928.4ba7c435.chunk.js",
     "index.html": "./index.html",
     "closable.html": "./closable.html",
@@ -19,6 +19,6 @@
   },
   "entrypoints": [
     "static/css/main.6ea49138.css",
-    "static/js/main.29267078.js"
+    "static/js/main.cec883bd.js"
   ]
 }
