@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../providers/structure_service_provider.dart';
@@ -35,7 +34,7 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
     _currentSmiles = widget.initialSmiles;
   }
 
-  /// 保存并返回：用 Navigator.push 避免 iframe z-index 问题
+  /// 保存并返回：检测 SMILES 类型决定保存方式
   Future<void> _saveAndBack() async {
     final latest = await _controller?.getSmiles();
     if (!mounted) return;
@@ -50,18 +49,26 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
       return;
     }
 
-    final result = await Navigator.of(context).push<Map<String, String>>(
-      MaterialPageRoute(
-        fullscreenDialog: true,
-        builder: (_) => _SaveNamingPage(
-          smiles: smiles,
-          structureService: _getStructureService(),
-        ),
-      ),
-    );
+    // 检测是否为反应式（SMILES 包含 '>' 分隔符）
+    final isReaction = smiles.contains('>');
 
-    if (result != null && mounted) {
-      Navigator.of(context).pop(result);
+    if (isReaction) {
+      // 反应式：直接添加到收藏夹
+      Navigator.of(context).pop({'smiles': smiles, 'name': '', 'isReaction': true});
+    } else {
+      // 结构式：弹出命名页面（AI 推测）
+      final result = await Navigator.of(context).push<Map<String, String>>(
+        MaterialPageRoute(
+          fullscreenDialog: true,
+          builder: (_) => _SaveNamingPage(
+            smiles: smiles,
+            structureService: _getStructureService(),
+          ),
+        ),
+      );
+      if (result != null && mounted) {
+        Navigator.of(context).pop({...result, 'isReaction': false});
+      }
     }
   }
 
@@ -79,11 +86,6 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
     if (confirmed == true && mounted) {
       Navigator.of(context).pop();
     }
-  }
-
-  /// 触发 Ketcher 内置的保存/导出对话框
-  void _triggerKetcherSave() {
-    _controller?.triggerSave();
   }
 
   dynamic _getStructureService() {
@@ -117,14 +119,6 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
                 child: Text(title,
                     style: Theme.of(context).textTheme.titleLarge,
                     overflow: TextOverflow.ellipsis),
-              ),
-              IconButton(
-                onPressed: _triggerKetcherSave,
-                icon: const Icon(Icons.save_outlined, size: 20),
-                tooltip: '保存/导出',
-                color: isDark
-                    ? AppColors.textSecondary
-                    : AppColors.dayTextSecondary,
               ),
             ],
           ),
@@ -188,28 +182,26 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
           const SizedBox(height: 8),
           Row(
             children: [
-              Expanded(
-                child: SizedBox(
-                  height: 44,
-                  child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: isDark
-                          ? AppColors.textPrimary
-                          : AppColors.dayTextPrimary,
-                      side: BorderSide(
-                          color: (isDark ? Colors.white : Colors.black)
-                              .withValues(alpha: 0.2)),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16)),
-                    ),
-                    onPressed: _cancel,
-                    child: const Text('取消'),
+              SizedBox(
+                width: 80,
+                height: 44,
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: isDark
+                        ? AppColors.textPrimary
+                        : AppColors.dayTextPrimary,
+                    side: BorderSide(
+                        color: (isDark ? Colors.white : Colors.black)
+                            .withValues(alpha: 0.2)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16)),
                   ),
+                  onPressed: _cancel,
+                  child: const Text('取消'),
                 ),
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 12),
               Expanded(
-                flex: 2,
                 child: SizedBox(
                   height: 44,
                   child: PrimaryButton(
