@@ -1,272 +1,244 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="theme-color" content="#000000"/><meta name="description" content="Ketcher is a web-based chemical structure editor"/><link rel="shortcut icon" type="image/x-icon" href="./favicon.ico"/><link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png"/><link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16.png"/><link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png"/><link rel="manifest" href="./manifest.json"/><title>Ketcher v3.12.0</title><script defer="defer" src="./static/js/main.8f1d38b5.js"></script><link href="./static/css/main.bdf7ea17.css" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div><script>/**
- * Ketcher Bridge Script v2
- *
- * 在 Ketcher standalone iframe 中加载，提供 postMessage 通信接口。
- * 等待 Ketcher 的 init 事件后再暴露 API。
+ * Ketcher Bridge Script v3
+ * - SMILES/RXN 数据传入传出
+ * - 暗色主题 CSS 注入
+ * - 中文翻译 DOM 注入
  */
-
 (function () {
   'use strict';
 
-  let currentChannel = null;
-  let lastSmiles = '';
-  let pollTimer = null;
-  let ketcherReady = false;
+  var currentChannel = null;
+  var lastSmiles = '';
+  var pollTimer = null;
+  var ketcherReady = false;
 
+  // ── 中文翻译映射表 ──
+  var zhMap = {
+    'Save': '保存', 'Open': '打开', 'Close': '关闭', 'Undo': '撤销', 'Redo': '重做',
+    'Clear': '清除', 'Copy': '复制', 'Paste': '粘贴', 'Cut': '剪切', 'Delete': '删除',
+    'Select All': '全选', 'Zoom In': '放大', 'Zoom Out': '缩小', 'Zoom to Fit': '适应窗口',
+    'Settings': '设置', 'About': '关于', 'Help': '帮助', 'File': '文件', 'Edit': '编辑',
+    'View': '视图', 'Tools': '工具', 'Bond': '键', 'Atom': '原子', 'Ring': '环',
+    'Template': '模板', 'Reaction': '反应', 'Arrow': '箭头', 'Plus': '加号',
+    'Single': '单键', 'Double': '双键', 'Triple': '三键', 'Aromatic': '芳香',
+    'Any': '任意', 'Hydrogen': '氢', 'Carbon': '碳', 'Nitrogen': '氮', 'Oxygen': '氧',
+    'Sulfur': '硫', 'Phosphorus': '磷', 'Fluorine': '氟', 'Chlorine': '氯',
+    'Bromine': '溴', 'Iodine': '碘', 'Boron': '硼', 'Silicon': '硅',
+    'Functional Groups': '官能团', 'Custom Templates': '自定义模板',
+    'Periodic Table': '元素周期表', 'Stereo': '立体化学',
+    'Calculate CIP': '计算 CIP', 'Check Structure': '检查结构',
+    'Clean Up': '整理结构', 'Layout': '自动布局',
+    'Molfile': 'Mol 文件', 'SMILES': 'SMILES', 'InChI': 'InChI',
+    'RXN file': 'RXN 文件', 'SVG': 'SVG', 'PNG': 'PNG',
+    'Download': '下载', 'Copy to Clipboard': '复制到剪贴板',
+    'Image': '图片', 'Document': '文件', 'Add to Canvas': '添加到画布',
+    'Input Label': '输入标签', 'Data S-Group': '数据 S-组',
+    'Generics': '通用基团', 'Functional Group Templates': '官能团模板',
+    'User Templates': '用户模板', 'Apply': '应用', 'Cancel': '取消',
+    'OK': '确定', 'Yes': '是', 'No': '否', 'Warning': '警告',
+    'Error': '错误', 'Information': '信息',
+    'Hand tool': '手形工具', 'Selection tool': '选择工具',
+    'Erase': '擦除', 'Bond tool': '键工具', 'Chain tool': '链工具',
+    'Charge': '电荷', 'Rotate': '旋转', 'Flip': '翻转',
+    'Horizontal Flip': '水平翻转', 'Vertical Flip': '垂直翻转',
+    'Atom Properties': '原子属性', 'Bond Properties': '键属性',
+    'Extended Table': '扩展元素表', 'Any Atom': '任意原子',
+    'Any bond': '任意键', 'SGroup': 'S-组',
+    'Reaction Mapping Tool': '反应映射工具',
+    'Reaction Arrow Tool': '反应箭头工具',
+    'Reaction Plus Tool': '反应加号工具',
+    'Auto-Mapping Tool': '自动映射工具',
+    'Text': '文本', 'Shape': '形状', 'Rectangle': '矩形',
+    'Ellipse': '椭圆', 'Line': '直线',
+  };
+
+  function translatePage() {
+    var walker = document.createTreeWalker(
+      document.body, NodeFilter.SHOW_TEXT, null, false
+    );
+    while (walker.nextNode()) {
+      var node = walker.currentNode;
+      var text = node.textContent.trim();
+      if (zhMap[text]) {
+        node.textContent = node.textContent.replace(text, zhMap[text]);
+      }
+    }
+    // 翻译 title 属性
+    document.querySelectorAll('[title]').forEach(function(el) {
+      var t = el.getAttribute('title');
+      if (zhMap[t]) el.setAttribute('title', zhMap[t]);
+    });
+    // 翻译 placeholder
+    document.querySelectorAll('[placeholder]').forEach(function(el) {
+      var t = el.getAttribute('placeholder');
+      if (zhMap[t]) el.setAttribute('placeholder', zhMap[t]);
+    });
+  }
+
+  function startTranslationObserver() {
+    translatePage();
+    var observer = new MutationObserver(function(mutations) {
+      var shouldTranslate = false;
+      for (var i = 0; i < mutations.length; i++) {
+        if (mutations[i].addedNodes.length > 0) {
+          shouldTranslate = true;
+          break;
+        }
+      }
+      if (shouldTranslate) translatePage();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
+
+  // ── 暗色主题 ──
+  function applyDarkMode() {
+    if (document.getElementById('cv-dark')) return;
+    var s = document.createElement('style');
+    s.id = 'cv-dark';
+    s.textContent = [
+      ':root{color-scheme:dark}',
+      'body,#root{background:#0d1627!important}',
+      '[class*="editor"],[class*="canvas"]{background:#0f172a!important}',
+      '[class*="toolbar"],[class*="menu"],[class*="panel"],[class*="sidebar"],',
+      '[class*="modal"],[class*="dialog"],[class*="dropdown"],[class*="popup"],',
+      '[class*="popover"],[class*="tooltip"]{background:#0f172a!important;color:#e9eef5!important;border-color:rgba(255,255,255,.1)!important}',
+      'button,[class*="button"],[class*="btn"]{background:rgba(255,255,255,.08)!important;color:#e9eef5!important;border-color:rgba(255,255,255,.12)!important}',
+      'button:hover,[class*="button"]:hover{background:rgba(56,213,193,.2)!important}',
+      'button[aria-pressed="true"],button.active,[class*="active"]{background:rgba(56,213,193,.3)!important}',
+      'input,select,textarea{background:rgba(255,255,255,.05)!important;color:#e9eef5!important;border-color:rgba(255,255,255,.12)!important}',
+      'input:focus,select:focus,textarea:focus{border-color:#38d5c1!important}',
+      '[class*="label"],[class*="text"],[class*="title"],span,p,h1,h2,h3,h4,h5,h6,a{color:#e9eef5!important}',
+      'a:hover{color:#38d5c1!important}',
+      'svg:not([class*="struct"]){fill:#b9c7de!important}',
+      '[class*="divider"],hr,[class*="separator"]{border-color:rgba(255,255,255,.08)!important;background:rgba(255,255,255,.08)!important}',
+      '[class*="scrollbar"]::-webkit-scrollbar{background:#0f172a!important}',
+      '[class*="scrollbar"]::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15)!important}',
+      '[class*="tab"],[role="tab"]{color:#b9c7de!important}',
+      '[class*="tab"]:hover,[role="tab"]:hover{color:#e9eef5!important;background:rgba(255,255,255,.05)!important}',
+      '[class*="tab"][aria-selected="true"],[role="tab"][aria-selected="true"]{color:#38d5c1!important;border-bottom-color:#38d5c1!important}',
+      '[class*="select"],[class*="dropdown"]{background:#0f172a!important}',
+      '[class*="option"],[class*="item"]:hover{background:rgba(56,213,193,.15)!important}',
+      '[class*="card"],[class*="paper"]{background:#0f172a!important;border-color:rgba(255,255,255,.08)!important}',
+      '[class*="alert"],[class*="warning"],[class*="info"]{background:rgba(255,255,255,.05)!important;border-color:rgba(255,255,255,.1)!important}',
+    ].join('\n');
+    document.head.appendChild(s);
+    document.documentElement.style.setProperty('color-scheme', 'dark');
+    document.body.style.background = '#0d1627';
+  }
+
+  function removeDarkMode() {
+    var s = document.getElementById('cv-dark');
+    if (s) s.remove();
+    document.documentElement.style.removeProperty('color-scheme');
+    document.body.style.background = '';
+  }
+
+  // ── postMessage 通信 ──
   function postToHost(type, payload) {
     if (!currentChannel) return;
     window.parent.postMessage(
-      { channel: currentChannel, type: type, payload: payload || {} },
-      '*',
+      { channel: currentChannel, type: type, payload: payload || {} }, '*'
     );
   }
 
   function waitForKetcher() {
-    return new Promise((resolve) => {
-      if (ketcherReady && window.ketcher) {
-        resolve(window.ketcher);
-        return;
-      }
-      const check = setInterval(() => {
-        if (window.ketcher) {
-          ketcherReady = true;
-          clearInterval(check);
-          resolve(window.ketcher);
-        }
+    return new Promise(function(resolve) {
+      if (ketcherReady && window.ketcher) { resolve(window.ketcher); return; }
+      var check = setInterval(function() {
+        if (window.ketcher) { ketcherReady = true; clearInterval(check); resolve(window.ketcher); }
       }, 300);
-      setTimeout(() => {
-        clearInterval(check);
-        resolve(null);
-      }, 20000);
+      setTimeout(function() { clearInterval(check); resolve(null); }, 20000);
     });
   }
 
   function startSmilesPolling() {
     if (pollTimer) return;
-    pollTimer = setInterval(async () => {
+    pollTimer = setInterval(async function() {
       try {
-        const ketcher = window.ketcher;
-        if (!ketcher || typeof ketcher.getSmiles !== 'function') return;
-        const smiles = await ketcher.getSmiles();
-        if (smiles !== undefined && smiles !== null && smiles !== lastSmiles) {
+        var k = window.ketcher;
+        if (!k || typeof k.getSmiles !== 'function') return;
+        var smiles = await k.getSmiles();
+        if (smiles != null && smiles !== lastSmiles) {
           lastSmiles = smiles;
           postToHost('onSmilesUpdated', { smiles: smiles });
         }
-      } catch (e) {
-        // Ignore polling errors
-      }
+      } catch (e) {}
     }, 600);
   }
 
-  // 监听 Ketcher 自身的 init 事件（由 main.js 中 onInit 回调发送）
-  window.addEventListener('message', function (e) {
+  // 监听 Ketcher init 事件
+  window.addEventListener('message', function(e) {
     if (e.data && e.data.eventType === 'init') {
       ketcherReady = true;
       startSmilesPolling();
+      startTranslationObserver();
     }
   });
 
-  // 监听 Flutter 发来的指令
-  window.addEventListener('message', async function (e) {
-    const data = e.data;
+  // 监听 Flutter 指令
+  window.addEventListener('message', async function(e) {
+    var data = e.data;
     if (!data || !data.type || !data.channel) return;
-
     currentChannel = data.channel;
-    const type = data.type;
-    const payload = data.payload || {};
+    var type = data.type;
+    var payload = data.payload || {};
 
     try {
-      const ketcher = await waitForKetcher();
-      if (!ketcher) {
-        postToHost('onError', { message: 'Ketcher 未加载（超时 20s）' });
-        return;
-      }
+      var k = await waitForKetcher();
+      if (!k) { postToHost('onError', { message: 'Ketcher 未加载' }); return; }
 
       switch (type) {
-        case 'setMolecule': {
-          try {
-            await ketcher.setMolecule(payload.data || '');
-            lastSmiles = '';
-            startSmilesPolling();
-            postToHost('onSetMoleculeSuccess', {});
-          } catch (err) {
-            postToHost('onError', { message: 'setMolecule 失败: ' + String(err) });
-          }
+        case 'setMolecule':
+          try { await k.setMolecule(payload.data || ''); lastSmiles = ''; startSmilesPolling(); }
+          catch (err) { postToHost('onError', { message: 'setMolecule: ' + err }); }
           break;
-        }
-
-        case 'getSmiles': {
-          try {
-            const smiles = await ketcher.getSmiles();
-            postToHost('getSmilesResult', {
-              requestId: payload.requestId,
-              smiles: smiles || '',
-            });
-          } catch (err) {
-            postToHost('getSmilesResult', {
-              requestId: payload.requestId,
-              smiles: '',
-            });
-          }
+        case 'getSmiles':
+          try { var s = await k.getSmiles(); postToHost('getSmilesResult', { requestId: payload.requestId, smiles: s || '' }); }
+          catch (err) { postToHost('getSmilesResult', { requestId: payload.requestId, smiles: '' }); }
           break;
-        }
-
-        case 'getRxn': {
-          try {
-            const rxn = await ketcher.getRxn();
-            postToHost('getRxnResult', {
-              requestId: payload.requestId,
-              rxn: rxn || '',
-            });
-          } catch (err) {
-            postToHost('getRxnResult', {
-              requestId: payload.requestId,
-              rxn: '',
-            });
-          }
+        case 'getRxn':
+          try { var r = await k.getRxn(); postToHost('getRxnResult', { requestId: payload.requestId, rxn: r || '' }); }
+          catch (err) { postToHost('getRxnResult', { requestId: payload.requestId, rxn: '' }); }
           break;
-        }
-
-        case 'exportSvg': {
+        case 'exportSvg':
           try {
-            // 使用 Ketcher 内置的 SVG 导出
-            if (ketcher.generateImage) {
-              const structData = payload.data || (await ketcher.getSmiles()) || '';
-              const result = await ketcher.generateImage(structData, { outputFormat: 'svg' });
-              postToHost('exportSvgResult', { svgString: result });
+            if (k.generateImage) {
+              var svg = await k.generateImage(payload.data || await k.getSmiles() || '', { outputFormat: 'svg' });
+              postToHost('exportSvgResult', { svgString: svg });
             } else {
-              // 回退：从 DOM 中提取 SVG
-              const svgEl = document.querySelector('#root svg');
-              if (svgEl) {
-                const clone = svgEl.cloneNode(true);
-                clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
-                const svgString = new XMLSerializer().serializeToString(clone);
-                postToHost('exportSvgResult', { svgString: svgString });
-              } else {
-                postToHost('onError', { message: 'SVG 导出不可用' });
-              }
+              var el = document.querySelector('#root svg');
+              if (el) { postToHost('exportSvgResult', { svgString: new XMLSerializer().serializeToString(el) }); }
+              else { postToHost('onError', { message: 'SVG 不可用' }); }
             }
-          } catch (err) {
-            postToHost('onError', { message: 'SVG 导出失败: ' + String(err) });
-          }
+          } catch (err) { postToHost('onError', { message: 'SVG: ' + err }); }
           break;
-        }
-
-        case 'exportPng': {
+        case 'exportPng':
           try {
-            if (ketcher.generateImage) {
-              const structData = payload.data || (await ketcher.getSmiles()) || '';
-              const result = await ketcher.generateImage(structData, {
-                outputFormat: 'png',
-                backgroundColor: '#0b0f1a',
-              });
-              postToHost('exportPngResult', { dataUrl: result });
-            } else {
-              postToHost('onError', { message: 'PNG 导出不可用' });
-            }
-          } catch (err) {
-            postToHost('onError', { message: 'PNG 导出失败: ' + String(err) });
-          }
+            if (k.generateImage) {
+              var png = await k.generateImage(payload.data || await k.getSmiles() || '', { outputFormat: 'png' });
+              postToHost('exportPngResult', { dataUrl: png });
+            } else { postToHost('onError', { message: 'PNG 不可用' }); }
+          } catch (err) { postToHost('onError', { message: 'PNG: ' + err }); }
           break;
-        }
-
-        case 'setTheme': {
-          const mode = payload.mode || 'dark';
-          if (mode === 'dark') {
-            document.documentElement.style.setProperty('color-scheme', 'dark');
-            document.body.style.backgroundColor = '#0d1627';
-            // 注入暗色主题 CSS
-            let style = document.getElementById('cv-dark-theme');
-            if (!style) {
-              style = document.createElement('style');
-              style.id = 'cv-dark-theme';
-              style.textContent = `
-                :root { color-scheme: dark; }
-                body { background: #0d1627 !important; }
-                #root { background: #0d1627 !important; }
-                .Ketcher-module_editor__MWDZk,
-                .editor-container,
-                .polymer-editor-ref,
-                [class*="editor"],
-                [class*="canvas"] {
-                  background: #0f172a !important;
-                }
-                .Ketcher-module_toolbar__MWLPQ,
-                [class*="toolbar"],
-                [class*="menu"],
-                [class*="panel"],
-                [class*="sidebar"],
-                [class*="modal"],
-                [class*="dialog"],
-                [class*="dropdown"],
-                [class*="popup"] {
-                  background: #0f172a !important;
-                  color: #e9eef5 !important;
-                  border-color: rgba(255,255,255,0.1) !important;
-                }
-                [class*="button"],
-                button {
-                  background: rgba(255,255,255,0.08) !important;
-                  color: #e9eef5 !important;
-                  border-color: rgba(255,255,255,0.12) !important;
-                }
-                [class*="button"]:hover,
-                button:hover {
-                  background: rgba(56,213,193,0.2) !important;
-                }
-                input, select, textarea {
-                  background: rgba(255,255,255,0.05) !important;
-                  color: #e9eef5 !important;
-                  border-color: rgba(255,255,255,0.12) !important;
-                }
-                [class*="label"],
-                [class*="text"],
-                [class*="title"],
-                span, p, h1, h2, h3, h4, h5, h6 {
-                  color: #e9eef5 !important;
-                }
-                [class*="icon"],
-                svg:not([class*="struct"]):not([class*="molecule"]) {
-                  fill: #b9c7de !important;
-                }
-                .Ketcher-module_canvas__*,
-                [class*="canvas"] svg {
-                  background: #0f172a !important;
-                }
-              `;
-              document.head.appendChild(style);
-            }
-          } else {
-            document.documentElement.style.removeProperty('color-scheme');
-            document.body.style.backgroundColor = '';
-            const style = document.getElementById('cv-dark-theme');
-            if (style) style.remove();
-          }
+        case 'setTheme':
+          if ((payload.mode || 'dark') === 'dark') applyDarkMode(); else removeDarkMode();
           break;
-        }
-
-        case 'setReadOnly': {
-          const editor = document.querySelector('#root');
-          if (editor) {
-            editor.style.pointerEvents = payload.readOnly ? 'none' : '';
-          }
-          break;
-        }
-
-        default:
+        case 'setReadOnly':
+          var root = document.querySelector('#root');
+          if (root) root.style.pointerEvents = payload.readOnly ? 'none' : '';
           break;
       }
-    } catch (err) {
-      postToHost('onError', { message: String(err) });
-    }
+    } catch (err) { postToHost('onError', { message: String(err) }); }
   });
 
-  // Signal ready when ketcher is available
-  waitForKetcher().then((ketcher) => {
-    if (ketcher) {
+  // 启动：等待 Ketcher 就绪
+  waitForKetcher().then(function(k) {
+    if (k) {
       ketcherReady = true;
       postToHost('onBridgeReady', {});
       startSmilesPolling();
+      startTranslationObserver();
     }
   });
-})();</script></body></html>
+})();
+</script></body></html>
