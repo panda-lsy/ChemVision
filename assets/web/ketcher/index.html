@@ -168,22 +168,29 @@
         };
         function tr(){
           if(!document.body)return;
-          function trAttr(v){if(!v)return null;if(zh[v])return zh[v];var m=v.match(/^(.+?)s*(([^)]*))s*$/);if(m&&zh[m[1]])return zh[m[1]]+' '+m[2];return null;}
+          function trAttr(v){if(!v)return null;if(zh[v])return zh[v];var m=v.match(/^(.+?)\s*(\([^)]*\))\s*$/);if(m&&zh[m[1]])return zh[m[1]]+' '+m[2];return null;}
           document.querySelectorAll('[title]').forEach(function(e){var v=e.getAttribute('title'),t=trAttr(v);if(t)e.setAttribute('title',t);});
           document.querySelectorAll('[placeholder]').forEach(function(e){var v=e.getAttribute('placeholder'),t=trAttr(v);if(t)e.setAttribute('placeholder',t);});
           document.querySelectorAll('[aria-label]').forEach(function(e){var v=e.getAttribute('aria-label'),t=trAttr(v);if(t)e.setAttribute('aria-label',t);});
           var w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
-          while(w.nextNode()){var n=w.currentNode,o=n.textContent||'',t=o.trim();if(!t)continue;if(zh[t]){n.textContent=o.replace(t,zh[t]);continue;}var ft=trAttr(t);if(ft){n.textContent=o.replace(t,ft);continue;}var p=n.parentNode;if(p&&p.childNodes.length>1){var full='';for(var i=0;i<p.childNodes.length;i++){var c=p.childNodes[i];if(c.nodeType===3)full+=(c.textContent||'');}var fts=full.trim();if(fts&&zh[fts]){p.childNodes[0].textContent=zh[fts];for(var j=1;j<p.childNodes.length;j++){if(p.childNodes[j].nodeType===3)p.childNodes[j].textContent='';}}}}
-        }
-          document.querySelectorAll('[title]').forEach(function(e){var v=e.getAttribute('title'),t=trAttr(v);if(t)e.setAttribute('title',t);});
-          document.querySelectorAll('[placeholder]').forEach(function(e){var v=e.getAttribute('placeholder'),t=trAttr(v);if(t)e.setAttribute('placeholder',t);});
-          document.querySelectorAll('[aria-label]').forEach(function(e){var v=e.getAttribute('aria-label'),t=trAttr(v);if(t)e.setAttribute('aria-label',t);});
-          var w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
-          while(w.nextNode()){var n=w.currentNode,o=n.textContent||'',t=o.trim();if(!t)continue;if(zh[t]){n.textContent=o.replace(t,zh[t]);continue;}var ft=trAttr(t);if(ft){n.textContent=o.replace(t,ft);continue;}var p=n.parentNode;if(p&&p.childNodes.length>1){var full='';for(var i=0;i<p.childNodes.length;i++){var c=p.childNodes[i];if(c.nodeType===3)full+=(c.textContent||'');}var fts=full.trim();if(fts&&zh[fts]){p.childNodes[0].textContent=zh[fts];for(var j=1;j<p.childNodes.length;j++){if(p.childNodes[j].nodeType===3)p.childNodes[j].textContent='';}}}}
+          while(w.nextNode()){
+            var n=w.currentNode,o=n.textContent||'',t=o.trim();
+            if(!t)continue;
+            if(zh[t]){n.textContent=o.replace(t,zh[t]);continue;}
+            var ft=trAttr(t);
+            if(ft){n.textContent=o.replace(t,ft);continue;}
+            var p=n.parentNode;
+            if(p&&p.childNodes.length>1){
+              var full='';
+              for(var i=0;i<p.childNodes.length;i++){var c=p.childNodes[i];if(c.nodeType===3)full+=(c.textContent||'');}
+              var fts=full.trim();
+              if(fts&&zh[fts]){p.childNodes[0].textContent=zh[fts];for(var j=1;j<p.childNodes.length;j++){if(p.childNodes[j].nodeType===3)p.childNodes[j].textContent='';}}
+            }
+          }
         }
         function fixDark(){
           if(!document.documentElement.getAttribute('data-theme'))return;
-          document.querySelectorAll('.MuiPopover-paper *,[class*="dropdown"] *,[class*="Dropdown"] *,[class*="template"] *,[class*="Template"] *,[class*="tabPanel"] *').forEach(function(el){
+          document.querySelectorAll('.MuiPopover-paper *,[class*="dropdown"] *,[class*="Dropdown"] *,[class*="template"] *,[class*="Template"] *,[class*="tabPanel"] *,[class*="accordion"] *,[class*="Accordion"] *').forEach(function(el){
             var s=getComputedStyle(el);
             if(s.backgroundColor==='rgb(255, 255, 255)'||s.backgroundColor==='white'){
               el.style.setProperty('background','#0f172a','important');
@@ -198,18 +205,11 @@
             el.style.setProperty('color','#e9eef5','important');
           });
         }
-        function fixDark(){
-          if(!document.documentElement.getAttribute('data-theme'))return;
-          document.querySelectorAll('.MuiPopover-paper *,[class*="dropdown"] *,[class*="Dropdown"] *,[class*="template"] *,[class*="Template"] *,[class*="tabPanel"] *').forEach(function(el){
-            var s=getComputedStyle(el);
-            if(s.backgroundColor==='rgb(255, 255, 255)'||s.backgroundColor==='white'){el.style.setProperty('background','#0f172a','important');el.style.setProperty('background-color','#0f172a','important');}
-            if(s.color==='rgb(0, 0, 0)'||s.color==='rgb(51, 51, 51)'){el.style.setProperty('color','#e9eef5','important');}
-          });
-          document.querySelectorAll('.MuiTooltip-tooltip').forEach(function(el){el.style.setProperty('background','#1a2540','important');el.style.setProperty('color','#e9eef5','important');});
-        }
-        function start(){tr();fixDark();new MutationObserver(function(){tr();fixDark();}).observe(document.body,{childList:true,subtree:true,characterData:true});var count=0;var iv=setInterval(function(){tr();fixDark();count++;if(count>20)clearInterval(iv);},500);new MutationObserver(function(){tr();fixDark();}).observe(document.body,{childList:true});}).observe(document.body,{childList:true,subtree:true,characterData:true});
-          var count=0;var iv=setInterval(function(){tr();fixDark();count++;if(count>20)clearInterval(iv);},500);
-          new MutationObserver(function(){tr();fixDark();}).observe(document.body,{childList:true});
+        function start(){
+          tr();fixDark();
+          new MutationObserver(function(){tr();fixDark();}).observe(document.body,{childList:true,subtree:true,characterData:true});
+          var count=0;
+          var iv=setInterval(function(){tr();fixDark();count++;if(count>20)clearInterval(iv);},500);
         }
         if(document.body){start();}else{document.addEventListener('DOMContentLoaded',start);}
       })();</script><script defer="defer" src="./static/js/main.5a7f84a1.js"></script><link href="./static/css/main.6ea49138.css" rel="stylesheet"><script defer="defer" src="./static/js/main.c1387cc0.js"></script><link href="./static/css/main.6ea49138.css" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div></body></html>
