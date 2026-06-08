@@ -55,7 +55,11 @@
       :root[data-theme="dark"] .MuiPopover-paper [class*="ModeControl"],:root[data-theme="dark"] .MuiPopover-paper [class*="DropDownContent"]{background:#0f172a!important;color:#e9eef5!important}
       :root[data-theme="dark"] .MuiPopover-paper [class*="ModeControl"]:hover,:root[data-theme="dark"] .MuiPopover-paper [class*="ModeControlButton"]:hover{background:rgba(56,213,193,.15)!important}
       :root[data-theme="dark"] .MuiPopover-paper span{color:#e9eef5!important}
-      :root[data-theme="dark"] select option{background:#0f172a!important;color:#e9eef5!important}</style><script>/* ★ 运行时 DOM 翻译 - 中文本地化 */
+      :root[data-theme="dark"] select option{background:#0f172a!important;color:#e9eef5!important}
+      :root[data-theme="dark"] [class*="template"],:root[data-theme="dark"] [class*="Template"]{background:#0f172a!important;color:#e9eef5!important}
+      :root[data-theme="dark"] [class*="tabPanel"]{background:#0f172a!important}
+      :root[data-theme="dark"] [class*="Accordion"],:root[data-theme="dark"] [class*="accordion"]{background:#0f172a!important;border-color:rgba(255,255,255,.08)!important}
+      :root[data-theme="dark"] [class*="Accordion"] *{color:#e9eef5!important}</style><script>/* ★ 运行时 DOM 翻译 - 中文本地化 */
       (function(){
         var zh={
           'Hand tool':'手形工具','Rectangle Selection':'矩形选择','Lasso Selection':'套索选择',
@@ -92,6 +96,21 @@
           'Click to add to canvas':'点击添加到画布',
           'Apply':'应用','Cancel':'取消','OK':'确定','Close':'关闭','Delete':'删除',
           'Settings':'设置','About':'关于','Help':'帮助',
+          'Open…':'打开...','Open...':'打开...',
+          'Cyclopentadiene':'环戊二烯','Imidazole':'咪唑','Purine':'嘌呤',
+          'Quinoline':'喹啉','Isoquinoline':'异喹啉','Acridine':'吖啶',
+          'Carbazole':'咔唑','Fluorene':'芴','Anthracene':'蒽','Phenanthrene':'菲',
+          'Pyrene':'芘','Chrysene':'䓛','Porphyrin':'卟啉',
+          'Morpholine':'吗啉','Piperidine':'哌啶','Piperazine':'哌嗪',
+          'Tetrahydrofuran':'四氢呋喃','Dioxane':'二噁烷',
+          'Acetic acid':'乙酸','Ethanol':'乙醇','Methanol':'甲醇',
+          'Water':'水','Hydrochloric acid':'盐酸','Sulfuric acid':'硫酸',
+          'Sodium hydroxide':'氢氧化钠','Potassium hydroxide':'氢氧化钾',
+          'Save to SDF':'保存为SDF','Save as SDF':'另存为SDF',
+          'Download as SVG':'下载SVG','Download as PNG':'下载PNG',
+          'Functional Groups':'官能团','Functional Group Templates':'官能团模板',
+          'Salts and Solvents':'盐和溶剂','Template Library':'模板库',
+          'Extended Table':'扩展元素表','Periodic Table':'元素周期表',
           'Warning':'警告','Error':'错误','Information':'信息',
           'File':'文件','Edit':'编辑','View':'视图','Tools':'工具','Reset':'重置','Search':'搜索',
           'Single Bond':'单键','Double Bond':'双键','Triple Bond':'三键',
@@ -149,17 +168,48 @@
         };
         function tr(){
           if(!document.body)return;
-          function trAttr(v){if(!v)return null;if(zh[v])return zh[v];var m=v.match(/^(.+?)\s*(\([^)]*\))\s*$/);if(m&&zh[m[1]])return zh[m[1]]+' '+m[2];return null;}
+          function trAttr(v){if(!v)return null;if(zh[v])return zh[v];var m=v.match(/^(.+?)s*(([^)]*))s*$/);if(m&&zh[m[1]])return zh[m[1]]+' '+m[2];return null;}
           document.querySelectorAll('[title]').forEach(function(e){var v=e.getAttribute('title'),t=trAttr(v);if(t)e.setAttribute('title',t);});
           document.querySelectorAll('[placeholder]').forEach(function(e){var v=e.getAttribute('placeholder'),t=trAttr(v);if(t)e.setAttribute('placeholder',t);});
           document.querySelectorAll('[aria-label]').forEach(function(e){var v=e.getAttribute('aria-label'),t=trAttr(v);if(t)e.setAttribute('aria-label',t);});
           var w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
           while(w.nextNode()){var n=w.currentNode,o=n.textContent||'',t=o.trim();if(!t)continue;if(zh[t]){n.textContent=o.replace(t,zh[t]);continue;}var ft=trAttr(t);if(ft){n.textContent=o.replace(t,ft);continue;}var p=n.parentNode;if(p&&p.childNodes.length>1){var full='';for(var i=0;i<p.childNodes.length;i++){var c=p.childNodes[i];if(c.nodeType===3)full+=(c.textContent||'');}var fts=full.trim();if(fts&&zh[fts]){p.childNodes[0].textContent=zh[fts];for(var j=1;j<p.childNodes.length;j++){if(p.childNodes[j].nodeType===3)p.childNodes[j].textContent='';}}}}
         }
-        function start(){
-          tr();
-          new MutationObserver(tr).observe(document.body,{childList:true,subtree:true,characterData:true});
-          var count=0;var iv=setInterval(function(){tr();count++;if(count>20)clearInterval(iv);},500);
+          document.querySelectorAll('[title]').forEach(function(e){var v=e.getAttribute('title'),t=trAttr(v);if(t)e.setAttribute('title',t);});
+          document.querySelectorAll('[placeholder]').forEach(function(e){var v=e.getAttribute('placeholder'),t=trAttr(v);if(t)e.setAttribute('placeholder',t);});
+          document.querySelectorAll('[aria-label]').forEach(function(e){var v=e.getAttribute('aria-label'),t=trAttr(v);if(t)e.setAttribute('aria-label',t);});
+          var w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
+          while(w.nextNode()){var n=w.currentNode,o=n.textContent||'',t=o.trim();if(!t)continue;if(zh[t]){n.textContent=o.replace(t,zh[t]);continue;}var ft=trAttr(t);if(ft){n.textContent=o.replace(t,ft);continue;}var p=n.parentNode;if(p&&p.childNodes.length>1){var full='';for(var i=0;i<p.childNodes.length;i++){var c=p.childNodes[i];if(c.nodeType===3)full+=(c.textContent||'');}var fts=full.trim();if(fts&&zh[fts]){p.childNodes[0].textContent=zh[fts];for(var j=1;j<p.childNodes.length;j++){if(p.childNodes[j].nodeType===3)p.childNodes[j].textContent='';}}}}
+        }
+        function fixDark(){
+          if(!document.documentElement.getAttribute('data-theme'))return;
+          document.querySelectorAll('.MuiPopover-paper *,[class*="dropdown"] *,[class*="Dropdown"] *,[class*="template"] *,[class*="Template"] *,[class*="tabPanel"] *').forEach(function(el){
+            var s=getComputedStyle(el);
+            if(s.backgroundColor==='rgb(255, 255, 255)'||s.backgroundColor==='white'){
+              el.style.setProperty('background','#0f172a','important');
+              el.style.setProperty('background-color','#0f172a','important');
+            }
+            if(s.color==='rgb(0, 0, 0)'||s.color==='rgb(51, 51, 51)'){
+              el.style.setProperty('color','#e9eef5','important');
+            }
+          });
+          document.querySelectorAll('.MuiTooltip-tooltip').forEach(function(el){
+            el.style.setProperty('background','#1a2540','important');
+            el.style.setProperty('color','#e9eef5','important');
+          });
+        }
+        function fixDark(){
+          if(!document.documentElement.getAttribute('data-theme'))return;
+          document.querySelectorAll('.MuiPopover-paper *,[class*="dropdown"] *,[class*="Dropdown"] *,[class*="template"] *,[class*="Template"] *,[class*="tabPanel"] *').forEach(function(el){
+            var s=getComputedStyle(el);
+            if(s.backgroundColor==='rgb(255, 255, 255)'||s.backgroundColor==='white'){el.style.setProperty('background','#0f172a','important');el.style.setProperty('background-color','#0f172a','important');}
+            if(s.color==='rgb(0, 0, 0)'||s.color==='rgb(51, 51, 51)'){el.style.setProperty('color','#e9eef5','important');}
+          });
+          document.querySelectorAll('.MuiTooltip-tooltip').forEach(function(el){el.style.setProperty('background','#1a2540','important');el.style.setProperty('color','#e9eef5','important');});
+        }
+        function start(){tr();fixDark();new MutationObserver(function(){tr();fixDark();}).observe(document.body,{childList:true,subtree:true,characterData:true});var count=0;var iv=setInterval(function(){tr();fixDark();count++;if(count>20)clearInterval(iv);},500);new MutationObserver(function(){tr();fixDark();}).observe(document.body,{childList:true});}).observe(document.body,{childList:true,subtree:true,characterData:true});
+          var count=0;var iv=setInterval(function(){tr();fixDark();count++;if(count>20)clearInterval(iv);},500);
+          new MutationObserver(function(){tr();fixDark();}).observe(document.body,{childList:true});
         }
         if(document.body){start();}else{document.addEventListener('DOMContentLoaded',start);}
-      })();</script><script defer="defer" src="./static/js/main.5a7f84a1.js"></script><link href="./static/css/main.6ea49138.css" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div></body></html>
+      })();</script><script defer="defer" src="./static/js/main.5a7f84a1.js"></script><link href="./static/css/main.6ea49138.css" rel="stylesheet"><script defer="defer" src="./static/js/main.c1387cc0.js"></script><link href="./static/css/main.6ea49138.css" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div></body></html>
