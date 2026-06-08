@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="theme-color" content="#000000"/><meta name="description" content="Ketcher is a web-based chemical structure editor"/><link rel="shortcut icon" type="image/x-icon" href="./favicon.ico"/><link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png"/><link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16.png"/><link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png"/><link rel="manifest" href="./manifest.json"/><title>Ketcher 0a9c2ab</title><script>(function(){
+<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="theme-color" content="#000000"/><meta name="description" content="Ketcher is a web-based chemical structure editor"/><link rel="shortcut icon" type="image/x-icon" href="./favicon.ico"/><link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png"/><link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16.png"/><link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png"/><link rel="manifest" href="./manifest.json"/><title>Ketcher 6c583f9</title><script>(function(){
         var p=new URLSearchParams(window.location.search);
         var t=p.get('theme');
         if(t==='dark'){document.documentElement.setAttribute('data-theme','dark');}
@@ -149,11 +149,12 @@
         };
         function tr(){
           if(!document.body)return;
+          function trAttr(v){if(!v)return null;if(zh[v])return zh[v];var m=v.match(/^(.+?)\s*(\([^)]*\))\s*$/);if(m&&zh[m[1]])return zh[m[1]]+' '+m[2];return null;}
+          document.querySelectorAll('[title]').forEach(function(e){var v=e.getAttribute('title'),t=trAttr(v);if(t)e.setAttribute('title',t);});
+          document.querySelectorAll('[placeholder]').forEach(function(e){var v=e.getAttribute('placeholder'),t=trAttr(v);if(t)e.setAttribute('placeholder',t);});
+          document.querySelectorAll('[aria-label]').forEach(function(e){var v=e.getAttribute('aria-label'),t=trAttr(v);if(t)e.setAttribute('aria-label',t);});
           var w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
-          while(w.nextNode()){var n=w.currentNode,o=n.textContent||'',t=o.trim();if(t&&zh[t])n.textContent=o.replace(t,zh[t]);}
-          document.querySelectorAll('[title]').forEach(function(e){var v=e.getAttribute('title');if(v&&zh[v])e.setAttribute('title',zh[v]);});
-          document.querySelectorAll('[placeholder]').forEach(function(e){var v=e.getAttribute('placeholder');if(v&&zh[v])e.setAttribute('placeholder',zh[v]);});
-          document.querySelectorAll('[aria-label]').forEach(function(e){var v=e.getAttribute('aria-label');if(v&&zh[v])e.setAttribute('aria-label',zh[v]);});
+          while(w.nextNode()){var n=w.currentNode,o=n.textContent||'',t=o.trim();if(!t)continue;if(zh[t]){n.textContent=o.replace(t,zh[t]);continue;}var ft=trAttr(t);if(ft){n.textContent=o.replace(t,ft);continue;}var p=n.parentNode;if(p&&p.childNodes.length>1){var full='';for(var i=0;i<p.childNodes.length;i++){var c=p.childNodes[i];if(c.nodeType===3)full+=(c.textContent||'');}var fts=full.trim();if(fts&&zh[fts]){p.childNodes[0].textContent=zh[fts];for(var j=1;j<p.childNodes.length;j++){if(p.childNodes[j].nodeType===3)p.childNodes[j].textContent='';}}}}
         }
         function start(){
           tr();
@@ -161,4 +162,4 @@
           var count=0;var iv=setInterval(function(){tr();count++;if(count>20)clearInterval(iv);},500);
         }
         if(document.body){start();}else{document.addEventListener('DOMContentLoaded',start);}
-      })();</script><script defer="defer" src="./static/js/main.58066f41.js"></script><link href="./static/css/main.6ea49138.css" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div></body></html>
+      })();</script><script defer="defer" src="./static/js/main.5a7f84a1.js"></script><link href="./static/css/main.6ea49138.css" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div></body></html>
