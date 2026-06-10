@@ -27,6 +27,8 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
   KetcherEditorController? _controller;
   String _currentSmiles = '';
   bool _isDirty = false;
+  bool _transparentBg = false;
+  bool _whiteStroke = false; // false=black, true=white
 
   @override
   void initState() {
@@ -181,6 +183,43 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
             ),
           ),
           const SizedBox(height: 8),
+          // ── 导出选项 ──
+          Row(
+            children: [
+              SizedBox(
+                height: 32,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Checkbox(
+                      value: _transparentBg,
+                      onChanged: (v) => setState(() => _transparentBg = v ?? false),
+                      visualDensity: VisualDensity.compact,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    const Text('透明背景', style: TextStyle(fontSize: 12)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              SizedBox(
+                height: 32,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Checkbox(
+                      value: _whiteStroke,
+                      onChanged: (v) => setState(() => _whiteStroke = v ?? false),
+                      visualDensity: VisualDensity.compact,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    const Text('白色笔触', style: TextStyle(fontSize: 12)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
           Row(
             children: [
               SizedBox(
