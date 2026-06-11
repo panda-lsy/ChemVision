@@ -1,0 +1,202 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/><meta name="theme-color" content="#000000"/><meta name="description" content="Ketcher is a web-based chemical structure editor"/><link rel="shortcut icon" type="image/x-icon" href="./favicon.ico"/><link rel="icon" type="image/png" sizes="32x32" href="./favicon-32x32.png"/><link rel="icon" type="image/png" sizes="16x16" href="./favicon-16x16.png"/><link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png"/><link rel="manifest" href="./manifest.json"/><title>Ketcher 6c583f9</title><script>(function(){
+        var p=new URLSearchParams(window.location.search);
+        var t=p.get('theme');
+        if(t==='dark'){document.documentElement.setAttribute('data-theme','dark');}
+        else if(t!=='light'&&window.matchMedia('(prefers-color-scheme:dark)').matches){
+          document.documentElement.setAttribute('data-theme','dark');
+        }
+      })();</script><style>:root[data-theme="dark"]{color-scheme:dark}
+      :root[data-theme="dark"],:root[data-theme="dark"] body,:root[data-theme="dark"] #root{background:#0d1627!important;color:#e9eef5!important}
+      :root[data-theme="dark"] [class*="module"]{background:#0d1627!important}
+      :root[data-theme="dark"] .cliparea,:root[data-theme="dark"] [class*="StructEditor"]{background:#0f172a!important}
+      :root[data-theme="dark"] [class*="LeftToolbar"],:root[data-theme="dark"] [class*="RightToolbar"],:root[data-theme="dark"] [class*="BottomToolbar"]{background:#0f172a!important;border-color:rgba(255,255,255,.06)!important}
+      :root[data-theme="dark"] [class*="toolbar"] button,:root[data-theme="dark"] [class*="Toolbar"] button{color:#b9c7de!important;background:transparent!important;border-color:transparent!important}
+      :root[data-theme="dark"] [class*="toolbar"] button:hover,:root[data-theme="dark"] [class*="Toolbar"] button:hover{background:rgba(255,255,255,.08)!important;color:#e9eef5!important}
+      :root[data-theme="dark"] button[aria-pressed="true"],:root[data-theme="dark"] button.active{background:rgba(56,213,193,.2)!important;color:#38d5c1!important}
+      :root[data-theme="dark"] [class*="ArrowScroll"]{background:#0f172a!important;color:#b9c7de!important}
+      :root[data-theme="dark"] [class*="ArrowScroll"]:hover{background:rgba(56,213,193,.12)!important;color:#38d5c1!important}
+      :root[data-theme="dark"] [class*="Modal"],:root[data-theme="dark"] [class*="Dialog"],:root[data-theme="dark"] [class*="ContextMenu"],:root[data-theme="dark"] [class*="InfoModal"]{background:#0f172a!important;color:#e9eef5!important;border-color:rgba(255,255,255,.1)!important;box-shadow:0 4px 24px rgba(0,0,0,.5)!important}
+      :root[data-theme="dark"] [class*="MenuItem"],:root[data-theme="dark"] [class*="menu"] li{color:#b9c7de!important}
+      :root[data-theme="dark"] [class*="MenuItem"]:hover,:root[data-theme="dark"] [class*="menu"] li:hover{background:rgba(56,213,193,.15)!important;color:#e9eef5!important}
+      :root[data-theme="dark"] select,:root[data-theme="dark"] [class*="Select"]{background:#0f172a!important;color:#e9eef5!important;border-color:rgba(255,255,255,.12)!important}
+      :root[data-theme="dark"] input,:root[data-theme="dark"] textarea{background:rgba(255,255,255,.05)!important;color:#e9eef5!important;border-color:rgba(255,255,255,.12)!important}
+      :root[data-theme="dark"] input:focus,:root[data-theme="dark"] textarea:focus{border-color:#38d5c1!important}
+      :root[data-theme="dark"] input::placeholder,:root[data-theme="dark"] textarea::placeholder{color:#a9b6cb!important}
+      :root[data-theme="dark"] input[type="checkbox"],:root[data-theme="dark"] input[type="radio"]{accent-color:#38d5c1!important}
+      :root[data-theme="dark"] button:not([aria-pressed="true"]):not(.active){background:rgba(255,255,255,.06)!important;color:#e9eef5!important;border-color:rgba(255,255,255,.1)!important}
+      :root[data-theme="dark"] button:not([aria-pressed="true"]):not(.active):hover{background:rgba(255,255,255,.1)!important}
+      :root[data-theme="dark"] [role="tab"]{color:#a9b6cb!important;border-bottom-color:transparent!important}
+      :root[data-theme="dark"] [role="tab"]:hover{color:#e9eef5!important;background:rgba(255,255,255,.04)!important}
+      :root[data-theme="dark"] [role="tab"][aria-selected="true"]{color:#38d5c1!important;border-bottom-color:#38d5c1!important}
+      :root[data-theme="dark"] label,:root[data-theme="dark"] legend,:root[data-theme="dark"] span,:root[data-theme="dark"] p,:root[data-theme="dark"] h1,:root[data-theme="dark"] h2,:root[data-theme="dark"] h3,:root[data-theme="dark"] h4,:root[data-theme="dark"] h5,:root[data-theme="dark"] h6{color:#e9eef5!important}
+      :root[data-theme="dark"] a{color:#5ce0d0!important}
+      :root[data-theme="dark"] a:hover{color:#38d5c1!important}
+      :root[data-theme="dark"] hr,:root[data-theme="dark"] [class*="divider"]{border-color:rgba(255,255,255,.06)!important}
+      :root[data-theme="dark"] [class*="Settings"]{background:#0d1627!important}
+      :root[data-theme="dark"] [class*="Accordion"],:root[data-theme="dark"] [class*="accordion"]{background:#0f172a!important;border-color:rgba(255,255,255,.08)!important}
+      :root[data-theme="dark"] [class*="Tooltip"]{background:#1a2540!important;color:#e9eef5!important;border-color:rgba(255,255,255,.12)!important}
+      :root[data-theme="dark"] ::-webkit-scrollbar{width:8px;height:8px}
+      :root[data-theme="dark"] ::-webkit-scrollbar-track{background:#0d1627}
+      :root[data-theme="dark"] ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:4px}
+      :root[data-theme="dark"] ::selection{background:rgba(56,213,193,.3)!important;color:#e9eef5!important}
+      :root[data-theme="dark"] .cliparea svg line,:root[data-theme="dark"] .cliparea svg path,:root[data-theme="dark"] .cliparea svg polyline,:root[data-theme="dark"] .cliparea svg polygon{stroke:#e9eef5!important}
+      :root[data-theme="dark"] .cliparea svg text{fill:#e9eef5!important}
+      :root[data-theme="dark"] .cliparea svg circle,:root[data-theme="dark"] .cliparea svg ellipse{stroke:#e9eef5!important}
+      :root[data-theme="dark"] .cliparea svg [fill="#000"],:root[data-theme="dark"] .cliparea svg [fill="black"]{fill:#e9eef5!important}
+      :root[data-theme="dark"] .cliparea svg [stroke="#000"],:root[data-theme="dark"] .cliparea svg [stroke="black"]{stroke:#e9eef5!important}
+      :root[data-theme="dark"] [class*="StructEditor"] svg line,:root[data-theme="dark"] [class*="StructEditor"] svg path{stroke:#e9eef5!important}
+      :root[data-theme="dark"] [class*="StructEditor"] svg text{fill:#e9eef5!important}
+      :root[data-theme="dark"] [class*="StructEditor"] svg [fill="#000"]{fill:#e9eef5!important}
+      :root[data-theme="dark"] [class*="StructEditor"] svg [stroke="#000"]{stroke:#e9eef5!important}
+      :root[data-theme="dark"] [class*="dropdown"],:root[data-theme="dark"] [class*="Dropdown"],:root[data-theme="dark"] [class*="popover"],:root[data-theme="dark"] [class*="Popover"]{background:#0f172a!important;color:#e9eef5!important;border-color:rgba(255,255,255,.1)!important;z-index:1000!important}
+      :root[data-theme="dark"] [class*="dropdown"] li,:root[data-theme="dark"] [class*="Dropdown"] li,:root[data-theme="dark"] [class*="dropdown"] option,:root[data-theme="dark"] [class*="Dropdown"] option{color:#e9eef5!important;background:#0f172a!important}
+      :root[data-theme="dark"] [class*="dropdown"] li:hover,:root[data-theme="dark"] [class*="Dropdown"] li:hover{background:rgba(56,213,193,.15)!important}
+      :root[data-theme="dark"] .MuiPopover-paper{background:#0f172a!important;color:#e9eef5!important;border-color:rgba(255,255,255,.1)!important}
+      :root[data-theme="dark"] .MuiPopover-paper [class*="ModeControl"],:root[data-theme="dark"] .MuiPopover-paper [class*="DropDownContent"]{background:#0f172a!important;color:#e9eef5!important}
+      :root[data-theme="dark"] .MuiPopover-paper [class*="ModeControl"]:hover,:root[data-theme="dark"] .MuiPopover-paper [class*="ModeControlButton"]:hover{background:rgba(56,213,193,.15)!important}
+      :root[data-theme="dark"] .MuiPopover-paper span{color:#e9eef5!important}
+      :root[data-theme="dark"] select option{background:#0f172a!important;color:#e9eef5!important}
+      :root[data-theme="dark"] [class*="template"],:root[data-theme="dark"] [class*="Template"]{background:#0f172a!important;color:#e9eef5!important}
+      :root[data-theme="dark"] [class*="tabPanel"]{background:#0f172a!important}
+      :root[data-theme="dark"] [class*="Accordion"],:root[data-theme="dark"] [class*="accordion"]{background:#0f172a!important;border-color:rgba(255,255,255,.08)!important}
+      :root[data-theme="dark"] [class*="Accordion"] *{color:#e9eef5!important}</style><script>/* ★ 运行时 DOM 翻译 - 中文本地化 */
+      (function(){
+        var zh={
+          'Hand tool':'手形工具','Rectangle Selection':'矩形选择','Lasso Selection':'套索选择',
+          'Fragment Selection':'片段选择','Structure Selection':'结构选择','Erase':'擦除','Chain':'链',
+          'Bond Properties':'键属性','Atom Properties':'原子属性','Charge Plus':'正电荷','Charge Minus':'负电荷',
+          'Attachment Point Tool':'连接点','S-Group':'S-组','R-Group Label Tool':'R-基团标签',
+          'R-Group Fragment Tool':'R-基团片段','Rotate Tool':'旋转','Horizontal Flip':'水平翻转',
+          'Vertical Flip':'垂直翻转','Stereochemistry':'立体化学',
+          'Reaction Mapping Tool':'反应映射','Reaction Auto-Mapping Tool':'自动映射',
+          'Reaction Plus Tool':'反应加号','Reaction Unmapping Tool':'取消映射',
+          'Arrow Open Angle Tool':'开放箭头','Arrow Filled Triangle Tool':'实心三角箭头',
+          'Arrow Filled Bow Tool':'实心弓形箭头','Arrow Dashed Open Angle Tool':'虚线箭头',
+          'Arrow Both Ends Filled Triangle Tool':'双端实心三角箭头',
+          'Arrow Equilibrium Open Angle Tool':'平衡开放箭头',
+          'Arrow Equilibrium Filled Half Bow Tool':'平衡半实心弓形箭头',
+          'Arrow Equilibrium Filled Triangle Tool':'平衡实心三角箭头',
+          'Retrosynthetic Arrow Tool':'逆合成箭头','Failed Arrow Tool':'失败箭头',
+          'Multi-Tailed Arrow Tool':'多尾箭头',
+          'Shape Rectangle':'矩形','Shape Ellipse':'椭圆','Shape Line':'直线',
+          'Open…':'打开...','Save As…':'另存为...',
+          'Undo':'撤销','Redo':'重做','Copy':'复制','Cut':'剪切','Paste':'粘贴',
+          'Copy Image':'复制图片','Copy as KET':'复制为KET','Copy as MOL':'复制为MOL',
+          'Select All':'全选','Deselect All':'取消全选','Clear Canvas':'清空画布',
+          'Aromatize':'芳香化','Dearomatize':'去芳香化','Layout':'自动布局',
+          'Clean Up':'整理结构','Calculate CIP':'计算CIP','Calculated Values':'计算数值',
+          'Check Structure':'检查结构','Add text':'添加文本','Add Image':'添加图片',
+          'Any atom':'任意原子','Fullscreen mode':'全屏','Functional Groups':'官能团',
+          'Extended Table':'扩展元素表','Periodic Table':'元素周期表','Select descriptors':'选择描述符',
+          '3D Viewer':'3D查看器',
+          'Save':'保存','Save Structure':'保存结构','Save to File':'保存到文件',
+          'Open structure':'打开结构','Open from File':'从文件打开',
+          'Add to Canvas':'添加到画布','Copy to clipboard':'复制到剪贴板',
+          'Text Editor':'文本编辑器','Structure Library':'结构库',
+          'Click to add to canvas':'点击添加到画布',
+          'Apply':'应用','Cancel':'取消','OK':'确定','Close':'关闭','Delete':'删除',
+          'Settings':'设置','About':'关于','Help':'帮助',
+          'Open…':'打开...','Open...':'打开...',
+          'Cyclopentadiene':'环戊二烯','Imidazole':'咪唑','Purine':'嘌呤',
+          'Quinoline':'喹啉','Isoquinoline':'异喹啉','Acridine':'吖啶',
+          'Carbazole':'咔唑','Fluorene':'芴','Anthracene':'蒽','Phenanthrene':'菲',
+          'Pyrene':'芘','Chrysene':'䓛','Porphyrin':'卟啉',
+          'Morpholine':'吗啉','Piperidine':'哌啶','Piperazine':'哌嗪',
+          'Tetrahydrofuran':'四氢呋喃','Dioxane':'二噁烷',
+          'Acetic acid':'乙酸','Ethanol':'乙醇','Methanol':'甲醇',
+          'Water':'水','Hydrochloric acid':'盐酸','Sulfuric acid':'硫酸',
+          'Sodium hydroxide':'氢氧化钠','Potassium hydroxide':'氢氧化钾',
+          'Save to SDF':'保存为SDF','Save as SDF':'另存为SDF',
+          'Download as SVG':'下载SVG','Download as PNG':'下载PNG',
+          'Functional Groups':'官能团','Functional Group Templates':'官能团模板',
+          'Salts and Solvents':'盐和溶剂','Template Library':'模板库',
+          'Extended Table':'扩展元素表','Periodic Table':'元素周期表',
+          'Warning':'警告','Error':'错误','Information':'信息',
+          'File':'文件','Edit':'编辑','View':'视图','Tools':'工具','Reset':'重置','Search':'搜索',
+          'Single Bond':'单键','Double Bond':'双键','Triple Bond':'三键',
+          'Single':'单键','Double':'双键','Triple':'三键','Aromatic':'芳香键','Any':'任意键',
+          'General':'通用','Rendering':'渲染','Server':'服务器',
+          'Template Library':'模板库','Functional Group Templates':'官能团模板',
+          'Salts and Solvents':'盐和溶剂',
+          'Benzene':'苯','Pyridine':'吡啶','Cyclohexane':'环己烷',
+          'Furan':'呋喃','Pyrrole':'吡咯','Thiophene':'噻吩','Naphthalene':'萘','Indole':'吲哚',
+          'Reset to select tool':'重置为选择工具','Paste from clipboard':'从剪贴板粘贴',
+          'Structure Library':'结构库','Functional Group Templates':'官能团模板',
+          'Template Library':'模板库','Clean Up':'整理结构','Clean up':'整理结构',
+          'Show stereo flags':'显示立体化学标志','Show atom indices':'显示原子索引',
+          'Show bond indices':'显示键索引','Show valence warnings':'显示化合价警告',
+          'Atom coloring':'原子着色','Hide implicit hydrogens':'隐藏隐式氢',
+          'Show charge':'显示电荷','Carbon explicitly':'显式碳',
+          'Auto-scale':'自动缩放','Rotation step':'旋转步长',
+          'Font size':'字体大小','Font':'字体','Color':'颜色','Background':'背景',
+          'Miew':'3D视图','Zoom In':'放大','Zoom Out':'缩小','Zoom to Fit':'适应窗口',
+          'Recognize':'识别','Analyse':'分析','Check':'检查',
+          'Options':'选项','Advanced':'高级','Debug':'调试',
+          'Add atom':'添加原子','Add bond':'添加键','Add ring':'添加环',
+          'Select tool':'选择工具','Erase tool':'擦除工具','Bond tool':'键工具',
+          'Atom tool':'原子工具','Ring tool':'环工具','Chain tool':'链工具',
+          'Reaction tool':'反应工具','Arrow tool':'箭头工具',
+          'Flip horizontal':'水平翻转','Flip vertical':'垂直翻转',
+          'Center':'居中','Absolute':'绝对','And/Or':'与/或','Bonds only':'仅键',
+          'Clear Canvas':'清空画布','Paste':'粘贴',
+          'Reset to select tool':'重置为选择工具',
+          'Switch to Ketcher mode':'切换到分子模式','Switch to Macromolecule mode':'切换到大分子模式',
+          'Molecules':'分子模式','Macromolecules':'大分子模式',
+          'Image resolution':'图片分辨率','High':'高','Medium':'中','Low':'低',
+          'Generate Image':'生成图片','Download as SVG':'下载SVG','Download as PNG':'下载PNG',
+          'Save to SDF':'保存为SDF',
+          'Structure will be loaded as fragment and added to Clipboard':'结构将作为片段加载并添加到剪贴板',
+          'Click to add to canvas':'点击添加到画布',
+          'Functional Groups':'官能团','Functional Group Templates':'官能团模板',
+          'Structure Library':'结构库','Template Library':'模板库',
+          'Salts and Solvents':'盐和溶剂',
+          'Extended Table':'扩展元素表','Periodic Table':'元素周期表',
+          'Select descriptors':'选择描述符','3D Viewer':'3D查看器',
+          'Import Structure from Image':'从图片导入结构',
+          'Text Editor':'文本编辑器','Structure Check':'结构检查',
+          'Show stereo flags':'显示立体化学标志','Show atom indices':'显示原子索引',
+          'Show bond indices':'显示键索引','Show valence warnings':'显示化合价警告',
+          'Atom coloring':'原子着色','Hide implicit hydrogens':'隐藏隐式氢',
+          'Show charge':'显示电荷','Carbon explicitly':'显式碳',
+          'Auto-scale':'自动缩放','Rotation step':'旋转步长',
+          'Font size':'字体大小','Font':'字体','Color':'颜色','Background':'背景',
+          'Miew':'3D视图','Options':'选项','Advanced':'高级','Debug':'调试',
+          'Recognize':'识别','Analyse':'分析','Check':'检查',
+          'Add atom':'添加原子','Add bond':'添加键','Add ring':'添加环',
+          'Select tool':'选择工具','Erase tool':'擦除工具','Bond tool':'键工具',
+          'Atom tool':'原子工具','Ring tool':'环工具','Chain tool':'链工具'
+        };
+        function tr(){
+          if(!document.body)return;
+          function trAttr(v){if(!v)return null;if(zh[v])return zh[v];var m=v.match(/^(.+?)\s*(\([^)]*\))\s*$/);if(m&&zh[m[1]])return zh[m[1]]+' '+m[2];return null;}
+          document.querySelectorAll('[title]').forEach(function(e){var v=e.getAttribute('title'),t=trAttr(v);if(t)e.setAttribute('title',t);});
+          document.querySelectorAll('[placeholder]').forEach(function(e){var v=e.getAttribute('placeholder'),t=trAttr(v);if(t)e.setAttribute('placeholder',t);});
+          document.querySelectorAll('[aria-label]').forEach(function(e){var v=e.getAttribute('aria-label'),t=trAttr(v);if(t)e.setAttribute('aria-label',t);});
+          var w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
+          while(w.nextNode()){var n=w.currentNode,o=n.textContent||'',t=o.trim();if(!t)continue;if(zh[t]){n.textContent=o.replace(t,zh[t]);continue;}var ft=trAttr(t);if(ft){n.textContent=o.replace(t,ft);continue;}var p=n.parentNode;if(p&&p.childNodes.length>1){var full='';for(var i=0;i<p.childNodes.length;i++){var c=p.childNodes[i];if(c.nodeType===3)full+=(c.textContent||'');}var fts=full.trim();if(fts&&zh[fts]){p.childNodes[0].textContent=zh[fts];for(var j=1;j<p.childNodes.length;j++){if(p.childNodes[j].nodeType===3)p.childNodes[j].textContent='';}}}}
+        }
+        function fixDark(){
+          if(!document.documentElement.getAttribute('data-theme'))return;
+          document.querySelectorAll('.MuiPopover-paper *,[class*="dropdown"] *,[class*="Dropdown"] *,[class*="template"] *,[class*="Template"] *,[class*="tabPanel"] *').forEach(function(el){
+            var s=getComputedStyle(el);
+            if(s.backgroundColor==='rgb(255, 255, 255)'||s.backgroundColor==='white'){
+              el.style.setProperty('background','#0f172a','important');
+              el.style.setProperty('background-color','#0f172a','important');
+            }
+            if(s.color==='rgb(0, 0, 0)'||s.color==='rgb(51, 51, 51)'){
+              el.style.setProperty('color','#e9eef5','important');
+            }
+          });
+          document.querySelectorAll('.MuiTooltip-tooltip').forEach(function(el){
+            el.style.setProperty('background','#1a2540','important');
+            el.style.setProperty('color','#e9eef5','important');
+          });
+        }
+        function start(){
+          tr();fixDark();
+          new MutationObserver(function(){tr();fixDark();}).observe(document.body,{childList:true,subtree:true,characterData:true});
+          var count=0;var iv=setInterval(function(){tr();fixDark();count++;if(count>20)clearInterval(iv);},500);
+          new MutationObserver(function(){tr();fixDark();}).observe(document.body,{childList:true});
+        }
+        if(document.body){start();}else{document.addEventListener('DOMContentLoaded',start);}
+      })();</script><script defer="defer" src="./static/js/main.5a7f84a1.js"></script><link href="./static/css/main.6ea49138.css" rel="stylesheet"><script defer="defer" src="./static/js/main.3f09c3e9.js"></script><link href="./static/css/main.6ea49138.css" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div></body></html>
