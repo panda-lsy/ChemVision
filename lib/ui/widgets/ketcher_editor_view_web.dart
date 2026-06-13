@@ -70,8 +70,10 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
 
   void _registerViewFactory() {
     ui.platformViewRegistry.registerViewFactory(_viewType, (int viewId) {
+      // 时间戳防缓存
+      final ts = DateTime.now().millisecondsSinceEpoch;
       final iframe = html.IFrameElement()
-        ..src = 'assets/assets/web/ketcher/index.html?channel=$_channel$_themeParam'
+        ..src = 'assets/assets/web/ketcher/index.html?channel=$_channel$_themeParam&_t=$ts'
         ..style.border = 'none'
         ..style.width = '100%'
         ..style.height = '100%'
