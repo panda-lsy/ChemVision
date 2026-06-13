@@ -125,7 +125,7 @@ jobs:
   # ── 发布到 GitHub Releases（仅 main push） ──
   release:
     needs: [bump-version, build-android, build-windows]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && always()
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -134,13 +134,17 @@ jobs:
         with:
           ref: ${{ github.sha }}
       - uses: actions/download-artifact@v4
+        if: needs.build-android.result == 'success'
         with:
           name: android-apk
           path: artifacts/android/
+          merge-multiple: true
       - uses: actions/download-artifact@v4
+        if: needs.build-windows.result == 'success'
         with:
           name: windows-build
           path: artifacts/windows/
+          merge-multiple: true
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
@@ -149,4 +153,4 @@ jobs:
           generate_release_notes: true
           files: |
             artifacts/android/app-release.apk
-            artifacts/windows/*
+            artifacts/windows/**/*
