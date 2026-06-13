@@ -15,6 +15,7 @@ class KetcherEditorView extends StatefulWidget {
     this.onSmilesUpdated,
     this.onError,
     this.readOnly = false,
+    this.themeMode = ThemeMode.dark,
   });
 
   final String initialSmiles;
@@ -22,6 +23,7 @@ class KetcherEditorView extends StatefulWidget {
   final ValueChanged<String>? onSmilesUpdated;
   final ValueChanged<String>? onError;
   final bool readOnly;
+  final ThemeMode themeMode;
 
   @override
   State<KetcherEditorView> createState() => _KetcherEditorViewState();
@@ -107,6 +109,9 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
           ''',
         );
         return result?.toString();
+      },
+      triggerSave: () {
+        _sendCommand('triggerSave', {});
       },
     );
     widget.onControllerReady?.call(_controller!);
