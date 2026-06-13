@@ -4,112 +4,103 @@ on:
   push:
     branches:
       - main
-      - feature/web-deploy
   pull_request:
 
 jobs:
-  build:
+  # ── 版本递增（仅 main push） ──
+  bump-version:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.41.9'
-          channel: 'stable'
-
-      - name: Show Flutter version
-        run: flutter --version
-
-      - name: Bump version
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - uses: actions/checkout@v4
+      - id: bump
         run: |
-          # Read current version from pubspec.yaml
           CURRENT=$(grep -E '^version:' pubspec.yaml | sed 's/version: //')
           VERSION_NAME=$(echo "$CURRENT" | cut -d'+' -f1)
           VERSION_CODE=$(echo "$CURRENT" | cut -d'+' -f2)
-          # Split and increment patch
           MAJOR=$(echo "$VERSION_NAME" | cut -d'.' -f1)
           MINOR=$(echo "$VERSION_NAME" | cut -d'.' -f2)
           PATCH=$(echo "$VERSION_NAME" | cut -d'.' -f3)
           NEW_PATCH=$((PATCH + 1))
           NEW_CODE=$((VERSION_CODE + 1))
           NEW_VERSION="${MAJOR}.${MINOR}.${NEW_PATCH}+${NEW_CODE}"
-          # Update pubspec.yaml
           sed -i "s/^version: .*/version: ${NEW_VERSION}/" pubspec.yaml
+          echo "version=${NEW_VERSION}" >> "$GITHUB_OUTPUT"
           echo "Version bumped: ${CURRENT} -> ${NEW_VERSION}"
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add pubspec.yaml
+          git commit -m "chore: bump version to ${{ steps.bump.outputs.version }}"
+          git push
 
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Build debug APK
-        run: flutter build apk --debug
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: app-debug-apk
-          path: build/app/outputs/flutter-apk/app-debug.apk
-
-  build-windows:
-    runs-on: windows-latest
+  # ── Android APK ──
+  build-android:
+    needs: bump-version
+    if: always() && (needs.bump-version.result == 'success' || needs.bump-version.result == 'skipped')
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.41.9'
           channel: 'stable'
+      - run: flutter pub get
+      - run: flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
 
-      - name: Show Flutter version
-        run: flutter --version
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Build Windows
-        run: flutter build windows
-
-      - name: Upload Windows build
-        uses: actions/upload-artifact@v4
+  # ── Windows ──
+  build-windows:
+    needs: bump-version
+    if: always() && (needs.bump-version.result == 'success' || needs.bump-version.result == 'skipped')
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.9'
+          channel: 'stable'
+      - run: flutter pub get
+      - run: flutter build windows
+      - uses: actions/upload-artifact@v4
         with:
           name: windows-build
           path: build/windows/x64/runner/Release/
 
+  # ── Web ──
   build-web:
+    needs: bump-version
+    if: always() && (needs.bump-version.result == 'success' || needs.bump-version.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Flutter
-        uses: subosito/flutter-action@v2
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.41.9'
           channel: 'stable'
-
-      - name: Show Flutter version
-        run: flutter --version
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Build Web
-        run: flutter build web --release --base-href "/"
-
-      - name: Upload Web build
-        uses: actions/upload-artifact@v4
+      - run: flutter pub get
+      - run: flutter build web --release --base-href "/"
+      - uses: actions/upload-artifact@v4
         with:
           name: web-build
           path: build/web/
 
+  # ── 部署 Web 到 GitHub Pages ──
   deploy-web:
     needs: build-web
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/web-deploy')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       pages: write
@@ -118,20 +109,42 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Download Web build
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           name: web-build
           path: build/web/
-
-      - name: Configure Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+      - uses: actions/configure-pages@v4
+      - uses: actions/upload-pages-artifact@v3
         with:
           path: build/web/
-
-      - name: Deploy to GitHub Pages
-        id: deployment
+      - id: deployment
         uses: actions/deploy-pages@v4
+
+  # ── 发布到 GitHub Releases（仅 main push） ──
+  release:
+    needs: [bump-version, build-android, build-windows]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && always()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: android-apk
+          path: artifacts/android/
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-build
+          path: artifacts/windows/
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.bump-version.outputs.version }}
+          name: ChemVision v${{ needs.bump-version.outputs.version }}
+          generate_release_notes: true
+          files: |
+            artifacts/android/app-release.apk
+            artifacts/windows/*
