@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../models/reaction_equation.dart';
+import '../../providers/favorites_provider.dart';
+import '../../providers/reaction_favorites_provider.dart';
+import '../../providers/structure_service_provider.dart';
 import '../../theme/app_colors.dart';
 import '../widgets/accent_pill.dart';
 import '../widgets/app_scaffold.dart';
@@ -15,6 +19,54 @@ import 'reaction_page.dart';
 /// 提供三个入口：结构式编辑器、反应式编辑器、AI 反应补全。
 class EditHubPage extends ConsumerWidget {
   const EditHubPage({super.key});
+
+  /// 打开 Ketcher 编辑器，处理返回结果（区分结构式/反应式）
+  Future<void> _openKetcherEditor(
+      BuildContext context, WidgetRef ref) async {
+    final result = await Navigator.of(context).push<String>(
+      MaterialPageRoute(
+        builder: (_) => const StructureEditorPage(),
+      ),
+    );
+    if (result == null || result.isEmpty || !context.mounted) return;
+
+    // 区分结构式和反应式
+    final isReaction = result.contains('>') || result.contains('>>');
+
+    if (isReaction) {
+      // 反应式：保存到反应收藏
+      final equation = ReactionEquation(
+        title: '',
+        rxnData: result,
+      );
+      ref.read(reactionFavoritesControllerProvider.notifier).add(equation);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('已保存到反应收藏')),
+        );
+      }
+    } else {
+      // 结构式：AI 推测名称后保存到结构收藏
+      try {
+        final service = ref.read(structureServiceProvider);
+        final resolved = await service.reverseResolveName(result);
+        final name = resolved.isValid
+            ? (resolved.chineseName ?? resolved.englishName ?? resolved.resolvedName ?? '')
+            : '';
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('已保存: $name')),
+          );
+        }
+      } catch (_) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('结构式已保存')),
+          );
+        }
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -42,11 +94,7 @@ class EditHubPage extends ConsumerWidget {
             icon: Icons.edit_note,
             title: 'Ketcher 编辑器',
             subtitle: '绘制化学结构式与反应方程式，支持导出',
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => const StructureEditorPage(),
-              ),
-            ),
+            onTap: () => _openKetcherEditor(context, ref),
           ),
           const SizedBox(height: 12),
           _buildEntryCard(
