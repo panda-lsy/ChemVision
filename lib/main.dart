@@ -5,14 +5,17 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import 'app.dart';
+import 'models/adapters/edit_history_item_adapter.dart';
 import 'models/adapters/favorite_item_adapter.dart';
 import 'models/adapters/reaction_equation_adapter.dart';
 import 'models/adapters/reaction_favorite_item_adapter.dart';
 import 'models/adapters/structure_candidate_adapter.dart';
 import 'models/adapters/structure_result_adapter.dart';
 import 'providers/favorites_provider.dart';
+import 'providers/edit_history_provider.dart';
 import 'providers/reaction_favorites_provider.dart';
 import 'services/favorites_service.dart';
+import 'services/edit_history_service.dart';
 import 'services/reaction_favorites_service.dart';
 import 'services/search_history_service.dart';
 import 'services/app_version_service.dart';
@@ -97,6 +100,7 @@ class _InitializationWrapper extends StatefulWidget {
 class _InitializationWrapperState extends State<_InitializationWrapper> {
   FavoritesService? _favoritesService;
   ReactionFavoritesService? _reactionFavoritesService;
+  EditHistoryService? _editHistoryService;
   SearchHistoryService? _searchHistoryService;
   bool _initialized = false;
 
@@ -125,6 +129,7 @@ class _InitializationWrapperState extends State<_InitializationWrapper> {
         Hive.registerAdapter(ReactionMoleculeAdapter());
         Hive.registerAdapter(ArrowTypeAdapter());
         Hive.registerAdapter(ReactionEquationAdapter());
+        Hive.registerAdapter(EditHistoryItemAdapter());
         Hive.registerAdapter(ReactionFavoriteItemAdapter());
 
         // 初始化服务
@@ -133,6 +138,9 @@ class _InitializationWrapperState extends State<_InitializationWrapper> {
 
         _reactionFavoritesService = ReactionFavoritesService();
         await _reactionFavoritesService!.init();
+
+        _editHistoryService = EditHistoryService();
+        await _editHistoryService!.init();
 
         _searchHistoryService = SearchHistoryService();
         await _searchHistoryService!.init();
@@ -167,6 +175,7 @@ class _InitializationWrapperState extends State<_InitializationWrapper> {
     return ProviderScope(
       overrides: [
         favoritesServiceProvider.overrideWithValue(_favoritesService!),
+        editHistoryServiceProvider.overrideWithValue(_editHistoryService!),
         reactionFavoritesServiceProvider.overrideWithValue(_reactionFavoritesService!),
         searchHistoryServiceProvider.overrideWithValue(_searchHistoryService!),
       ],

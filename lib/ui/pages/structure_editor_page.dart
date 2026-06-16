@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../models/edit_history_item.dart';
+import '../../providers/edit_history_provider.dart';
 import '../../providers/structure_service_provider.dart';
 import '../../theme/app_colors.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/ketcher_editor_controller.dart';
 import '../widgets/ketcher_editor_view.dart';
 import '../widgets/primary_button.dart';
+import 'save_confirm_page.dart';
 
 class StructureEditorPage extends ConsumerStatefulWidget {
   const StructureEditorPage({
@@ -34,7 +37,7 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
     _currentSmiles = widget.initialSmiles;
   }
 
-  /// 保存并返回：检测 SMILES 类型决定保存方式
+  /// 保存并返回：保存历史 → 确认收藏 → 返回
   Future<void> _saveAndBack() async {
     final latest = await _controller?.getSmiles();
     if (!mounted) return;
@@ -49,27 +52,44 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
       return;
     }
 
-    // 检测是否为反应式（SMILES 包含 '>' 分隔符）
-    final isReaction = smiles.contains('>');
+    // 1. 保存到编辑历史
+    final historyItem = EditHistoryItem.fromSmiles(smiles);
+    ref.read(editHistoryControllerProvider.notifier).add(historyItem);
 
-    if (isReaction) {
-      // 反应式：直接返回 SMILES
-      Navigator.of(context).pop(smiles);
-    } else {
-      // 结构式：弹出命名页面（AI 推测），然后返回 SMILES
-      final result = await Navigator.of(context).push<Map<String, String>>(
-        MaterialPageRoute(
-          fullscreenDialog: true,
-          builder: (_) => _SaveNamingPage(
-            smiles: smiles,
-            structureService: _getStructureService(),
+    // 2. 弹出确认页面（全屏，避免 iframe z-index 问题）
+    final shouldFavorite = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => SaveConfirmPage(smiles: smiles),
+      ),
+    );
+
+    if (!mounted) return;
+
+    if (shouldFavorite == true) {
+      // 收藏：根据类型自动路由
+      final isReaction = EditHistoryItem.isReactionSmiles(smiles);
+      if (isReaction) {
+        // 反应式：返回 SMILES，EditHubPage 处理收藏
+        Navigator.of(context).pop(smiles);
+      } else {
+        // 结构式：弹出命名页面
+        final result = await Navigator.of(context).push<Map<String, String>>(
+          MaterialPageRoute(
+            fullscreenDialog: true,
+            builder: (_) => _SaveNamingPage(
+              smiles: smiles,
+              structureService: _getStructureService(),
+            ),
           ),
-        ),
-      );
-      if (result != null && mounted) {
-        // 返回 SMILES 字符串（兼容 result_page.dart 的 push<String>）
-        Navigator.of(context).pop(result['smiles'] ?? smiles);
+        );
+        if (result != null && mounted) {
+          Navigator.of(context).pop(result['smiles'] ?? smiles);
+        }
       }
+    } else {
+      // 跳过收藏，直接返回 SMILES
+      Navigator.of(context).pop(smiles);
     }
   }
 

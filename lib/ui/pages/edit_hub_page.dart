@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../models/edit_history_item.dart';
 import '../../models/reaction_equation.dart';
+import '../../providers/edit_history_provider.dart';
 import '../../providers/favorites_provider.dart';
 import '../../providers/reaction_favorites_provider.dart';
 import '../../providers/structure_service_provider.dart';
@@ -110,8 +112,114 @@ class EditHubPage extends ConsumerWidget {
             ),
           ),
           const SizedBox(height: 24),
+          // ── 编辑历史 ──
+          _buildHistorySection(context, ref, isDark),
         ],
       ),
+    );
+  }
+
+  Widget _buildHistorySection(
+      BuildContext context, WidgetRef ref, bool isDark) {
+    final historyState = ref.watch(editHistoryControllerProvider);
+    final items = historyState.items;
+
+    if (items.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text('编辑历史',
+                style: Theme.of(context).textTheme.titleMedium),
+            const Spacer(),
+            TextButton(
+              onPressed: () => ref
+                  .read(editHistoryControllerProvider.notifier)
+                  .clearAll(),
+              child: const Text('清空', style: TextStyle(fontSize: 12)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ...items.take(20).map((item) => Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: GestureDetector(
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => StructureEditorPage(
+                      initialSmiles: item.smiles,
+                    ),
+                  ),
+                ),
+                child: GlassPanel(
+                  radius: 14,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  child: Row(
+                    children: [
+                      // 类型标签
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: (item.isReaction
+                                  ? AppColors.amber
+                                  : (isDark
+                                      ? AppColors.aqua
+                                      : AppColors.dayBluePrimary))
+                              .withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          item.isReaction ? '反应' : '结构',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: item.isReaction
+                                ? AppColors.amber
+                                : (isDark
+                                    ? AppColors.aqua
+                                    : AppColors.dayBluePrimary),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      // SMILES
+                      Expanded(
+                        child: Text(
+                          item.smiles,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(
+                                fontFamily: 'monospace',
+                                color: isDark
+                                    ? AppColors.textMuted
+                                    : AppColors.dayTextMuted,
+                              ),
+                        ),
+                      ),
+                      // 删除
+                      GestureDetector(
+                        onTap: () => ref
+                            .read(editHistoryControllerProvider.notifier)
+                            .delete(item.id),
+                        child: Icon(Icons.close,
+                            size: 14,
+                            color: isDark
+                                ? AppColors.textMuted
+                                : AppColors.dayTextMuted),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            )),
+      ],
     );
   }
 
