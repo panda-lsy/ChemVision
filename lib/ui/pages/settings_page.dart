@@ -294,33 +294,51 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           const SizedBox(height: 16),
           Text('模型设置', style: Theme.of(context).textTheme.headlineMedium),
           const SizedBox(height: 16),
-          GlassPanel(
+
+          // ── 模型类型切换 ──
+          Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.glassStrong : AppColors.dayGlass,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.10)
+                    : AppColors.dayBluePrimary.withValues(alpha: 0.15),
+              ),
+            ),
             child: Row(
               children: [
-                Expanded(
-                  child: Text(
-                    '使用端侧 BlueLM 大模型',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ),
-                Switch.adaptive(
-                  value: _useLocalModel,
-                  onChanged: (value) {
-                    setState(() => _useLocalModel = value);
-                    _scheduleSave();
-                  },
-                ),
+                _buildModelTab(context, isDark,
+                    label: '云端 API',
+                    icon: Icons.cloud_outlined,
+                    selected: !_useLocalModel,
+                    onTap: () {
+                  setState(() => _useLocalModel = false);
+                  _scheduleSave();
+                }),
+                _buildModelTab(context, isDark,
+                    label: '端侧 BlueLM',
+                    icon: Icons.phone_android,
+                    selected: _useLocalModel,
+                    onTap: () {
+                  setState(() => _useLocalModel = true);
+                  _scheduleSave();
+                }),
               ],
             ),
           ),
+          const SizedBox(height: 16),
+
+          // ── 端侧 BlueLM 配置 ──
           if (_useLocalModel) ...[
-            const SizedBox(height: 8),
             GlassPanel(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('模型路径', style: Theme.of(context).textTheme.bodySmall),
-                  const SizedBox(height: 4),
+                  Text('模型路径',
+                      style: Theme.of(context).textTheme.titleSmall),
+                  const SizedBox(height: 8),
                   TextField(
                     controller: _modelPathController,
                     decoration: const InputDecoration(
@@ -329,12 +347,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     ),
                     onChanged: (_) => _scheduleSave(),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   Row(
                     children: [
-                      Text('多模态（图文理解）',
-                          style: Theme.of(context).textTheme.bodySmall),
-                      const Spacer(),
+                      Expanded(
+                        child: Text('多模态（图文理解）',
+                            style: Theme.of(context).textTheme.bodyMedium),
+                      ),
                       Switch.adaptive(
                         value: _useMultimodal,
                         onChanged: (value) {
@@ -344,96 +363,91 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 12),
+                  PrimaryButton(
+                    label: _isTesting ? '正在测试...' : '测试连接',
+                    onPressed: _isTesting ? null : _runConnectionTest,
+                  ),
+                  const SizedBox(height: 8),
+                  _buildTestResult(context),
                 ],
               ),
             ),
           ],
-          const SizedBox(height: 16),
-          Text('连接设置', style: Theme.of(context).textTheme.headlineMedium),
-          const SizedBox(height: 16),
-          if (_apiKeyController.text.trim().isEmpty)
+
+          // ── 云端 API 配置 ──
+          if (!_useLocalModel) ...[
             GlassPanel(
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(Icons.info_outline, color: AppColors.amber),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      '请配置 API Key 以启用云端生成',
-                      style: Theme.of(context).textTheme.bodyMedium,
+                  Text('文本生成模型',
+                      style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<String>(
+                    value: _selectedTextModel,
+                    isExpanded: true,
+                    dropdownColor:
+                        isDark ? AppColors.navy : AppColors.daySurface,
+                    items: _buildTextModelItems(),
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedTextModel = value;
+                      });
+                      _scheduleSave();
+                    },
+                  ),
+                  if (_isCustomModel) ...[
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _customModelController,
+                      onChanged: (_) => _scheduleSave(),
+                      decoration: const InputDecoration(
+                        hintText: '输入自定义模型名称',
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  Text('API Key',
+                      style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: _apiKeyController,
+                    obscureText: _obscureKey,
+                    onChanged: (_) => _scheduleSave(),
+                    decoration: InputDecoration(
+                      hintText: '请输入 API Key',
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _obscureKey
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                          color: AppColors.textMuted,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _obscureKey = !_obscureKey;
+                          });
+                        },
+                      ),
                     ),
                   ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Key 仅本地存储，不上传至服务器',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(height: 16),
+                  PrimaryButton(
+                    label: _isTesting ? '正在测试...' : '连接测试',
+                    onPressed: _isTesting ? null : _runConnectionTest,
+                  ),
+                  const SizedBox(height: 12),
+                  _buildTestResult(context),
                 ],
               ),
             ),
-          if (_apiKeyController.text.trim().isEmpty)
-            const SizedBox(height: 16),
-          GlassPanel(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('API Key', style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: _apiKeyController,
-                  obscureText: _obscureKey,
-                  onChanged: (_) => _scheduleSave(),
-                  decoration: InputDecoration(
-                    hintText: '请输入 API Key',
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscureKey ? Icons.visibility_off : Icons.visibility,
-                        color: AppColors.textMuted,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          _obscureKey = !_obscureKey;
-                        });
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Key 仅本地存储，不上传至服务器',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const SizedBox(height: 18),
-                Text('文本生成模型',
-                    style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 10),
-                DropdownButtonFormField<String>(
-                  value: _selectedTextModel,
-                  isExpanded: true,
-                  dropdownColor: isDark ? AppColors.navy : AppColors.daySurface,
-                  items: _buildTextModelItems(),
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedTextModel = value;
-                    });
-                    _scheduleSave();
-                  },
-                ),
-                if (_isCustomModel) ...[
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _customModelController,
-                    onChanged: (_) => _scheduleSave(),
-                    decoration: const InputDecoration(
-                      hintText: '输入自定义模型名称',
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 16),
-                PrimaryButton(
-                  label: _isTesting ? '正在测试...' : '连接测试',
-                  onPressed: _isTesting ? null : _runConnectionTest,
-                ),
-                const SizedBox(height: 12),
-                _buildTestResult(context),
-              ],
-            ),
-          ),
+          ],
           const SizedBox(height: 16),
           GlassPanel(
             padding: EdgeInsets.zero,
@@ -816,6 +830,61 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
 
     return items;
+  }
+
+  Widget _buildModelTab(
+    BuildContext context,
+    bool isDark, {
+    required String label,
+    required IconData icon,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            gradient: selected
+                ? (isDark
+                    ? const LinearGradient(
+                        colors: [AppColors.aqua, Color(0xFF9EF5D2)])
+                    : const LinearGradient(
+                        colors: [
+                            AppColors.dayBluePrimary,
+                            AppColors.dayBlueAccent
+                          ]))
+                : null,
+            color: selected ? null : Colors.transparent,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon,
+                  size: 16,
+                  color: selected
+                      ? (isDark ? AppColors.ink : Colors.white)
+                      : (isDark
+                          ? AppColors.textSecondary
+                          : AppColors.dayTextSecondary)),
+              const SizedBox(width: 6),
+              Text(label,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: selected
+                            ? (isDark ? AppColors.ink : Colors.white)
+                            : (isDark
+                                ? AppColors.textSecondary
+                                : AppColors.dayTextSecondary),
+                        fontWeight: FontWeight.w600,
+                      )),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   List<DropdownMenuItem<String>> _buildOptionalItems(List<String> models) {
