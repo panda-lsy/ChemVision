@@ -4,6 +4,8 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../config/app_config.dart';
 import '../models/structure_result.dart';
 import 'ai_settings_store.dart';
@@ -76,12 +78,16 @@ class NameToStructureService implements StructureService {
     final useInfer = forceInfer ?? _looksLikeDescription(trimmed);
     final apiKey = settings.apiKey.trim();
     final model = settings.textModel.trim();
-    // Web 端 API Key 由 Cloudflare Worker 自动注入，无需前端配置
-    if (!kIsWeb && (apiKey.isEmpty || model.isEmpty)) {
-      return StructureResult.invalid(message: '请先在设置中配置 API Key 与模型');
-    }
-    if (kIsWeb && model.isEmpty) {
-      return StructureResult.invalid(message: '请先在设置中配置模型');
+
+    // 端侧模型启用时跳过云端 API Key 校验
+    final useLocal = await _isLocalModelEnabled();
+    if (!useLocal) {
+      if (!kIsWeb && (apiKey.isEmpty || model.isEmpty)) {
+        return StructureResult.invalid(message: '请先在设置中配置 API Key 与模型');
+      }
+      if (kIsWeb && model.isEmpty) {
+        return StructureResult.invalid(message: '请先在设置中配置模型');
+      }
     }
 
     final cacheMode = useInfer ? 'infer' : 'exact';
@@ -741,6 +747,15 @@ English name: $englishName
       }
     }
     return error.message ?? '连接失败';
+  }
+
+  Future<bool> _isLocalModelEnabled() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getBool('bluelm_use_local') ?? false;
+    } catch (_) {
+      return false;
+    }
   }
 
   bool _looksLikeDescription(String text) {

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/app_config.dart';
 import '../models/reaction_completion_result.dart';
@@ -37,8 +38,9 @@ class ReactionCompletionService {
     );
     final fallback = _buildFallbackResult(normalized, matches);
 
-    // Web 端 API Key 由 Worker 注入，不阻断
-    if (!kIsWeb && settings.apiKey.trim().isEmpty) {
+    // 端侧模型或 Web 端跳过校验
+    final useLocal = await _isLocalModelEnabled();
+    if (!useLocal && !kIsWeb && settings.apiKey.trim().isEmpty) {
       return fallback.copyWith(usedModel: false);
     }
 
@@ -65,6 +67,15 @@ class ReactionCompletionService {
         debugPrint('[ReactionCompletion] 模型请求失败：$e');
       }
       return fallback.copyWith(usedModel: false);
+    }
+  }
+
+  Future<bool> _isLocalModelEnabled() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getBool('bluelm_use_local') ?? false;
+    } catch (_) {
+      return false;
     }
   }
 
@@ -368,8 +379,9 @@ $kbContext
     ReactionKnowledgeEntry entry, {
     required AiSettings settings,
   }) async {
-    // Web 端 API Key 由 Worker 注入
-    if (!kIsWeb && settings.apiKey.trim().isEmpty) {
+    // 端侧模型或 Web 端跳过校验
+    final useLocal = await _isLocalModelEnabled();
+    if (!useLocal && !kIsWeb && settings.apiKey.trim().isEmpty) {
       return entry;
     }
 

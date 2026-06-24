@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/services.dart' show rootBundle;
 
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../config/app_config.dart';
 import '../models/structure_recognition_result.dart';
 import '../models/structure_result.dart';
@@ -32,8 +34,9 @@ class ImageStructureService {
     String dataUri,
   ) async {
     final settings = await _settingsStore.load();
-    // Web 端 API Key 由 Cloudflare Worker 自动注入，无需前端配置
-    if (!kIsWeb && settings.apiKey.trim().isEmpty) {
+    // 端侧模型启用时跳过云端 API Key 校验
+    final useLocal = await _isLocalModelEnabled();
+    if (!useLocal && !kIsWeb && settings.apiKey.trim().isEmpty) {
       return StructureRecognitionResult.invalid(
         message: '请先在设置中配置 API Key',
       );
@@ -98,6 +101,15 @@ class ImageStructureService {
       isValid: true,
       confidence: candidate.confidence,
     );
+  }
+
+  Future<bool> _isLocalModelEnabled() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getBool('bluelm_use_local') ?? false;
+    } catch (_) {
+      return false;
+    }
   }
 
   Future<String> _loadPrompt() async {
