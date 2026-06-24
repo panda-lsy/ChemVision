@@ -32,7 +32,7 @@ android {
 
     defaultConfig {
         applicationId = "com.chemvision.chemvision"
-        minSdk = flutter.minSdkVersion
+        minSdk = 28 // BlueLM SDK 最低要求
         targetSdk = flutter.targetSdkVersion
         versionCode = flutterVersionCode
         versionName = flutterVersionName
