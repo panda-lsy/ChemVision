@@ -37,6 +37,34 @@ class _InputPageState extends ConsumerState<InputPage> {
   final TextEditingController _controller = TextEditingController();
   ResolveMode _mode = ResolveMode.exact;
 
+  // 多模态附件状态
+  String? _attachedImageBase64; // data URI
+  String? _attachedImageName;
+  bool _isMultimodalModel = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkMultimodal();
+  }
+
+  Future<void> _checkMultimodal() async {
+    final settings = await AiSettingsStore().load();
+    final model = textGenerationModels
+        .where((m) => m.name == settings.textModel)
+        .firstOrNull;
+    if (mounted) {
+      setState(() => _isMultimodalModel = model?.multimodal == true);
+    }
+  }
+
+  void _clearAttachment() {
+    setState(() {
+      _attachedImageBase64 = null;
+      _attachedImageName = null;
+    });
+  }
+
   @override
   void dispose() {
     _controller.dispose();
@@ -45,16 +73,22 @@ class _InputPageState extends ConsumerState<InputPage> {
 
   void _submit() {
     final query = _controller.text.trim();
-    if (query.isEmpty) {
+    if (query.isEmpty && _attachedImageBase64 == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('请输入化学名称')),
       );
       return;
     }
 
+    // 多模态附带图片：直接发送图片 + 文本
+    if (_attachedImageBase64 != null && _isMultimodalModel) {
+      _submitMultimodal(query);
+      return;
+    }
+
     // 先添加到历史记录（立即显示）
     ref.read(searchHistoryListProvider.notifier).add(query);
-    
+
     ref.read(structureControllerProvider.notifier).reset();
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -64,6 +98,60 @@ class _InputPageState extends ConsumerState<InputPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _submitMultimodal(String query) async {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('正在识别图片...')),
+      );
+    }
+
+    final settings = await AiSettingsStore().load();
+    final router = ModelRouter();
+
+    // 组合 prompt：如果用户有文字描述，结合图片一起发
+    final prompt = query.isNotEmpty
+        ? '请根据图片和以下描述识别化学物质：$query。只返回化学名称。'
+        : '请识别图片中的化学物质，只返回化学名称（中文名或英文名），不要其他内容。如果无法识别，返回空。';
+
+    try {
+      final result = await router.generateMultimodal(
+        apiKey: settings.apiKey,
+        model: settings.textModel,
+        prompt: prompt,
+        imageBase64: _attachedImageBase64!,
+        baseUrl: settings.baseUrl.isEmpty
+            ? AppConfig.vivoAigcBaseUrl
+            : settings.baseUrl,
+      );
+
+      _clearAttachment();
+
+      if (mounted && result.trim().isNotEmpty) {
+        ref.read(searchHistoryListProvider.notifier).add(result.trim());
+        ref.read(structureControllerProvider.notifier).reset();
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => LoadingPage(
+              query: result.trim(),
+              mode: 'exact',
+            ),
+          ),
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('未识别到化学物质')),
+        );
+      }
+    } catch (e) {
+      _clearAttachment();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('识别失败: $e')),
+        );
+      }
+    }
   }
 
   void _removeHistory(String query) async {
@@ -153,9 +241,28 @@ class _InputPageState extends ConsumerState<InputPage> {
 
       final bytes = await image.readAsBytes();
       final base64Image = await compute(_encodeBytes, bytes);
+      final mimeType = _detectMimeType(bytes);
+      final dataUri = 'data:$mimeType;base64,$base64Image';
 
+      // 刷新多模态状态
+      await _checkMultimodal();
+
+      if (_isMultimodalModel) {
+        // 多模态模型：作为附件预览，提交时一起发送
+        setState(() {
+          _attachedImageBase64 = dataUri;
+          _attachedImageName = image.name;
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('图片已添加为附件')),
+          );
+        }
+        return;
+      }
+
+      // 非多模态：OCR 识别
       final settings = await AiSettingsStore().load();
-      // Web 端 API Key 由 Cloudflare Worker 自动注入
       if (!kIsWeb && settings.apiKey.isEmpty) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -165,45 +272,12 @@ class _InputPageState extends ConsumerState<InputPage> {
         return;
       }
 
-      final mimeType = _detectMimeType(bytes);
-      final dataUri = 'data:$mimeType;base64,$base64Image';
-
-      // 检查模型是否支持多模态
-      final selectedModel = textGenerationModels
-          .where((m) => m.name == settings.textModel)
-          .firstOrNull;
-      final isMultimodal = selectedModel?.multimodal == true;
-
-      // 检查是否使用端侧 BlueLM 多模态
-      final prefs = await SharedPreferences.getInstance();
-      final useLocalMultimodal =
-          prefs.getBool('bluelm_use_local') == true &&
-              prefs.getBool('bluelm_multimodal') == true;
-
-      if (isMultimodal || useLocalMultimodal) {
-        // 多模态模型：直接发送图片作为附件
-        final router = ModelRouter();
-        final result = await router.generateMultimodal(
-          apiKey: settings.apiKey,
-          model: settings.textModel,
-          prompt: '请识别图片中的化学物质，只返回化学名称（中文名或英文名），不要其他内容。'
-              '如果无法识别，返回空。',
-          imageBase64: dataUri,
-          baseUrl: settings.baseUrl,
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('正在识别...')),
         );
-
-        if (mounted && result.trim().isNotEmpty) {
-          setState(() {
-            _controller.text = result.trim();
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('识别完成')),
-          );
-        }
-        return;
       }
 
-      // 非多模态模型：使用 OCR 识别
       final ocrService = OcrService();
       final ocrResult = await ocrService.recognize(
         imageBase64: base64Image,
@@ -362,6 +436,37 @@ String _encodeBytes(Uint8List bytes) {
               ],
             ),
           ),
+          // 附件预览
+          if (_attachedImageBase64 != null) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.glass : AppColors.dayGlassStrong,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.attach_file,
+                      size: 16,
+                      color: isDark ? AppColors.aqua : AppColors.dayBluePrimary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _attachedImageName ?? '图片附件',
+                      style: Theme.of(context).textTheme.bodySmall,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: _clearAttachment,
+                    child: Icon(Icons.close, size: 16,
+                        color: isDark ? AppColors.textMuted : AppColors.dayTextMuted),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           PrimaryButton(label: '生成结构', onPressed: _submit),
           const SizedBox(height: 10),
