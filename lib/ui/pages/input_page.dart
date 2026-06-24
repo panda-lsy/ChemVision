@@ -10,6 +10,7 @@ import '../../main.dart';
 import '../../providers/structure_controller.dart';
 import '../../providers/theme_mode_provider.dart';
 import '../../config/ai_models.dart';
+import '../../config/app_config.dart';
 import '../../services/ai_settings_store.dart';
 import '../../services/model_router.dart';
 import '../../services/ocr_service.dart';
