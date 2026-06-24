@@ -31,14 +31,14 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.chemvision.chemvision"
-        // You can update the following values to match your application needs.
-        // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutterVersionCode
         versionName = flutterVersionName
+        ndk {
+            abiFilters += listOf("arm64-v8a")
+        }
     }
 
     buildTypes {
@@ -58,4 +58,11 @@ kotlin {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // BlueLM 端侧 LLM SDK（需下载 AAR 放入 libs/）
+    // 下载地址见 doc/APIS/BlueLM/BlueLMText.md
+    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar"))))
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 }
