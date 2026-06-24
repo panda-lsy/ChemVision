@@ -2,12 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../main.dart';
 import '../../providers/theme_mode_provider.dart';
 import '../../config/ai_models.dart';
 import '../../services/ai_settings_store.dart';
 import '../../services/app_version_service.dart';
+import '../../services/bluelm_service.dart';
 import '../../services/structure_cache_store.dart';
 import '../../services/vivo_aigc_client.dart';
 import '../../theme/app_colors.dart';
@@ -40,6 +42,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _obscureKey = true;
   bool _isTesting = false;
   bool _hasLoaded = false;
+  bool _useLocalModel = false;
+  bool _useMultimodal = false;
+  final TextEditingController _modelPathController =
+      TextEditingController(text: '/sdcard/1225/1.7.0.4_1225_mtk9500');
   Timer? _saveDebounce;
   ConnectionTestResult? _testResult;
 
@@ -49,6 +55,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   void initState() {
     super.initState();
     _loadSettings();
+    _loadBlueLmSettings();
   }
 
   @override
@@ -57,6 +64,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     _apiKeyController.dispose();
     _customModelController.dispose();
     _baseUrlController.dispose();
+    _modelPathController.dispose();
     super.dispose();
   }
 
@@ -94,6 +102,23 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     });
   }
 
+  Future<void> _loadBlueLmSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _useLocalModel = prefs.getBool('bluelm_use_local') ?? false;
+      _useMultimodal = prefs.getBool('bluelm_multimodal') ?? false;
+      _modelPathController.text =
+          prefs.getString('bluelm_model_path') ?? '/sdcard/1225/1.7.0.4_1225_mtk9500';
+    });
+  }
+
+  Future<void> _saveBlueLmSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('bluelm_use_local', _useLocalModel);
+    await prefs.setBool('bluelm_multimodal', _useMultimodal);
+    await prefs.setString('bluelm_model_path', _modelPathController.text.trim());
+  }
+
   void _scheduleSave() {
     if (!_hasLoaded) {
       return;
@@ -118,6 +143,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         rerankModel: _selectedRerankModel,
       ),
     );
+    await _saveBlueLmSettings();
   }
 
   String _resolveTextModel() {
@@ -137,6 +163,39 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     setState(() {
       _testResult = null;
     });
+
+    if (_useLocalModel) {
+      setState(() {
+        _isTesting = true;
+      });
+      try {
+        final service = BlueLmService();
+        final ok = await service.init(
+          modelPath: _modelPathController.text.trim(),
+          multimodal: _useMultimodal,
+        );
+        if (ok) {
+          final response = await service.generate('测试');
+          setState(() {
+            _testResult = ConnectionTestResult.success(
+                '端侧模型连接成功: ${response.substring(0, response.length.clamp(0, 50))}...');
+          });
+          await service.release();
+        } else {
+          setState(() {
+            _testResult = ConnectionTestResult.failure('端侧模型初始化失败');
+          });
+        }
+      } catch (e) {
+        setState(() {
+          _testResult = ConnectionTestResult.failure('端侧模型测试失败: $e');
+        });
+      }
+      setState(() {
+        _isTesting = false;
+      });
+      return;
+    }
 
     final apiKey = _apiKeyController.text.trim();
     final textModel = _resolveTextModel();
@@ -230,6 +289,63 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ],
             ),
           ),
+          const SizedBox(height: 16),
+          Text('模型设置', style: Theme.of(context).textTheme.headlineMedium),
+          const SizedBox(height: 16),
+          GlassPanel(
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '使用端侧 BlueLM 大模型',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ),
+                Switch.adaptive(
+                  value: _useLocalModel,
+                  onChanged: (value) {
+                    setState(() => _useLocalModel = value);
+                    _saveSettings();
+                  },
+                ),
+              ],
+            ),
+          ),
+          if (_useLocalModel) ...[
+            const SizedBox(height: 8),
+            GlassPanel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('模型路径', style: Theme.of(context).textTheme.bodySmall),
+                  const SizedBox(height: 4),
+                  TextField(
+                    controller: _modelPathController,
+                    decoration: const InputDecoration(
+                      hintText: '/sdcard/1225/1.7.0.4_1225_mtk9500',
+                      isDense: true,
+                    ),
+                    onChanged: (_) => _saveSettings(),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Text('多模态（图文理解）',
+                          style: Theme.of(context).textTheme.bodySmall),
+                      const Spacer(),
+                      Switch.adaptive(
+                        value: _useMultimodal,
+                        onChanged: (value) {
+                          setState(() => _useMultimodal = value);
+                          _saveSettings();
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 16),
           Text('连接设置', style: Theme.of(context).textTheme.headlineMedium),
           const SizedBox(height: 16),
