@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import '../config/app_config.dart';
 import '../models/structure_result.dart';
 import 'ai_settings_store.dart';
+import 'model_router.dart';
 import 'structure_cache_store.dart';
 import 'structure_service.dart';
 import 'vivo_aigc_client.dart';
@@ -20,17 +21,20 @@ class NameToStructureService implements StructureService {
   NameToStructureService({
     AiSettingsStore? settingsStore,
     VivoAigcClient? client,
+    ModelRouter? router,
     PubChemClient? pubchemClient,
     OpsinClient? opsinClient,
     StructureCacheStore? cacheStore,
   })  : _settingsStore = settingsStore ?? AiSettingsStore(),
         _client = client ?? VivoAigcClient(),
+        _router = router ?? ModelRouter(),
         _pubchem = pubchemClient ?? PubChemClient(),
         _opsin = opsinClient ?? OpsinClient(),
         _cacheStore = cacheStore ?? StructureCacheStore();
 
   final AiSettingsStore _settingsStore;
   final VivoAigcClient _client;
+  final ModelRouter _router;
   final PubChemClient _pubchem;
   final OpsinClient _opsin;
   final StructureCacheStore _cacheStore;
@@ -327,7 +331,7 @@ class NameToStructureService implements StructureService {
         ? template.replaceAll('{{query}}', query)
         : '$template\nChinese name: $query';
 
-    final text = await _client.generateText(
+    final text = await _router.generateText(
       apiKey: apiKey,
       model: model,
       prompt: prompt,
@@ -383,7 +387,7 @@ Return only Chinese text, no explanation.
 English name: $englishName
 ''';
     try {
-      final text = await _client.generateText(
+      final text = await _router.generateText(
         apiKey: apiKey,
         model: model,
         prompt: prompt,
@@ -434,7 +438,7 @@ English name: $englishName
         ? template.replaceAll('{{query}}', query)
         : '$template\nDescription: $query';
 
-    final text = await _client.generateText(
+    final text = await _router.generateText(
       apiKey: apiKey,
       model: model,
       prompt: prompt,
@@ -478,7 +482,7 @@ English name: $englishName
         ? template.replaceAll('{{smiles}}', smiles)
         : '$template\nSMILES: $smiles';
     try {
-      final text = await _client.generateText(
+      final text = await _router.generateText(
         apiKey: apiKey,
         model: model,
         prompt: prompt,

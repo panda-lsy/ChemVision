@@ -6,19 +6,23 @@ import '../models/structure_recognition_result.dart';
 import '../models/structure_result.dart';
 import '../utils/smiles_validator.dart';
 import 'ai_settings_store.dart';
+import 'model_router.dart';
 import 'real_structure_service.dart';
 import 'vivo_aigc_client.dart';
 
 class ImageStructureService {
   ImageStructureService({
     VivoAigcClient? client,
+    ModelRouter? router,
     PubChemClient? pubchemClient,
     AiSettingsStore? settingsStore,
   })  : _client = client ?? VivoAigcClient(),
+        _router = router ?? ModelRouter(),
         _pubchem = pubchemClient ?? PubChemClient(),
         _settingsStore = settingsStore ?? AiSettingsStore();
 
   final VivoAigcClient _client;
+  final ModelRouter _router;
   final PubChemClient _pubchem;
   final AiSettingsStore _settingsStore;
   static const _promptPath = 'assets/prompts/image_to_smiles.txt';
@@ -39,7 +43,7 @@ class ImageStructureService {
     final prompt = await _loadPrompt();
     String response;
     try {
-      response = await _client.generateMultimodal(
+      response = await _router.generateMultimodal(
         apiKey: settings.apiKey,
         model: settings.textModel,
         prompt: prompt,

@@ -6,14 +6,17 @@ import 'package:flutter/foundation.dart';
 import '../config/app_config.dart';
 import '../models/reaction_completion_result.dart';
 import '../services/ai_settings_store.dart';
+import '../services/model_router.dart';
 import '../services/reaction_knowledge_base_store.dart';
 import '../services/vivo_aigc_client.dart';
 
 class ReactionCompletionService {
-  ReactionCompletionService({VivoAigcClient? client})
-      : _client = client ?? VivoAigcClient();
+  ReactionCompletionService({VivoAigcClient? client, ModelRouter? router})
+      : _client = client ?? VivoAigcClient(),
+        _router = router ?? ModelRouter();
 
   final VivoAigcClient _client;
+  final ModelRouter _router;
   final ReactionKnowledgeBaseStore _store = ReactionKnowledgeBaseStore();
   static const String _embeddingModel = 'bge-base-zh-v1.5';
 
@@ -41,7 +44,7 @@ class ReactionCompletionService {
 
     final prompt = _buildPrompt(normalized, matches, knowledgeBase);
     try {
-      final response = await _client.generateText(
+      final response = await _router.generateText(
         apiKey: settings.apiKey,
         model: settings.textModel,
         prompt: prompt,
