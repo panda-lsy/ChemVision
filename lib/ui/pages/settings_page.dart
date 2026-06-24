@@ -178,7 +178,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           final response = await service.generate('测试');
           setState(() {
             _testResult = ConnectionTestResult.success(
-                '端侧模型连接成功: ${response.substring(0, response.length.clamp(0, 50))}...');
+                responseText: '端侧模型连接成功: ${response.substring(0, response.length.clamp(0, 50))}...',
+                latencyMs: 0,
+            );
           });
           await service.release();
         } else {
@@ -305,7 +307,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   value: _useLocalModel,
                   onChanged: (value) {
                     setState(() => _useLocalModel = value);
-                    _saveSettings();
+                    _scheduleSave();
                   },
                 ),
               ],
@@ -325,7 +327,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       hintText: '/sdcard/1225/1.7.0.4_1225_mtk9500',
                       isDense: true,
                     ),
-                    onChanged: (_) => _saveSettings(),
+                    onChanged: (_) => _scheduleSave(),
                   ),
                   const SizedBox(height: 8),
                   Row(
@@ -337,7 +339,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                         value: _useMultimodal,
                         onChanged: (value) {
                           setState(() => _useMultimodal = value);
-                          _saveSettings();
+                          _scheduleSave();
                         },
                       ),
                     ],
