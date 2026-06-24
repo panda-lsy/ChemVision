@@ -4,11 +4,14 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../main.dart';
 import '../../providers/structure_controller.dart';
 import '../../providers/theme_mode_provider.dart';
+import '../../config/ai_models.dart';
 import '../../services/ai_settings_store.dart';
+import '../../services/model_router.dart';
 import '../../services/ocr_service.dart';
 import '../../services/vivo_aigc_client.dart';
 import '../../theme/app_colors.dart';
@@ -162,7 +165,45 @@ class _InputPageState extends ConsumerState<InputPage> {
         return;
       }
 
-      // 先尝试使用 OCR 服务识别
+      final mimeType = _detectMimeType(bytes);
+      final dataUri = 'data:$mimeType;base64,$base64Image';
+
+      // 检查模型是否支持多模态
+      final selectedModel = textGenerationModels
+          .where((m) => m.name == settings.textModel)
+          .firstOrNull;
+      final isMultimodal = selectedModel?.multimodal == true;
+
+      // 检查是否使用端侧 BlueLM 多模态
+      final prefs = await SharedPreferences.getInstance();
+      final useLocalMultimodal =
+          prefs.getBool('bluelm_use_local') == true &&
+              prefs.getBool('bluelm_multimodal') == true;
+
+      if (isMultimodal || useLocalMultimodal) {
+        // 多模态模型：直接发送图片作为附件
+        final router = ModelRouter();
+        final result = await router.generateMultimodal(
+          apiKey: settings.apiKey,
+          model: settings.textModel,
+          prompt: '请识别图片中的化学物质，只返回化学名称（中文名或英文名），不要其他内容。'
+              '如果无法识别，返回空。',
+          imageBase64: dataUri,
+          baseUrl: settings.baseUrl,
+        );
+
+        if (mounted && result.trim().isNotEmpty) {
+          setState(() {
+            _controller.text = result.trim();
+          });
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('识别完成')),
+          );
+        }
+        return;
+      }
+
+      // 非多模态模型：使用 OCR 识别
       final ocrService = OcrService();
       final ocrResult = await ocrService.recognize(
         imageBase64: base64Image,
@@ -192,25 +233,10 @@ class _InputPageState extends ConsumerState<InputPage> {
         return;
       }
 
-      // 如果 OCR 没有识别到文本，使用多模态 LLM 识别
-      final mimeType = _detectMimeType(bytes);
-      final dataUri = 'data:$mimeType;base64,$base64Image';
-      final client = VivoAigcClient();
-      final result = await client.generateMultimodal(
-        apiKey: settings.apiKey,
-        model: settings.textModel,
-        prompt: '请识别图片中的化学物质，只返回化学名称（中文名或英文名），不要其他内容。'
-            '如果无法识别，返回空。',
-        imageBase64: dataUri,
-        baseUrl: settings.baseUrl,
-      );
-
-      if (mounted && result.trim().isNotEmpty) {
-        setState(() {
-          _controller.text = result.trim();
-        });
+      // OCR 无结果
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('识别完成')),
+          const SnackBar(content: Text('未识别到化学物质，请重试')),
         );
       }
     } catch (e) {
