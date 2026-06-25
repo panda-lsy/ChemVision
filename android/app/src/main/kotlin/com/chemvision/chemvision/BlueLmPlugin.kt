@@ -49,24 +49,24 @@ class BlueLmPlugin : FlutterPlugin, MethodCallHandler {
 
         scope.launch {
             try {
-                // 通过反射调用 LlmManager，避免编译时依赖
-                val managerClass = Class.forName("com.vivo.llm.LlmManager")
+                android.util.Log.d("BlueLmPlugin", "init: path=$modelPath, multimodal=$multimodal")
+
+                val managerClass = Class.forName("com.vivo.llmsdk.LlmManager")
                 val manager = managerClass.getDeclaredConstructor().newInstance()
 
-                val configClass = Class.forName("com.vivo.llm.LlmConfig")
+                val configClass = Class.forName("com.vivo.llmsdk.LlmConfig")
                 val config = configClass.getDeclaredConstructor().newInstance()
 
-                // 设置 config 字段
                 configClass.getDeclaredField("modelPath").set(config, modelPath)
                 configClass.getDeclaredField("multimodal").set(config, multimodal)
                 configClass.getDeclaredField("nCtx").set(config, nCtx)
                 configClass.getDeclaredField("nThreads").set(config, nThreads)
                 configClass.getDeclaredField("npuPower").set(config, npuPower)
 
-                // 调用 init
                 val initMethod = managerClass.getMethod("init", configClass)
                 val ret = initMethod.invoke(manager, config) as Int
 
+                android.util.Log.d("BlueLmPlugin", "init result: $ret")
                 llmManager = if (ret == 0) manager else null
                 withContext(Dispatchers.Main) {
                     result.success(ret)
@@ -94,7 +94,7 @@ class BlueLmPlugin : FlutterPlugin, MethodCallHandler {
                 val managerClass = manager.javaClass
 
                 // 创建 TokenCallback
-                val callbackClass = Class.forName("com.vivo.llm.TokenCallback")
+                val callbackClass = Class.forName("com.vivo.llmsdk.TokenCallback")
                 val callback = java.lang.reflect.Proxy.newProxyInstance(
                     callbackClass.classLoader,
                     arrayOf(callbackClass)
