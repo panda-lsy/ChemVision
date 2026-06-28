@@ -86,3 +86,4 @@ chemvision-skill/
 
 # Cloudflare Workers
 .wrangler/
+cloudflare-worker/
