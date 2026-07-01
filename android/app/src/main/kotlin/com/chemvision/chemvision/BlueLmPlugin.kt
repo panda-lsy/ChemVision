@@ -75,24 +75,41 @@ class BlueLmPlugin : FlutterPlugin, MethodCallHandler {
                 val config = configClass.getDeclaredConstructor().newInstance()
 
                 // 3. 设置字段
-                try {
-                    configClass.getDeclaredField("modelPath").set(config, modelPath)
-                    configClass.getDeclaredField("multimodal").set(config, multimodal)
-                    configClass.getDeclaredField("nCtx").set(config, nCtx)
-                    configClass.getDeclaredField("nThreads").set(config, nThreads)
-                    configClass.getDeclaredField("npuPower").set(config, npuPower)
-                    android.util.Log.d(TAG, "Config fields set successfully")
-                } catch (e: NoSuchFieldException) {
-                    android.util.Log.e(TAG, "Config field not found: ${e.message}")
-                    // 尝试列出所有字段
-                    configClass.declaredFields.forEach {
-                        android.util.Log.d(TAG, "  field: ${it.name} (${it.type})")
+                // 逐个容错：可选字段缺失跳过，核心字段缺失才报错
+                val requiredFields = mapOf(
+                    "modelPath" to modelPath as Any,
+                    "nCtx" to nCtx as Any,
+                    "nThreads" to nThreads as Any,
+                    "npuPower" to npuPower as Any
+                )
+                val optionalFields = mapOf(
+                    "multimodal" to multimodal as Any
+                )
+                var missingRequired: String? = null
+                for ((name, value) in requiredFields) {
+                    try {
+                        configClass.getDeclaredField(name).set(config, value)
+                    } catch (e: NoSuchFieldException) {
+                        android.util.Log.w(TAG, "Required field missing: $name, will abort")
+                        missingRequired = name
+                        break
                     }
+                }
+                for ((name, value) in optionalFields) {
+                    try {
+                        configClass.getDeclaredField(name).set(config, value)
+                    } catch (e: NoSuchFieldException) {
+                        android.util.Log.w(TAG, "Optional field missing: $name, skipping (SDK version does not support it)")
+                    }
+                }
+                if (missingRequired != null) {
+                    android.util.Log.e(TAG, "Config field not found: $missingRequired")
                     withContext(Dispatchers.Main) {
-                        result.error("CONFIG_ERROR", "Field not found: ${e.message}", null)
+                        result.error("CONFIG_ERROR", "Required field not found: $missingRequired", null)
                     }
                     return@launch
                 }
+                android.util.Log.d(TAG, "Config fields set successfully")
 
                 // 4. 调用 init
                 val initMethod = try {
