@@ -46,6 +46,9 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+            // vivo BlueLM SDK 通过反射访问 LlmConfig/LlmManager 的字段和方法，
+            // 必须用 proguard-rules.pro 保留这些类的符号，避免被 R8 混淆
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
 }
