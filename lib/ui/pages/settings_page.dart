@@ -43,7 +43,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _isTesting = false;
   bool _hasLoaded = false;
   bool _useLocalModel = false;
-  bool _useMultimodal = false;
   final TextEditingController _modelPathController =
       TextEditingController(text: '/sdcard/1225/1.7.0.4_1225_mtk9500');
   Timer? _saveDebounce;
@@ -106,7 +105,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       _useLocalModel = prefs.getBool('bluelm_use_local') ?? false;
-      _useMultimodal = prefs.getBool('bluelm_multimodal') ?? false;
       _modelPathController.text =
           prefs.getString('bluelm_model_path') ?? '/sdcard/1225/1.7.0.4_1225_mtk9500';
     });
@@ -115,7 +113,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   Future<void> _saveBlueLmSettings() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('bluelm_use_local', _useLocalModel);
-    await prefs.setBool('bluelm_multimodal', _useMultimodal);
     await prefs.setString('bluelm_model_path', _modelPathController.text.trim());
   }
 
@@ -172,7 +169,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         final service = BlueLmService();
         final ok = await service.init(
           modelPath: _modelPathController.text.trim(),
-          multimodal: _useMultimodal,
         );
         if (ok) {
           final response = await service.generate('测试');
@@ -346,22 +342,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       isDense: true,
                     ),
                     onChanged: (_) => _scheduleSave(),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text('多模态（图文理解）',
-                            style: Theme.of(context).textTheme.bodyMedium),
-                      ),
-                      Switch.adaptive(
-                        value: _useMultimodal,
-                        onChanged: (value) {
-                          setState(() => _useMultimodal = value);
-                          _scheduleSave();
-                        },
-                      ),
-                    ],
                   ),
                   const SizedBox(height: 12),
                   PrimaryButton(

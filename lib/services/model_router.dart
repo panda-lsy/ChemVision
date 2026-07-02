@@ -1,5 +1,3 @@
-import 'dart:convert' show base64Decode;
-
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'bluelm_service.dart';
@@ -63,19 +61,6 @@ class ModelRouter {
     required String baseUrl,
     required String imageBase64,
   }) async {
-    final settings = await _loadSettings();
-
-    if (settings['useLocal'] == true && settings['multimodal'] == true) {
-      try {
-        await _ensureLocalInit(settings, multimodal: true);
-        final bytes = base64Decode(
-          imageBase64.contains(',') ? imageBase64.split(',').last : imageBase64,
-        );
-        return await _local.generateMultimodal(prompt, bytes,
-            width: 224, height: 224);
-      } catch (_) {}
-    }
-
     return await _cloud.generateMultimodal(
       apiKey: apiKey, model: model, prompt: prompt,
       imageBase64: imageBase64, baseUrl: baseUrl,
@@ -83,11 +68,10 @@ class ModelRouter {
   }
 
   Future<void> _ensureLocalInit(Map<String, dynamic> settings,
-      {bool multimodal = false}) async {
+      ) async {
     if (!_local.isInitialized) {
       await _local.init(
         modelPath: settings['modelPath'] ?? '/sdcard/1225/1.7.0.4_1225_mtk9500',
-        multimodal: multimodal || (settings['multimodal'] == true),
       );
     }
   }
@@ -97,12 +81,11 @@ class ModelRouter {
       final prefs = await SharedPreferences.getInstance();
       return {
         'useLocal': prefs.getBool('bluelm_use_local') ?? false,
-        'multimodal': prefs.getBool('bluelm_multimodal') ?? false,
         'modelPath': prefs.getString('bluelm_model_path') ??
             '/sdcard/1225/1.7.0.4_1225_mtk9500',
       };
     } catch (_) {
-      return {'useLocal': false, 'multimodal': false};
+      return {'useLocal': false};
     }
   }
 }

@@ -28,7 +28,6 @@ class BlueLmPlugin : FlutterPlugin, MethodCallHandler {
         when (call.method) {
             "init" -> handleInit(call, result)
             "generate" -> handleGenerate(call, result)
-            "callVit" -> handleCallVit(call, result)
             "interrupt" -> handleInterrupt(result)
             "release" -> handleRelease(result)
             else -> result.notImplemented()
@@ -38,12 +37,11 @@ class BlueLmPlugin : FlutterPlugin, MethodCallHandler {
     private fun handleInit(call: MethodCall, result: Result) {
         val modelPath = call.argument<String>("modelPath")
             ?: return result.error("INVALID_ARGS", "modelPath required", null)
-        val multimodal = call.argument<Boolean>("multimodal") ?: false
         val nCtx = call.argument<Int>("nCtx") ?: 2048
         val nThreads = call.argument<Int>("nThreads") ?: 4
         val npuPower = call.argument<Int>("npuPower") ?: 100
 
-        android.util.Log.d(TAG, "handleInit: path=$modelPath, multimodal=$multimodal, nCtx=$nCtx")
+        android.util.Log.d(TAG, "handleInit: path=$modelPath, nCtx=$nCtx")
 
         scope.launch {
             try {
@@ -75,15 +73,12 @@ class BlueLmPlugin : FlutterPlugin, MethodCallHandler {
                 val config = configClass.getDeclaredConstructor().newInstance()
 
                 // 3. 设置字段
-                // 逐个容错：可选字段缺失跳过，核心字段缺失才报错
+                // 逐个设置字段，核心字段缺失才报错
                 val requiredFields = mapOf(
                     "modelPath" to modelPath as Any,
                     "nCtx" to nCtx as Any,
                     "nThreads" to nThreads as Any,
                     "npuPower" to npuPower as Any
-                )
-                val optionalFields = mapOf(
-                    "multimodal" to multimodal as Any
                 )
                 var missingRequired: String? = null
                 for ((name, value) in requiredFields) {
@@ -93,13 +88,6 @@ class BlueLmPlugin : FlutterPlugin, MethodCallHandler {
                         android.util.Log.w(TAG, "Required field missing: $name, will abort")
                         missingRequired = name
                         break
-                    }
-                }
-                for ((name, value) in optionalFields) {
-                    try {
-                        configClass.getDeclaredField(name).set(config, value)
-                    } catch (e: NoSuchFieldException) {
-                        android.util.Log.w(TAG, "Optional field missing: $name, skipping (SDK version does not support it)")
                     }
                 }
                 if (missingRequired != null) {
@@ -187,33 +175,6 @@ class BlueLmPlugin : FlutterPlugin, MethodCallHandler {
                 android.util.Log.e(TAG, "generate exception: ${e.message}")
                 withContext(Dispatchers.Main) {
                     result.error("GENERATE_FAILED", e.message, null)
-                }
-            }
-        }
-    }
-
-    private fun handleCallVit(call: MethodCall, result: Result) {
-        val imageBytes = call.argument<ByteArray>("imageBytes")
-        val width = call.argument<Int>("width")
-            ?: return result.error("INVALID_ARGS", "width required", null)
-        val height = call.argument<Int>("height")
-            ?: return result.error("INVALID_ARGS", "height required", null)
-        val manager = llmManager
-            ?: return result.error("NOT_INITIALIZED", "BlueLM not initialized", null)
-
-        scope.launch {
-            try {
-                val managerClass = manager.javaClass
-                val vitMethod = managerClass.getMethod("callVit", ByteArray::class.java, Int::class.java, Int::class.java)
-                val ret = vitMethod.invoke(manager, imageBytes, width, height) as Int
-                android.util.Log.d(TAG, "callVit result: $ret")
-                withContext(Dispatchers.Main) {
-                    result.success(ret)
-                }
-            } catch (e: Exception) {
-                android.util.Log.e(TAG, "callVit exception: ${e.message}")
-                withContext(Dispatchers.Main) {
-                    result.error("VIT_FAILED", e.message, null)
                 }
             }
         }
