@@ -32,6 +32,25 @@ class BlueLmService {
 
   bool get isInitialized => _initialized;
 
+  // 端侧 3B 模型常把 EOS/结束标记以字面文本拼到输出末尾
+  // (如 [end of text]、<|im_end|>、</s>)，会污染后续名称解析，这里统一剥离。
+  String _stripEosNoise(String text) {
+    var t = text;
+    const markers = [
+      '[end of text]',
+      '<|im_end|>',
+      '</s>',
+      '<eos>',
+      '<end_of_text>',
+      '<|end|>',
+    ];
+    for (final m in markers) {
+      final idx = t.indexOf(m);
+      if (idx != -1) t = t.substring(0, idx);
+    }
+    return t.trimRight();
+  }
+
   /// 纯文本推理
   Future<String> generate(String prompt) async {
     if (!_initialized) throw Exception('BlueLM 未初始化');
@@ -39,7 +58,7 @@ class BlueLmService {
       final result = await _channel.invokeMethod<String>('generate', {
         'prompt': '[|Human|]:$prompt\n[|AI|]:',
       });
-      return result ?? '';
+      return _stripEosNoise(result ?? '');
     } catch (e) {
       throw Exception('BlueLM 推理失败: $e');
     }
