@@ -1,15 +1,20 @@
 package com.chemvision.chemvision
 
+import com.vivo.llmsdk.LlmConfig
+import com.vivo.llmsdk.LlmManager
+import com.vivo.llmsdk.TokenCallback
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
 import kotlinx.coroutines.*
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 class BlueLmPlugin : FlutterPlugin, MethodCallHandler {
     private lateinit var channel: MethodChannel
-    private var llmManager: Any? = null
+    private var llmManager: LlmManager? = null
     private val scope = CoroutineScope(Dispatchers.Default + SupervisorJob())
     private val TAG = "BlueLmPlugin"
 
@@ -45,76 +50,15 @@ class BlueLmPlugin : FlutterPlugin, MethodCallHandler {
 
         scope.launch {
             try {
-                // 1. 检查类是否可用
-                val managerClass = try {
-                    Class.forName("com.vivo.llmsdk.LlmManager")
-                } catch (e: ClassNotFoundException) {
-                    android.util.Log.e(TAG, "LlmManager class not found: ${e.message}")
-                    withContext(Dispatchers.Main) {
-                        result.error("SDK_NOT_FOUND", "LlmManager class not found: ${e.message}", null)
-                    }
-                    return@launch
-                }
-
-                val configClass = try {
-                    Class.forName("com.vivo.llmsdk.LlmConfig")
-                } catch (e: ClassNotFoundException) {
-                    android.util.Log.e(TAG, "LlmConfig class not found: ${e.message}")
-                    withContext(Dispatchers.Main) {
-                        result.error("SDK_NOT_FOUND", "LlmConfig class not found: ${e.message}", null)
-                    }
-                    return@launch
-                }
-
-                android.util.Log.d(TAG, "Classes found, creating instances...")
-
-                // 2. 创建实例
-                val manager = managerClass.getDeclaredConstructor().newInstance()
-                val config = configClass.getDeclaredConstructor().newInstance()
-
-                // 3. 设置字段
-                // 逐个设置字段，核心字段缺失才报错
-                val requiredFields = mapOf(
-                    "modelPath" to modelPath as Any,
-                    "nCtx" to nCtx as Any,
-                    "nThreads" to nThreads as Any,
-                    "npuPower" to npuPower as Any
-                )
-                var missingRequired: String? = null
-                for ((name, value) in requiredFields) {
-                    try {
-                        configClass.getDeclaredField(name).set(config, value)
-                    } catch (e: NoSuchFieldException) {
-                        android.util.Log.w(TAG, "Required field missing: $name, will abort")
-                        missingRequired = name
-                        break
-                    }
-                }
-                if (missingRequired != null) {
-                    android.util.Log.e(TAG, "Config field not found: $missingRequired")
-                    withContext(Dispatchers.Main) {
-                        result.error("CONFIG_ERROR", "Required field not found: $missingRequired", null)
-                    }
-                    return@launch
-                }
-                android.util.Log.d(TAG, "Config fields set successfully")
-
-                // 4. 调用 init
-                val initMethod = try {
-                    managerClass.getMethod("init", configClass)
-                } catch (e: NoSuchMethodException) {
-                    android.util.Log.e(TAG, "init method not found: ${e.message}")
-                    managerClass.methods.forEach {
-                        android.util.Log.d(TAG, "  method: ${it.name}")
-                    }
-                    withContext(Dispatchers.Main) {
-                        result.error("METHOD_ERROR", "init method not found: ${e.message}", null)
-                    }
-                    return@launch
-                }
+                val manager = LlmManager()
+                val config = LlmConfig()
+                config.modelPath = modelPath
+                config.nCtx = nCtx
+                config.nThreads = nThreads
+                config.npuPower = npuPower
 
                 android.util.Log.d(TAG, "Calling LlmManager.init()...")
-                val ret = initMethod.invoke(manager, config) as Int
+                val ret = manager.init(config)
                 android.util.Log.d(TAG, "LlmManager.init() returned: $ret")
 
                 llmManager = if (ret == 0) manager else null
@@ -142,34 +86,44 @@ class BlueLmPlugin : FlutterPlugin, MethodCallHandler {
         scope.launch {
             try {
                 val responseBuilder = StringBuilder()
-                val managerClass = manager.javaClass
+                val latch = CountDownLatch(1)
+                var errorCode: Int? = null
+                var errorMsg: String? = null
 
-                val callbackClass = Class.forName("com.vivo.llmsdk.TokenCallback")
-                val callback = java.lang.reflect.Proxy.newProxyInstance(
-                    callbackClass.classLoader,
-                    arrayOf(callbackClass)
-                ) { _, method, args ->
-                    when (method.name) {
-                        "onToken" -> responseBuilder.append(args[0] as String)
-                        "onComplete" -> android.util.Log.d(TAG, "generate complete")
-                        "onError" -> {
-                            val code = args[0] as Int
-                            val msg = args[1] as String
-                            android.util.Log.e(TAG, "generate error: $code $msg")
-                        }
+                // generate() 内部自行起线程执行推理，回调通过 SDK 内部 Handler 派回主线程。
+                // 与官方 demo 调用方式保持一致：传真实的 TokenCallback 实例，不用反射/Proxy。
+                manager.generate(prompt, object : TokenCallback {
+                    override fun onToken(token: String) {
+                        responseBuilder.append(token)
                     }
-                    null
+
+                    override fun onComplete(stats: com.vivo.llmsdk.LlmStats) {
+                        android.util.Log.d(TAG, "generate complete")
+                        latch.countDown()
+                    }
+
+                    override fun onError(code: Int, msg: String) {
+                        android.util.Log.e(TAG, "generate error: $code $msg")
+                        errorCode = code
+                        errorMsg = msg
+                        latch.countDown()
+                    }
+                })
+
+                // 等待推理真正结束，最多等待 60s（端侧模型较慢），避免无限阻塞
+                val done = latch.await(60, TimeUnit.SECONDS)
+                if (!done) {
+                    android.util.Log.w(TAG, "generate latch timeout")
+                    manager.interrupt()
                 }
-
-                val generateMethod = managerClass.getMethod("generate", String::class.java, callbackClass)
-                generateMethod.invoke(manager, prompt, callback)
-
-                // 等待推理完成
-                delay(5000)
 
                 android.util.Log.d(TAG, "generate result: ${responseBuilder.toString().take(100)}")
                 withContext(Dispatchers.Main) {
-                    result.success(responseBuilder.toString())
+                    if (errorCode != null) {
+                        result.error("GENERATE_FAILED", "$errorCode $errorMsg", null)
+                    } else {
+                        result.success(responseBuilder.toString())
+                    }
                 }
             } catch (e: Exception) {
                 android.util.Log.e(TAG, "generate exception: ${e.message}")
@@ -184,7 +138,7 @@ class BlueLmPlugin : FlutterPlugin, MethodCallHandler {
         val manager = llmManager
         if (manager == null) { result.success(null); return }
         try {
-            manager.javaClass.getMethod("interrupt").invoke(manager)
+            manager.interrupt()
             result.success(null)
         } catch (e: Exception) {
             result.error("INTERRUPT_FAILED", e.message, null)
@@ -198,9 +152,7 @@ class BlueLmPlugin : FlutterPlugin, MethodCallHandler {
 
     private fun releaseLlm() {
         try {
-            llmManager?.let {
-                it.javaClass.getMethod("release").invoke(it)
-            }
+            llmManager?.release()
         } catch (_: Exception) {}
         llmManager = null
     }
