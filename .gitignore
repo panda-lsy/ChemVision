@@ -87,3 +87,7 @@ chemvision-skill/
 # Cloudflare Workers
 .wrangler/
 cloudflare-worker/
+
+.dev.vars*
+!.dev.vars.example
+!.env.example
