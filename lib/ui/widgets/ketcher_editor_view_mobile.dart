@@ -193,6 +193,12 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
           callback: (_) {
             _ready = true;
             _ensureController();
+            // sync initial theme (override ketcher auto-detection)
+            if (widget.themeMode != ThemeMode.dark) {
+              controller.evaluateJavascript(
+                source: "document.documentElement.removeAttribute('data-theme');",
+              );
+            }
             if (widget.initialSmiles.isNotEmpty) {
               _sendCommand('setMolecule', {'data': widget.initialSmiles});
             }
