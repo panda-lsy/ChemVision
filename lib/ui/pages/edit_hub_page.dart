@@ -27,7 +27,7 @@ class EditHubPage extends ConsumerWidget {
       BuildContext context, WidgetRef ref) async {
     final result = await Navigator.of(context).push<String>(
       MaterialPageRoute(
-        builder: (_) => const StructureEditorPage(),
+        builder: (_) => const StructureEditorPage(skipSaveConfirm: true),
       ),
     );
     if (result == null || result.isEmpty || !context.mounted) return;

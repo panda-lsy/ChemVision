@@ -8,9 +8,10 @@ import '../widgets/primary_button.dart';
 ///
 /// 检测 SMILES 类型，提示用户是否收藏。
 class SaveConfirmPage extends StatelessWidget {
-  const SaveConfirmPage({super.key, required this.smiles});
+  const SaveConfirmPage({super.key, required this.smiles, this.aiName});
 
   final String smiles;
+  final String? aiName;
 
   @override
   Widget build(BuildContext context) {
@@ -62,6 +63,34 @@ class SaveConfirmPage extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 16),
+              // AI 推断名称
+              if (aiName != null && aiName!.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: typeColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: typeColor.withValues(alpha: 0.25)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.auto_awesome, size: 16, color: typeColor),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          aiName!,
+                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: typeColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               // SMILES 预览
               Container(
                 width: double.infinity,
