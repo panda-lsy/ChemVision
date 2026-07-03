@@ -1,8 +1,5 @@
-import 'dart:async';
 import 'dart:convert';
 
-import 'package:flutter/foundation.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
@@ -118,8 +115,8 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
     widget.onControllerReady?.call(_controller!);
   }
 
-  /// 注入移动端适配脚本：桥接 postMessage → flutter_inappwebview、抑制隐藏
-  /// cliparea 弹出输入法、画布触摸手势、以及工具条超出视野等移动端显示问题。
+  /// 注入移动端适配脚本：桥接 postMessage → flutter_inappwebview、抑制隐藏 cliparea
+  /// 弹输入法、画布触摸→鼠标事件转发、以及工具条溢出/滚动问题。
   /// 这些修复以注入方式作用于已有的 ketcher 构建产物，无需重新构建 ketcher。
   static const String _injectScript = r'''
   (function () {
@@ -127,9 +124,6 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
     window._chemvisionInjected = true;
 
     // ── 1. ketcher → Flutter 回桥 ──
-    // ketcher 通过 window.parent.postMessage 向宿主发送事件(onSmilesUpdated/onError 等)；
-    // 移动端是顶层 InAppWebView，window.parent === window，事件回传到 window 自身。
-    // 这里监听 window message，把这些事件转发给 flutter_inappwebview 的 JS 处理器。
     window.addEventListener('message', function (e) {
       var d = e && e.data;
       if (!d) return;
@@ -150,9 +144,7 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
         }
       } catch (_) {}
     });
-
-    // ketcher 的 safePostMessage 在 window.parent===window 时会直接 return（不发 init 事件），
-    // 因此移动端需要主动轮询 window.ketcher 就绪后再通知 Flutter。
+    // safePostMessage 在 window.parent===window 时不发 init，故轮询 ketcher 就绪后主动通知
     if (!window._ketcherReadyPoll) {
       window._ketcherReadyPoll = setInterval(function () {
         if (window.ketcher && typeof window.ketcher.getSmiles === 'function') {
@@ -168,45 +160,87 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
     }
 
     // ── 2. 抑制隐藏 cliparea 触发输入法 ──
-    // ketcher 的 cliparea 是 contentEditable+autoFocus 的隐藏 textarea，用于剪贴板
-    // 与快捷键；移动端一旦获得焦点就弹出软键盘。置为只读并禁用编辑可阻止 IME，
-    // 仍保留 select()/execCommand('copy') 等剪贴板能力。
     function neutralizeCliparea() {
       var el = document.querySelector('.cliparea');
-      if (!el) return false;
-      var patched = el.getAttribute('data-cv-clip');
-      if (!patched) {
-        try { el.readOnly = true; } catch (_) {}
-        try { el.setAttribute('contenteditable', 'false'); } catch (_) {}
-        try { el.setAttribute('inputmode', 'none'); } catch (_) {}
-        el.setAttribute('data-cv-clip', '1');
-        patched = '1';
-      }
-      // 每次尝试重新聚焦 cliparea 时，若是软键盘弹出则隐藏
-      return patched === '1';
+      if (!el || el.getAttribute('data-cv-clip')) return;
+      try { el.readOnly = true; } catch (_) {}
+      try { el.setAttribute('contenteditable', 'false'); } catch (_) {}
+      try { el.setAttribute('inputmode', 'none'); } catch (_) {}
+      el.setAttribute('data-cv-clip', '1');
     }
     neutralizeCliparea();
-    // cliparea 元素由 React 异步渲染，用 MutationObserver 兜底
-    var clipObs = new MutationObserver(function () { neutralizeCliparea(); });
-    clipObs.observe(document.documentElement, { childList: true, subtree: true });
-    // 失焦时强制收起键盘：聚焦 cliparea 立即 blur 会破坏剪贴板，这里改为
-    // 在画布/工具条用户交互时让 cliparea 保持 readOnly，浏览器不会为只读元素弹 IME。
+    new MutationObserver(function () { neutralizeCliparea(); })
+      .observe(document.documentElement, { childList: true, subtree: true });
 
-    // ── 3. 移动端画布触摸手势 ──
-    // 让画布/SVG/编辑区接收触摸拖拽(绘制长碳链)，避免浏览器把拖拽当作滚动/缩放。
+    // ── 3. 移动端布局/手势 CSS ──
     var style = document.createElement('style');
     style.textContent =
       'html,body,#root{height:100%!important;width:100%!important;margin:0!important;padding:0!important;overflow:hidden!important;}'
       + 'body{position:fixed!important;inset:0!important;}'
       + '.cliparea,.cliparea *{touch-action:none!important;}'
+      // 画布接收触摸拖拽绘制长碳链
       + '[class*="StructEditor"],[class*="StructEditor"] svg,[class*="StructEditor"] canvas,'
-      + '[class*="cliparea"] svg,[class*="Canvas"],svg[class*="struct"],'
-      + '.drawn-structures,svg.drawn-structures{touch-action:none!important;}'
-      // 工具条不抢占拖拽，但按钮可点
-      + '[class*="LeftToolbar"],[class*="RightToolbar"],[class*="TopToolbar"],[class*="BottomToolbar"]{touch-action:manipulation!important;}'
-      // 顶部工具条在窄屏可横向滚动而不撑破布局
-      + '[class*="TopToolbar"]{max-width:100vw!important;overflow-x:auto!important;overflow-y:hidden!important;}';
+      + 'svg.drawn-structures,.drawn-structures{touch-action:none!important;}'
+      // 横向工具条不换行，改为横向滚动；按钮组不压缩以保留可点击宽度
+      + '[class*="TopToolbar"],[class*="BottomToolbar"]{flex-wrap:nowrap!important;'
+        + 'overflow-x:auto!important;overflow-y:hidden!important;'
+        + 'max-width:100vw!important;-webkit-overflow-scrolling:touch;'
+        + 'touch-action:pan-x!important;}'
+      + '[class*="TopToolbar"] [class*="group"],[class*="BottomToolbar"] [class*="group"]'
+      + '{flex-shrink:0!important;white-space:nowrap!important;}'
+      // 纵向工具条按钮可点
+      + '[class*="LeftToolbar"],[class*="RightToolbar"]{touch-action:manipulation!important;}';
     document.head.appendChild(style);
+
+    // ── 4. 触摸 → 鼠标事件转发（核心：绘制长碳链）──
+    // ketcher 用 D3 .on('mousedown'/'mousemove') 监听画布；Android WebView 在 touch
+    // drag 时不会合成 mousemove，导致只能点放单个原子而无法拖拽延伸碳链。这里在
+    // 画布触摸时主动派发合成 MouseEvent，并 preventDefault 抑制浏览器自身的鼠标
+    // 合成以避免重复派发。工具条/弹窗/表单控件的触摸不转发，仍走原生。
+    function isInteractive(target) {
+      return !!target.closest(
+        '[class*="Toolbar"],[class*="toolbar"],[class*="Modal"],[class*="Dialog"],'
+        + '[class*="Popover"],[class*="ContextMenu"],[class*="Tooltip"],'
+        + 'button,select,input,textarea,a[href],[role="button"]'
+      );
+    }
+    function dispatchMouse(type, touch) {
+      var el = document.elementFromPoint(touch.clientX, touch.clientY);
+      if (!el) return;
+      try {
+        var ev = new MouseEvent(type, {
+          bubbles: true,
+          cancelable: true,
+          view: window,
+          clientX: touch.clientX,
+          clientY: touch.clientY,
+          button: 0,
+          buttons: type === 'mouseup' ? 0 : 1,
+          relatedTarget: null,
+        });
+        el.dispatchEvent(ev);
+      } catch (_) {}
+    }
+    var touching = false;
+    document.addEventListener('touchstart', function (e) {
+      if (e.touches.length !== 1) return;
+      if (isInteractive(e.target)) return;
+      touching = true;
+      e.preventDefault();
+      dispatchMouse('mousedown', e.touches[0]);
+    }, { passive: false });
+    document.addEventListener('touchmove', function (e) {
+      if (!touching || e.touches.length !== 1) return;
+      e.preventDefault();
+      dispatchMouse('mousemove', e.touches[0]);
+    }, { passive: false });
+    document.addEventListener('touchend', function (e) {
+      if (!touching) return;
+      touching = false;
+      e.preventDefault();
+      dispatchMouse('mouseup', e.changedTouches[0]);
+    }, { passive: false });
+    document.addEventListener('touchcancel', function () { touching = false; });
   })();
   ''';
 
@@ -214,13 +248,11 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
   Widget build(BuildContext context) {
     return InAppWebView(
       initialFile: AppConfig.ketcherEntry,
-      gestureRecognizers: const <Factory<OneSequenceGestureRecognizer>>{
-        Factory<EagerGestureRecognizer>(EagerGestureRecognizer.new),
-      },
+      // 不声明 gestureRecognizers：flutter_inappwebview 默认混合合成，画布触摸
+      // 原生送达 webview，由注入脚本转为鼠标事件供 ketcher 绘制长碳链。
       onWebViewCreated: (controller) {
         _webViewController = controller;
 
-        // 注入 JS 回调监听
         controller.addJavaScriptHandler(
           handlerName: 'onBridgeReady',
           callback: (_) {
@@ -260,7 +292,6 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
         );
       },
       onLoadStop: (controller, uri) async {
-        // 注入桥接与移动端适配脚本
         await controller.evaluateJavascript(source: _injectScript);
       },
       initialOptions: InAppWebViewGroupOptions(
@@ -268,10 +299,6 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
           transparentBackground: true,
           javaScriptEnabled: true,
           useShouldOverrideUrlLoading: true,
-        ),
-        android: AndroidInAppWebViewOptions(
-          // 允许混合内容（ketcher 本地资源），并尽量让 webview 占满可用区域
-          allowContentAccess: true,
         ),
       ),
     );
