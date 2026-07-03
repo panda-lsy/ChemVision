@@ -16,10 +16,15 @@ class StructureEditorPage extends ConsumerStatefulWidget {
     super.key,
     this.initialSmiles = '',
     this.title,
+    this.skipSaveConfirm = false,
   });
 
   final String initialSmiles;
   final String? title;
+
+  /// 若为 true，保存时跳过“已保存到编辑历史”确认页，直接返回 SMILES。
+  /// 适用于调用方已有自己的收藏处理逻辑的场景。
+  final bool skipSaveConfirm;
 
   @override
   ConsumerState<StructureEditorPage> createState() =>
@@ -56,11 +61,30 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
     final historyItem = EditHistoryItem.fromSmiles(smiles);
     ref.read(editHistoryControllerProvider.notifier).add(historyItem);
 
+    // 若调用方已有收藏处理，直接返回 SMILES，不弹确认页
+    if (widget.skipSaveConfirm) {
+      if (!mounted) return;
+      Navigator.of(context).pop(smiles);
+      return;
+    }
+
+    // 1.5 AI 推断名称（异步，不阻塞 UI）
+    String? aiName;
+    try {
+      final service = _getStructureService();
+      if (service != null) {
+        final result = await service.reverseResolveName(smiles);
+        if (result.isValid) {
+          aiName = result.chineseName ?? result.englishName ?? result.resolvedName;
+        }
+      }
+    } catch (_) {}
+
     // 2. 弹出确认页面（全屏，避免 iframe z-index 问题）
     final shouldFavorite = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
         fullscreenDialog: true,
-        builder: (_) => SaveConfirmPage(smiles: smiles),
+        builder: (_) => SaveConfirmPage(smiles: smiles, aiName: aiName),
       ),
     );
 

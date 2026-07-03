@@ -40,6 +40,16 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
   @override
   void didUpdateWidget(covariant KetcherEditorView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // 主题切换
+    if (oldWidget.themeMode != widget.themeMode && _ready) {
+      final isDark = widget.themeMode == ThemeMode.dark;
+      _webViewController?.evaluateJavascript(
+        source: isDark
+            ? "document.documentElement.setAttribute('data-theme','dark');"
+            : "document.documentElement.removeAttribute('data-theme');",
+      );
+    }
+    // SMILES 变更
     if (oldWidget.initialSmiles != widget.initialSmiles && _ready) {
       // 如果目标 SMILES 与 ketcher 刚才回报的一致，说明这是规范化回音，
       // 跳过 setMolecule 以避免死循环。
