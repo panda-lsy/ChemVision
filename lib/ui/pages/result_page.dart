@@ -13,7 +13,6 @@ import '../widgets/bouncy_button.dart';
 import '../widgets/structure_view.dart';
 import 'settings_page.dart';
 import 'structure_editor_page.dart';
-import 'structure_editor_page.dart';
 
 class ResultPage extends ConsumerStatefulWidget {
   const ResultPage({
