@@ -80,7 +80,7 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
           await Navigator.of(context).push<Map<String, String>>(
         MaterialPageRoute(
           fullscreenDialog: true,
-          builder: (_) => _NameResolvePage(
+          builder: (_) => NameResolvePage(
             smiles: smiles,
             resolveResult: resolveResult,
           ),
@@ -297,7 +297,7 @@ class NameResolvePage extends StatefulWidget {
   State<NameResolvePage> createState() => _NameResolvePageState();
 }
 
-class _NameResolvePageState extends State<_NameResolvePage> {
+class _NameResolvePageState extends State<NameResolvePage> {
   final _nameController = TextEditingController();
   List<_NameCandidate> _candidates = const [];
   int _selectedIndex = -1;
