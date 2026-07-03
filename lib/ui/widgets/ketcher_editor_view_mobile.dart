@@ -33,10 +33,17 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
   KetcherEditorController? _controller;
   bool _ready = false;
 
+  /// ketcher 最近一次通过 onSmilesUpdated 回报的 SMILES。
+  /// 用于在 didUpdateWidget 中阻断规范化回音循环。
+  String? _lastReceivedSmiles;
+
   @override
   void didUpdateWidget(covariant KetcherEditorView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.initialSmiles != widget.initialSmiles && _ready) {
+      // 如果目标 SMILES 与 ketcher 刚才回报的一致，说明这是规范化回音，
+      // 跳过 setMolecule 以避免死循环。
+      if (widget.initialSmiles == _lastReceivedSmiles) return;
       _sendCommand('setMolecule', {'data': widget.initialSmiles});
     }
   }
@@ -192,6 +199,7 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
               final data = args[0];
               final smiles = data is Map ? data['smiles']?.toString() : null;
               if (smiles != null && smiles.isNotEmpty) {
+                _lastReceivedSmiles = smiles;
                 widget.onSmilesUpdated?.call(smiles);
               }
             }
