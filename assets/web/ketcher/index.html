@@ -307,4 +307,26 @@ style.textContent=
   +'[class*="TopToolbar"]::-webkit-scrollbar-thumb,[class*="BottomToolbar"]::-webkit-scrollbar-thumb,[class*="top-toolbar"]::-webkit-scrollbar-thumb,[class*="bottom-toolbar"]::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18)!important;border-radius:3px!important;}'
   +'[class*="TopToolbar"]::-webkit-scrollbar-thumb:hover,[class*="BottomToolbar"]::-webkit-scrollbar-thumb:hover,[class*="top-toolbar"]::-webkit-scrollbar-thumb:hover,[class*="bottom-toolbar"]::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.3)!important;}';
 document.head.appendChild(style);
+
+/* ======== 5. force toolbar scrolling (inline style, overrides React) ======== */
+function applyToolbarScroll() {
+  var els = document.querySelectorAll(
+    '[class*="top-toolbar"],[class*="bottom-toolbar"],' +
+    '[class*="TopToolbar"],[class*="BottomToolbar"],' +
+    '[class*="ArrowScroll"]'
+  );
+  els.forEach(function(el) {
+    if (!el.getAttribute('data-cv-scroll')) {
+      el.style.setProperty('overflow-x', 'scroll', 'important');
+      el.style.setProperty('overflow-y', 'hidden', 'important');
+      el.style.setProperty('-webkit-overflow-scrolling', 'touch', 'important');
+      el.setAttribute('data-cv-scroll', '1');
+    }
+  });
+}
+// Run after React renders, then watch for new toolbars
+setTimeout(applyToolbarScroll, 600);
+setTimeout(applyToolbarScroll, 2000);
+new MutationObserver(function() { applyToolbarScroll(); })
+  .observe(document.documentElement, { childList: true, subtree: true });
 })();</script></body></html>

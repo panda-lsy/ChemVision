@@ -12,7 +12,7 @@ import '../widgets/app_scaffold.dart';
 import '../widgets/bouncy_button.dart';
 import '../widgets/structure_view.dart';
 import 'settings_page.dart';
-import 'smiles_name_resolve_page.dart';
+import 'structure_editor_page.dart';
 import 'structure_editor_page.dart';
 
 class ResultPage extends ConsumerStatefulWidget {
@@ -308,11 +308,10 @@ class _ResultPageState extends ConsumerState<ResultPage> {
           confidence: _activeCandidate.confidence,
         );
       });
-      final selectedCandidate = await Navigator.of(context).push<StructureCandidate>(
+      final namingResult = await Navigator.of(context).push<Map<String, String>>(
         MaterialPageRoute(
-          builder: (_) => SmilesNameResolvePage(
+          builder: (_) => NameResolvePage(
             smiles: updatedSmiles,
-            previousCandidate: previousCandidate,
           ),
         ),
       );
@@ -321,16 +320,21 @@ class _ResultPageState extends ConsumerState<ResultPage> {
       }
       setState(() {
         _resolvingNames = false;
-        if (selectedCandidate != null) {
-          _activeCandidate = selectedCandidate;
-          _pageTitle = _resolveTitleByCandidate(selectedCandidate);
-          final idx =
-              _candidates.indexWhere((item) => item.smiles == selectedCandidate.smiles);
-          if (idx >= 0) {
-            _candidates[idx] = selectedCandidate;
-          } else {
-            _candidates.insert(0, selectedCandidate);
-          }
+        if (namingResult != null) {
+          final name = namingResult['name'] ?? '';
+          final s = namingResult['smiles'] ?? updatedSmiles;
+          _activeCandidate = StructureCandidate(
+            smiles: s,
+            resolvedName: name.isNotEmpty ? name : null,
+            englishName: name.isNotEmpty ? name : null,
+            chineseName: null,
+            molecularFormula: _activeCandidate.molecularFormula,
+            molecularWeight: _activeCandidate.molecularWeight,
+            source: _activeCandidate.source,
+            confidence: _activeCandidate.confidence,
+          );
+          _pageTitle = name.isNotEmpty ? name : '已修改结构';
+          _currentSmiles = s;
         } else {
           _activeCandidate = StructureCandidate(
             smiles: updatedSmiles,

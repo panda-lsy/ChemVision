@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/edit_history_item.dart';
+import '../../models/structure_result.dart';
 import '../../providers/edit_history_provider.dart';
 import '../../providers/structure_service_provider.dart';
 import '../../theme/app_colors.dart';
@@ -9,6 +10,7 @@ import '../widgets/app_scaffold.dart';
 import '../widgets/ketcher_editor_controller.dart';
 import '../widgets/ketcher_editor_view.dart';
 import '../widgets/primary_button.dart';
+import '../widgets/structure_view.dart';
 import 'save_confirm_page.dart';
 
 class StructureEditorPage extends ConsumerStatefulWidget {
@@ -21,8 +23,6 @@ class StructureEditorPage extends ConsumerStatefulWidget {
 
   final String initialSmiles;
   final String? title;
-
-  /// true: skip confirm page after naming (used when caller handles save itself).
   final bool skipSaveConfirm;
 
   @override
@@ -64,32 +64,25 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
         return;
       }
 
-      // 1. AI 推断名称（异步加载，带 loading 态）
-      String aiName = '';
+      // 1. AI resolve name (get candidates)
+      StructureResult? resolveResult;
       try {
         final service = _getStructureService();
         if (service != null) {
-          final result = await service.reverseResolveName(smiles);
-          if (result.isValid) {
-            aiName = result.chineseName ??
-                result.englishName ??
-                result.resolvedName ??
-                '';
-          }
+          resolveResult = await service.reverseResolveName(smiles);
         }
       } catch (_) {}
 
       if (!mounted) return;
 
-      // 2. 弹出命名页面（AI 名称预填），用户可编辑
+      // 2. Show unified naming page (candidates + manual input)
       final namingResult =
           await Navigator.of(context).push<Map<String, String>>(
         MaterialPageRoute(
           fullscreenDialog: true,
-          builder: (_) => _SaveNamingPage(
+          builder: (_) => _NameResolvePage(
             smiles: smiles,
-            prefillName: aiName,
-            structureService: _getStructureService(),
+            resolveResult: resolveResult,
           ),
         ),
       );
@@ -97,25 +90,23 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
       if (!mounted) return;
       if (namingResult == null) {
         setState(() => _isSaving = false);
-        return; // user cancelled naming
+        return;
       }
 
       final finalSmiles = namingResult['smiles'] ?? smiles;
       final finalName = namingResult['name'] ?? '';
 
-      // 3. 保存到编辑历史
+      // 3. Save to edit history
       final historyItem = EditHistoryItem.fromSmiles(finalSmiles);
       ref.read(editHistoryControllerProvider.notifier).add(historyItem);
 
-      // 4. 根据来源决定是否显示确认页
+      // 4. Confirm page (if not skip)
       if (widget.skipSaveConfirm) {
-        // 从识别/生成结构进入：不弹确认页，直接返回
         if (!mounted) return;
         Navigator.of(context).pop(finalSmiles);
         return;
       }
 
-      // 从编辑-Ketcher进入：弹出确认页
       final shouldFavorite = await Navigator.of(context).push<bool>(
         MaterialPageRoute(
           fullscreenDialog: true,
@@ -131,22 +122,7 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
         if (isReaction) {
           Navigator.of(context).pop(finalSmiles);
         } else {
-          // 收藏：再次弹出命名页让用户最终确认名称
-          final favResult =
-              await Navigator.of(context).push<Map<String, String>>(
-            MaterialPageRoute(
-              fullscreenDialog: true,
-              builder: (_) => _SaveNamingPage(
-                smiles: finalSmiles,
-                prefillName: finalName,
-                structureService: _getStructureService(),
-              ),
-            ),
-          );
-          if (favResult != null && mounted) {
-            Navigator.of(context)
-                .pop(favResult['smiles'] ?? finalSmiles);
-          }
+          Navigator.of(context).pop(finalSmiles);
         }
       } else {
         Navigator.of(context).pop(finalSmiles);
@@ -306,33 +282,35 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
   }
 }
 
-/// 全屏命名页面（避免 iframe z-index 问题）
-class _SaveNamingPage extends StatefulWidget {
-  const _SaveNamingPage({
+/// ============================================================
+/// Unified naming page: candidates list + manual input
+/// ============================================================
+class NameResolvePage extends StatefulWidget {
+  const NameResolvePage({
     required this.smiles,
-    this.prefillName = '',
-    this.structureService,
+    this.resolveResult,
   });
   final String smiles;
-  final String prefillName;
-  final dynamic structureService;
+  final StructureResult? resolveResult;
 
   @override
-  State<_SaveNamingPage> createState() => _SaveNamingPageState();
+  State<NameResolvePage> createState() => _NameResolvePageState();
 }
 
-class _SaveNamingPageState extends State<_SaveNamingPage> {
+class _NameResolvePageState extends State<_NameResolvePage> {
   final _nameController = TextEditingController();
-  bool _isResolving = false;
-  bool _autoResolved = false;
+  List<_NameCandidate> _candidates = const [];
+  int _selectedIndex = -1;
+  bool _isCustomName = false;
 
   @override
   void initState() {
     super.initState();
-    _nameController.text = widget.prefillName;
-    if (widget.prefillName.isEmpty && !_autoResolved) {
-      // auto-resolve if no prefill name provided (e.g. re-edit from results)
-      WidgetsBinding.instance.addPostFrameCallback((_) => _aiResolve());
+    _buildCandidates();
+    // Auto-select the first (primary) candidate
+    if (_candidates.isNotEmpty) {
+      _selectedIndex = 0;
+      _nameController.text = _candidates[0].displayName;
     }
   }
 
@@ -342,31 +320,57 @@ class _SaveNamingPageState extends State<_SaveNamingPage> {
     super.dispose();
   }
 
-  Future<void> _aiResolve() async {
-    if (widget.structureService == null) return;
-    if (_isResolving) return;
-    setState(() => _isResolving = true);
-    try {
-      final result =
-          await widget.structureService.reverseResolveName(widget.smiles);
-      if (result.isValid && mounted) {
-        final name = result.chineseName ??
-            result.englishName ??
-            result.resolvedName ??
-            '';
-        if (name.isNotEmpty) {
-          setState(() => _nameController.text = name);
+  void _buildCandidates() {
+    final r = widget.resolveResult;
+    final candidates = <_NameCandidate>[];
+
+    // Primary name from the resolve result
+    final primaryEn = r?.englishName;
+    final primaryZh = r?.chineseName;
+    final primaryResolved = r?.resolvedName;
+    if ((primaryEn != null && primaryEn.isNotEmpty) ||
+        (primaryZh != null && primaryZh.isNotEmpty) ||
+        (primaryResolved != null && primaryResolved.isNotEmpty)) {
+      candidates.add(_NameCandidate(
+        englishName: primaryEn,
+        chineseName: primaryZh,
+        resolvedName: primaryResolved,
+        source: 'AI 识别',
+        confidence: r?.confidence ?? 0,
+      ));
+    }
+
+    // Alternatives
+    if (r?.alternatives != null) {
+      for (final alt in r!.alternatives) {
+        if ((alt.englishName ?? '').isEmpty &&
+            (alt.chineseName ?? '').isEmpty) {
+          continue;
         }
+        candidates.add(_NameCandidate(
+          englishName: alt.englishName,
+          chineseName: alt.chineseName,
+          resolvedName: alt.resolvedName,
+          source: alt.source ?? '候选',
+          confidence: alt.confidence,
+        ));
       }
-    } catch (e) {
-      debugPrint('[AI命名] 失败: $e');
     }
-    if (mounted) {
-      setState(() {
-        _isResolving = false;
-        _autoResolved = true;
-      });
-    }
+
+    setState(() {
+      _candidates = candidates;
+      if (candidates.isEmpty) {
+        _selectedIndex = -1;
+      }
+    });
+  }
+
+  void _selectCandidate(int index) {
+    setState(() {
+      _selectedIndex = index;
+      _isCustomName = false;
+      _nameController.text = _candidates[index].displayName;
+    });
   }
 
   @override
@@ -379,57 +383,183 @@ class _SaveNamingPageState extends State<_SaveNamingPage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
+      body: Column(
+        children: [
+          // Structure preview
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: SizedBox(
+                height: 160,
+                child: StructureView(
+                  smiles: widget.smiles,
+                  readOnly: true,
+                  interactive: false,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          // SMILES
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color:
-                    isDark ? AppColors.glass : AppColors.dayGlassStrong,
-                borderRadius: BorderRadius.circular(12),
+                color: isDark
+                    ? AppColors.glass
+                    : AppColors.dayGlassStrong,
+                borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
                 'SMILES: ${widget.smiles}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       fontFamily: 'monospace',
                       color: isDark
                           ? AppColors.textMuted
                           : AppColors.dayTextMuted,
                     ),
-                maxLines: 3,
-                overflow: TextOverflow.ellipsis,
               ),
             ),
-            const SizedBox(height: 24),
-            TextField(
+          ),
+          const SizedBox(height: 12),
+          // Manual name input
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: TextField(
               controller: _nameController,
-              decoration: const InputDecoration(
-                hintText: '输入化学名称（可选）',
-              ),
-            ),
-            const SizedBox(height: 16),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                icon: _isResolving
-                    ? const SizedBox(
-                        width: 14,
-                        height: 14,
-                        child:
-                            CircularProgressIndicator(strokeWidth: 2),
+              onChanged: (_) {
+                if (!_isCustomName) {
+                  setState(() => _isCustomName = true);
+                }
+              },
+              decoration: InputDecoration(
+                hintText: '输入或选择化学名称',
+                suffixIcon: _nameController.text.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 18),
+                        onPressed: () {
+                          _nameController.clear();
+                          setState(() => _isCustomName = true);
+                        },
                       )
-                    : const Icon(Icons.auto_awesome, size: 16),
-                label: Text(
-                    _isResolving ? 'AI 识别中...' : 'AI 检测命名'),
-                onPressed: _isResolving ? null : _aiResolve,
+                    : null,
               ),
             ),
-            const Spacer(),
-            Row(
+          ),
+          const SizedBox(height: 12),
+          // Candidate list
+          if (_candidates.isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  Text(
+                    '候选名称',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: isDark
+                              ? AppColors.textSecondary
+                              : AppColors.dayTextSecondary,
+                        ),
+                  ),
+                  const Spacer(),
+                  if (_selectedIndex >= 0)
+                    Text(
+                      _candidates[_selectedIndex].source,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppColors.aqua,
+                          ),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 6),
+            Expanded(
+              child: ListView.separated(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: _candidates.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 6),
+                itemBuilder: (context, index) {
+                  final c = _candidates[index];
+                  final selected = index == _selectedIndex && !_isCustomName;
+                  return GestureDetector(
+                    onTap: () => _selectCandidate(index),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: selected
+                              ? (isDark
+                                  ? AppColors.aqua
+                                  : AppColors.dayBluePrimary)
+                              : (isDark
+                                  ? Colors.white.withValues(alpha: 0.08)
+                                  : AppColors.dayBluePrimary
+                                      .withValues(alpha: 0.15)),
+                          width: selected ? 1.5 : 1,
+                        ),
+                        color: selected
+                            ? (isDark
+                                ? AppColors.aqua.withValues(alpha: 0.1)
+                                : AppColors.dayBluePrimary
+                                    .withValues(alpha: 0.08))
+                            : Colors.transparent,
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  c.displayName,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodyMedium
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                ),
+                                if (c.chineseName != null &&
+                                    c.englishName != null &&
+                                    c.displayName != c.chineseName)
+                                  Text(
+                                    c.chineseName!,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(
+                                          color: isDark
+                                              ? AppColors.textMuted
+                                              : AppColors.dayTextMuted,
+                                        ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          if (selected)
+                            Icon(Icons.check_circle,
+                                size: 20, color: AppColors.aqua),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ] else
+            Expanded(child: Container()),
+          const SizedBox(height: 10),
+          // Buttons
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            child: Row(
               children: [
                 Expanded(
                   child: SizedBox(
@@ -460,14 +590,41 @@ class _SaveNamingPageState extends State<_SaveNamingPage> {
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
 }
 
-/// 全屏确认取消页面
+class _NameCandidate {
+  final String? englishName;
+  final String? chineseName;
+  final String? resolvedName;
+  final String source;
+  final double confidence;
+
+  const _NameCandidate({
+    this.englishName,
+    this.chineseName,
+    this.resolvedName,
+    required this.source,
+    required this.confidence,
+  });
+
+  String get displayName {
+    final en = englishName ?? '';
+    final zh = chineseName ?? '';
+    if (en.isNotEmpty && zh.isNotEmpty) return '$en ($zh)';
+    if (en.isNotEmpty) return en;
+    if (zh.isNotEmpty) return zh;
+    return resolvedName ?? '';
+  }
+}
+
+/// ============================================================
+/// Cancel confirmation
+/// ============================================================
 class _ConfirmCancelPage extends StatelessWidget {
   const _ConfirmCancelPage();
 
