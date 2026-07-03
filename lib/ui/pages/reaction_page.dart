@@ -800,10 +800,6 @@ class _ReactionPageState extends State<ReactionPage> {
                   .map((item) => QuickTag(label: item, onTap: () {}))
                   .toList(),
             ),
-          ],
-        ],
-      ),
-    );
 
             const SizedBox(height: 12),
             SizedBox(
@@ -837,6 +833,11 @@ class _ReactionPageState extends State<ReactionPage> {
                 },
               ),
             ),
+          ],
+        ],
+      ),
+    );
+
   }
 
   Widget _buildKnowledgeManager(BuildContext context) {
