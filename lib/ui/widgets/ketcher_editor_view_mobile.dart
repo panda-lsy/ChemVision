@@ -115,15 +115,15 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
     widget.onControllerReady?.call(_controller!);
   }
 
-  /// 注入移动端适配脚本：桥接 postMessage → flutter_inappwebview、抑制隐藏 cliparea
-  /// 弹输入法、画布触摸→鼠标事件转发、以及工具条溢出/滚动问题。
-  /// 这些修复以注入方式作用于已有的 ketcher 构建产物，无需重新构建 ketcher。
+  /// ketcher → flutter_inappwebview 桥接转发。
+  /// 环境无关的 UI 适配（触摸转发、双指缩放、滚动条、SMILES 防抖）
+  /// 已内置在 ketcher/index.html 中。
   static const String _injectScript = r'''
   (function () {
     if (window._chemvisionInjected) return;
     window._chemvisionInjected = true;
 
-    // ── 1. ketcher → Flutter 回桥 ──
+    // ── ketcher → Flutter 回桥 ──
     window.addEventListener('message', function (e) {
       var d = e && e.data;
       if (!d) return;
@@ -144,7 +144,9 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
         }
       } catch (_) {}
     });
-    // safePostMessage 在 window.parent===window 时不发 init，故轮询 ketcher 就绪后主动通知
+
+    // safePostMessage 在 window.parent===window 时不发 init，
+    // 故轮询 ketcher 就绪后主动通知 Flutter
     if (!window._ketcherReadyPoll) {
       window._ketcherReadyPoll = setInterval(function () {
         if (window.ketcher && typeof window.ketcher.getSmiles === 'function') {
@@ -158,89 +160,6 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
         }
       }, 250);
     }
-
-    // ── 2. 抑制隐藏 cliparea 触发输入法 ──
-    function neutralizeCliparea() {
-      var el = document.querySelector('.cliparea');
-      if (!el || el.getAttribute('data-cv-clip')) return;
-      try { el.readOnly = true; } catch (_) {}
-      try { el.setAttribute('contenteditable', 'false'); } catch (_) {}
-      try { el.setAttribute('inputmode', 'none'); } catch (_) {}
-      el.setAttribute('data-cv-clip', '1');
-    }
-    neutralizeCliparea();
-    new MutationObserver(function () { neutralizeCliparea(); })
-      .observe(document.documentElement, { childList: true, subtree: true });
-
-    // ── 3. 移动端布局/手势 CSS ──
-    var style = document.createElement('style');
-    style.textContent =
-      'html,body,#root{height:100%!important;width:100%!important;margin:0!important;padding:0!important;overflow:hidden!important;}'
-      + 'body{position:fixed!important;inset:0!important;}'
-      + '.cliparea,.cliparea *{touch-action:none!important;}'
-      // 画布接收触摸拖拽绘制长碳链
-      + '[class*="StructEditor"],[class*="StructEditor"] svg,[class*="StructEditor"] canvas,'
-      + 'svg.drawn-structures,.drawn-structures{touch-action:none!important;}'
-      // 横向工具条不换行，改为横向滚动；按钮组不压缩以保留可点击宽度
-      + '[class*="TopToolbar"],[class*="BottomToolbar"]{flex-wrap:nowrap!important;'
-        + 'overflow-x:auto!important;overflow-y:hidden!important;'
-        + 'max-width:100vw!important;-webkit-overflow-scrolling:touch;'
-        + 'touch-action:pan-x!important;}'
-      + '[class*="TopToolbar"] [class*="group"],[class*="BottomToolbar"] [class*="group"]'
-      + '{flex-shrink:0!important;white-space:nowrap!important;}'
-      // 纵向工具条按钮可点
-      + '[class*="LeftToolbar"],[class*="RightToolbar"]{touch-action:manipulation!important;}';
-    document.head.appendChild(style);
-
-    // ── 4. 触摸 → 鼠标事件转发（核心：绘制长碳链）──
-    // ketcher 用 D3 .on('mousedown'/'mousemove') 监听画布；Android WebView 在 touch
-    // drag 时不会合成 mousemove，导致只能点放单个原子而无法拖拽延伸碳链。这里在
-    // 画布触摸时主动派发合成 MouseEvent，并 preventDefault 抑制浏览器自身的鼠标
-    // 合成以避免重复派发。工具条/弹窗/表单控件的触摸不转发，仍走原生。
-    function isInteractive(target) {
-      return !!target.closest(
-        '[class*="Toolbar"],[class*="toolbar"],[class*="Modal"],[class*="Dialog"],'
-        + '[class*="Popover"],[class*="ContextMenu"],[class*="Tooltip"],'
-        + 'button,select,input,textarea,a[href],[role="button"]'
-      );
-    }
-    function dispatchMouse(type, touch) {
-      var el = document.elementFromPoint(touch.clientX, touch.clientY);
-      if (!el) return;
-      try {
-        var ev = new MouseEvent(type, {
-          bubbles: true,
-          cancelable: true,
-          view: window,
-          clientX: touch.clientX,
-          clientY: touch.clientY,
-          button: 0,
-          buttons: type === 'mouseup' ? 0 : 1,
-          relatedTarget: null,
-        });
-        el.dispatchEvent(ev);
-      } catch (_) {}
-    }
-    var touching = false;
-    document.addEventListener('touchstart', function (e) {
-      if (e.touches.length !== 1) return;
-      if (isInteractive(e.target)) return;
-      touching = true;
-      e.preventDefault();
-      dispatchMouse('mousedown', e.touches[0]);
-    }, { passive: false });
-    document.addEventListener('touchmove', function (e) {
-      if (!touching || e.touches.length !== 1) return;
-      e.preventDefault();
-      dispatchMouse('mousemove', e.touches[0]);
-    }, { passive: false });
-    document.addEventListener('touchend', function (e) {
-      if (!touching) return;
-      touching = false;
-      e.preventDefault();
-      dispatchMouse('mouseup', e.changedTouches[0]);
-    }, { passive: false });
-    document.addEventListener('touchcancel', function () { touching = false; });
   })();
   ''';
 

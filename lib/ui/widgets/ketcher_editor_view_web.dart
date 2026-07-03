@@ -77,6 +77,7 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
         ..style.border = 'none'
         ..style.width = '100%'
         ..style.height = '100%'
+        ..style.touchAction = 'manipulation'
         ..style.backgroundColor = 'transparent';
       _iframe = iframe;
       return iframe;
