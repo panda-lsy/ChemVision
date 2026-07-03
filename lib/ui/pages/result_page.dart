@@ -292,13 +292,11 @@ class _ResultPageState extends ConsumerState<ResultPage> {
       ),
     );
     if (updatedSmiles != null && updatedSmiles.isNotEmpty && mounted) {
-      final previousCandidate = _activeCandidate;
       setState(() {
         _currentSmiles = updatedSmiles;
-        _resolvingNames = true;
         _activeCandidate = StructureCandidate(
           smiles: updatedSmiles,
-          resolvedName: '解析中…',
+          resolvedName: '已修改结构',
           englishName: null,
           chineseName: null,
           molecularFormula: _activeCandidate.molecularFormula,
@@ -306,47 +304,12 @@ class _ResultPageState extends ConsumerState<ResultPage> {
           source: _activeCandidate.source,
           confidence: _activeCandidate.confidence,
         );
+        _pageTitle = '已修改结构';
       });
-      final namingResult = await Navigator.of(context).push<Map<String, String>>(
-        MaterialPageRoute(
-          builder: (_) => NameResolvePage(
-            smiles: updatedSmiles,
-          ),
-        ),
-      );
-      if (!mounted) {
-        return;
-      }
+      // Editor already handled naming. Just update display.
+      if (!mounted) return;
       setState(() {
         _resolvingNames = false;
-        if (namingResult != null) {
-          final name = namingResult['name'] ?? '';
-          final s = namingResult['smiles'] ?? updatedSmiles;
-          _activeCandidate = StructureCandidate(
-            smiles: s,
-            resolvedName: name.isNotEmpty ? name : null,
-            englishName: name.isNotEmpty ? name : null,
-            chineseName: null,
-            molecularFormula: _activeCandidate.molecularFormula,
-            molecularWeight: _activeCandidate.molecularWeight,
-            source: _activeCandidate.source,
-            confidence: _activeCandidate.confidence,
-          );
-          _pageTitle = name.isNotEmpty ? name : '已修改结构';
-          _currentSmiles = s;
-        } else {
-          _activeCandidate = StructureCandidate(
-            smiles: updatedSmiles,
-            resolvedName: '已修改结构',
-            englishName: null,
-            chineseName: null,
-            molecularFormula: _activeCandidate.molecularFormula,
-            molecularWeight: _activeCandidate.molecularWeight,
-            source: _activeCandidate.source,
-            confidence: _activeCandidate.confidence,
-          );
-          _pageTitle = '已修改结构';
-        }
         _checkIfFavorited();
       });
     }
