@@ -98,11 +98,18 @@ class _LoadingPageState extends ConsumerState<LoadingPage> {
     ref.listen<StructureState>(structureControllerProvider, (prev, next) {
       if (next.status == StructureStatus.success && next.result != null) {
         Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => ResultPage(
+          PageRouteBuilder(
+            transitionDuration: const Duration(milliseconds: 600),
+            pageBuilder: (_, __, ___) => ResultPage(
               query: widget.query,
               result: next.result!,
             ),
+            transitionsBuilder: (_, animation, __, child) {
+              return FadeTransition(
+                opacity: CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                child: child,
+              );
+            },
           ),
         );
       } else if (next.status == StructureStatus.failure) {

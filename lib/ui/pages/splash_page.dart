@@ -60,13 +60,30 @@ class _SplashPageState extends ConsumerState<SplashPage>
     // 2.5 秒后跳转到主页面
     Future.delayed(const Duration(milliseconds: 2500), () {
       if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(
-            builder: (_) => const BottomNavShell(),
-          ),
-        );
+        _navigateToHome();
       }
     });
+  }
+
+  void _navigateToHome() {
+    _pulseController.stop();
+    _fadeInController.reverse().then((_) {
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        PageRouteBuilder(
+          transitionDuration: const Duration(milliseconds: 500),
+          pageBuilder: (_, __, ___) => const BottomNavShell(),
+          transitionsBuilder: (_, animation, __, child) {
+            return FadeTransition(opacity: animation, child: child);
+          },
+        ),
+      );
+    });
+  }
+
+  void _checkQuickBoot() {
+    // If already authenticated/set up, skip the delay
+    // For now, keep the delay but allow immediate skip on tap
   }
 
   @override
@@ -80,7 +97,13 @@ class _SplashPageState extends ConsumerState<SplashPage>
   Widget build(BuildContext context) {
     final isDark = ref.watch(themeModeProvider) != ThemeMode.light;
     return Scaffold(
-      body: Container(
+      body: GestureDetector(
+        onTap: () {
+          if (_fadeInController.isCompleted) {
+            _navigateToHome();
+          }
+        },
+        child: Container(
         decoration: BoxDecoration(
           color: isDark ? null : const Color(0xFF1F48B3),
           gradient: isDark
@@ -211,6 +234,7 @@ class _SplashPageState extends ConsumerState<SplashPage>
             ],
           ),
         ),
+      ),
       ),
     );
   }
