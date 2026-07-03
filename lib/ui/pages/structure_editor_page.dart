@@ -12,6 +12,10 @@ import '../widgets/ketcher_editor_view.dart';
 import '../widgets/primary_button.dart';
 import '../widgets/structure_view.dart';
 import 'save_confirm_page.dart';
+import '../../providers/favorites_provider.dart';
+import '../../providers/reaction_favorites_provider.dart';
+import '../../models/structure_result.dart';
+import '../../models/reaction_equation.dart';
 
 class StructureEditorPage extends ConsumerStatefulWidget {
   const StructureEditorPage({
@@ -120,8 +124,27 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
       if (shouldFavorite == true) {
         final isReaction = EditHistoryItem.isReactionSmiles(finalSmiles);
         if (isReaction) {
+          // save to reaction favorites
+          try {
+            final equation = ReactionEquation(title: finalName, rxnData: finalSmiles);
+            ref.read(reactionFavoritesControllerProvider.notifier).add(equation);
+          } catch (_) {}
           Navigator.of(context).pop(finalSmiles);
         } else {
+          // save to structure favorites
+          try {
+            final sResult = StructureResult(
+              smiles: finalSmiles,
+              resolvedName: finalName.isNotEmpty ? finalName : null,
+              englishName: finalName.isNotEmpty ? finalName : null,
+              chineseName: null,
+              molecularFormula: '',
+              molecularWeight: 0,
+              isValid: true,
+              confidence: 1.0,
+            );
+            await ref.read(favoritesControllerProvider.notifier).add(sResult, finalName);
+          } catch (_) {}
           Navigator.of(context).pop(finalSmiles);
         }
       } else {

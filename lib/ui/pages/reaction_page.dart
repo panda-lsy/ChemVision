@@ -75,11 +75,10 @@ class _ReactionPageState extends State<ReactionPage> {
   KnowledgeSortOption _knowledgeSort = KnowledgeSortOption.newestFirst;
 
   static const _samples = [
-    '乙酸 + 乙醇，缺少条件和产物',
-    '乙醇氧化，补全生成物和条件',
-    '乙烯和水反应，补全反应方程式',
-    '苯和溴反应，补全条件',
-    'HCl 和 NaOH 反应，补全产物',
+    '乙酸+乙醇→?',
+    '乙醇氧化→?',
+    '乙烯+水→?',
+    '苯+溴→?',
   ];
 
   @override
