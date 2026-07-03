@@ -288,6 +288,7 @@ class _ResultPageState extends ConsumerState<ResultPage> {
         builder: (_) => StructureEditorPage(
           initialSmiles: _currentSmiles,
           title: '结构式编辑器',
+          skipSaveConfirm: true,
         ),
       ),
     );

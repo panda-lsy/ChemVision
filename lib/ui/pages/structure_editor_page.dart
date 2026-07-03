@@ -22,7 +22,7 @@ class StructureEditorPage extends ConsumerStatefulWidget {
   final String initialSmiles;
   final String? title;
 
-  /// true: directly return SMILES without showing save-confirm page.
+  /// true: skip confirm page after naming (used when caller handles save itself).
   final bool skipSaveConfirm;
 
   @override
@@ -34,6 +34,7 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
   KetcherEditorController? _controller;
   String _currentSmiles = '';
   bool _isDirty = false;
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -41,78 +42,117 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
     _currentSmiles = widget.initialSmiles;
   }
 
-  /// 保存并返回：保存历史 → 确认收藏 → 返回
   Future<void> _saveAndBack() async {
-    final latest = await _controller?.getSmiles();
-    if (!mounted) return;
-    final smiles = (latest != null && latest.trim().isNotEmpty)
-        ? latest.trim()
-        : _currentSmiles.trim();
+    if (_isSaving) return;
+    setState(() => _isSaving = true);
 
-    if (smiles.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请先绘制结构式')),
-      );
-      return;
-    }
-
-    // 1. 保存到编辑历史
-    final historyItem = EditHistoryItem.fromSmiles(smiles);
-    ref.read(editHistoryControllerProvider.notifier).add(historyItem);
-
-    // 若调用方不需要确认页，直接返回
-    if (widget.skipSaveConfirm) {
-      if (!mounted) return;
-      Navigator.of(context).pop(smiles);
-      return;
-    }
-
-    // 1.5 AI 推断名称（异步，不阻塞 UI）
-    String? aiName;
     try {
-      final service = _getStructureService();
-      if (service != null) {
-        final result = await service.reverseResolveName(smiles);
-        if (result.isValid) {
-          aiName = result.chineseName ?? result.englishName ?? result.resolvedName;
+      final latest = await _controller?.getSmiles();
+      if (!mounted) return;
+      final rawSmiles = (latest != null && latest.isNotEmpty)
+          ? latest
+          : _currentSmiles.trim();
+      final smiles = rawSmiles.trim();
+
+      if (smiles.isEmpty || smiles == '{}') {
+        if (mounted) {
+          setState(() => _isSaving = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('请先绘制结构式')),
+          );
         }
+        return;
       }
-    } catch (_) {}
 
-    // 2. 弹出确认页面（全屏，避免 iframe z-index 问题），附带 AI 名称
-    final shouldFavorite = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        fullscreenDialog: true,
-        builder: (_) => SaveConfirmPage(smiles: smiles, aiName: aiName),
-      ),
-    );
+      // 1. AI 推断名称（异步加载，带 loading 态）
+      String aiName = '';
+      try {
+        final service = _getStructureService();
+        if (service != null) {
+          final result = await service.reverseResolveName(smiles);
+          if (result.isValid) {
+            aiName = result.chineseName ??
+                result.englishName ??
+                result.resolvedName ??
+                '';
+          }
+        }
+      } catch (_) {}
 
-    if (!mounted) return;
+      if (!mounted) return;
 
-    if (shouldFavorite == true) {
-      // 收藏：根据类型自动路由
-      final isReaction = EditHistoryItem.isReactionSmiles(smiles);
-      if (isReaction) {
-        // 反应式：返回 SMILES，EditHubPage 处理收藏
-        Navigator.of(context).pop(smiles);
-      } else {
-        // 结构式：弹出命名页面
-        final result = await Navigator.of(context).push<Map<String, String>>(
-          MaterialPageRoute(
-            fullscreenDialog: true,
-            builder: (_) => _SaveNamingPage(
-              smiles: smiles,
-              structureService: _getStructureService(),
-            ),
+      // 2. 弹出命名页面（AI 名称预填），用户可编辑
+      final namingResult =
+          await Navigator.of(context).push<Map<String, String>>(
+        MaterialPageRoute(
+          fullscreenDialog: true,
+          builder: (_) => _SaveNamingPage(
+            smiles: smiles,
+            prefillName: aiName,
+            structureService: _getStructureService(),
           ),
-        );
-        if (result != null && mounted) {
-          Navigator.of(context).pop(result['smiles'] ?? smiles);
-        }
+        ),
+      );
+
+      if (!mounted) return;
+      if (namingResult == null) {
+        setState(() => _isSaving = false);
+        return; // user cancelled naming
       }
-    } else {
-      // 跳过收藏，直接返回 SMILES
-      Navigator.of(context).pop(smiles);
+
+      final finalSmiles = namingResult['smiles'] ?? smiles;
+      final finalName = namingResult['name'] ?? '';
+
+      // 3. 保存到编辑历史
+      final historyItem = EditHistoryItem.fromSmiles(finalSmiles);
+      ref.read(editHistoryControllerProvider.notifier).add(historyItem);
+
+      // 4. 根据来源决定是否显示确认页
+      if (widget.skipSaveConfirm) {
+        // 从识别/生成结构进入：不弹确认页，直接返回
+        if (!mounted) return;
+        Navigator.of(context).pop(finalSmiles);
+        return;
+      }
+
+      // 从编辑-Ketcher进入：弹出确认页
+      final shouldFavorite = await Navigator.of(context).push<bool>(
+        MaterialPageRoute(
+          fullscreenDialog: true,
+          builder: (_) =>
+              SaveConfirmPage(smiles: finalSmiles, aiName: finalName),
+        ),
+      );
+
+      if (!mounted) return;
+
+      if (shouldFavorite == true) {
+        final isReaction = EditHistoryItem.isReactionSmiles(finalSmiles);
+        if (isReaction) {
+          Navigator.of(context).pop(finalSmiles);
+        } else {
+          // 收藏：再次弹出命名页让用户最终确认名称
+          final favResult =
+              await Navigator.of(context).push<Map<String, String>>(
+            MaterialPageRoute(
+              fullscreenDialog: true,
+              builder: (_) => _SaveNamingPage(
+                smiles: finalSmiles,
+                prefillName: finalName,
+                structureService: _getStructureService(),
+              ),
+            ),
+          );
+          if (favResult != null && mounted) {
+            Navigator.of(context)
+                .pop(favResult['smiles'] ?? finalSmiles);
+          }
+        }
+      } else {
+        Navigator.of(context).pop(finalSmiles);
+      }
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
@@ -153,10 +193,11 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
           Row(
             children: [
               IconButton(
-                onPressed: _cancel,
+                onPressed: _isSaving ? null : _cancel,
                 icon: const Icon(Icons.arrow_back),
-                color:
-                    isDark ? AppColors.textPrimary : AppColors.dayTextPrimary,
+                color: isDark
+                    ? AppColors.textPrimary
+                    : AppColors.dayTextPrimary,
               ),
               const SizedBox(width: 4),
               Expanded(
@@ -205,7 +246,8 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
           const SizedBox(height: 6),
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
               color: isDark ? AppColors.glass : AppColors.dayGlassStrong,
               borderRadius: BorderRadius.circular(10),
@@ -217,8 +259,9 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color:
-                        isDark ? AppColors.textMuted : AppColors.dayTextMuted,
+                    color: isDark
+                        ? AppColors.textMuted
+                        : AppColors.dayTextMuted,
                     fontFamily: 'monospace',
                   ),
             ),
@@ -240,7 +283,7 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16)),
                   ),
-                  onPressed: _cancel,
+                  onPressed: _isSaving ? null : _cancel,
                   child: const Text('取消'),
                 ),
               ),
@@ -249,9 +292,10 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
                 child: SizedBox(
                   height: 44,
                   child: PrimaryButton(
-                      label: '保存并返回',
-                      onPressed: _saveAndBack,
-                      fontSize: 13),
+                    label: _isSaving ? 'AI 识别名称中…' : '保存并返回',
+                    onPressed: _isSaving ? null : _saveAndBack,
+                    fontSize: 13,
+                  ),
                 ),
               ),
             ],
@@ -264,8 +308,13 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
 
 /// 全屏命名页面（避免 iframe z-index 问题）
 class _SaveNamingPage extends StatefulWidget {
-  const _SaveNamingPage({required this.smiles, this.structureService});
+  const _SaveNamingPage({
+    required this.smiles,
+    this.prefillName = '',
+    this.structureService,
+  });
   final String smiles;
+  final String prefillName;
   final dynamic structureService;
 
   @override
@@ -275,6 +324,17 @@ class _SaveNamingPage extends StatefulWidget {
 class _SaveNamingPageState extends State<_SaveNamingPage> {
   final _nameController = TextEditingController();
   bool _isResolving = false;
+  bool _autoResolved = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController.text = widget.prefillName;
+    if (widget.prefillName.isEmpty && !_autoResolved) {
+      // auto-resolve if no prefill name provided (e.g. re-edit from results)
+      WidgetsBinding.instance.addPostFrameCallback((_) => _aiResolve());
+    }
+  }
 
   @override
   void dispose() {
@@ -284,13 +344,14 @@ class _SaveNamingPageState extends State<_SaveNamingPage> {
 
   Future<void> _aiResolve() async {
     if (widget.structureService == null) return;
+    if (_isResolving) return;
     setState(() => _isResolving = true);
     try {
       final result =
           await widget.structureService.reverseResolveName(widget.smiles);
       if (result.isValid && mounted) {
-        final name = result.englishName ??
-            result.chineseName ??
+        final name = result.chineseName ??
+            result.englishName ??
             result.resolvedName ??
             '';
         if (name.isNotEmpty) {
@@ -300,7 +361,12 @@ class _SaveNamingPageState extends State<_SaveNamingPage> {
     } catch (e) {
       debugPrint('[AI命名] 失败: $e');
     }
-    if (mounted) setState(() => _isResolving = false);
+    if (mounted) {
+      setState(() {
+        _isResolving = false;
+        _autoResolved = true;
+      });
+    }
   }
 
   @override
@@ -309,7 +375,7 @@ class _SaveNamingPageState extends State<_SaveNamingPage> {
     return Scaffold(
       backgroundColor: isDark ? const Color(0xFF0d1627) : Colors.white,
       appBar: AppBar(
-        title: const Text('保存结构式'),
+        title: const Text('更新名称'),
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
@@ -322,7 +388,8 @@ class _SaveNamingPageState extends State<_SaveNamingPage> {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isDark ? AppColors.glass : AppColors.dayGlassStrong,
+                color:
+                    isDark ? AppColors.glass : AppColors.dayGlassStrong,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
@@ -352,10 +419,12 @@ class _SaveNamingPageState extends State<_SaveNamingPage> {
                     ? const SizedBox(
                         width: 14,
                         height: 14,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+                        child:
+                            CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.auto_awesome, size: 16),
-                label: Text(_isResolving ? 'AI 识别中...' : 'AI 检测命名'),
+                label: Text(
+                    _isResolving ? 'AI 识别中...' : 'AI 检测命名'),
                 onPressed: _isResolving ? null : _aiResolve,
               ),
             ),
@@ -422,7 +491,10 @@ class _ConfirmCancelPage extends StatelessWidget {
                     style: Theme.of(context).textTheme.headlineMedium),
                 const SizedBox(height: 12),
                 Text('编辑内容尚未保存，确定取消？',
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyLarge
+                        ?.copyWith(
                           color: isDark
                               ? AppColors.textSecondary
                               : AppColors.dayTextSecondary,
@@ -437,7 +509,8 @@ class _ConfirmCancelPage extends StatelessWidget {
                         child: OutlinedButton(
                           style: OutlinedButton.styleFrom(
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(18)),
+                                borderRadius:
+                                    BorderRadius.circular(18)),
                           ),
                           onPressed: () => Navigator.pop(context, false),
                           child: const Text('继续编辑'),
@@ -453,7 +526,8 @@ class _ConfirmCancelPage extends StatelessWidget {
                             backgroundColor: Colors.redAccent,
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(18)),
+                                borderRadius:
+                                    BorderRadius.circular(18)),
                           ),
                           onPressed: () => Navigator.pop(context, true),
                           child: const Text('确定取消'),

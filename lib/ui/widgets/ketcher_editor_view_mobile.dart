@@ -76,15 +76,14 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
       },
       getSmiles: () async {
         final result = await _webViewController?.evaluateJavascript(
-          source: '''
-            (async () => {
-              const k = window.ketcher;
-              if (!k) return '';
-              return await k.getSmiles();
-            })()
-          ''',
+          source: "window.ketcher?.getSmiles() ?? ''",
         );
-        return result?.toString();
+        if (result == null) return '';
+        if (result is String) return result;
+        if (result is Map) {
+          return (result['smiles'] ?? result['data'] ?? '').toString();
+        }
+        return result.toString();
       },
       getRxn: () async {
         final result = await _webViewController?.evaluateJavascript(
