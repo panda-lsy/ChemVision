@@ -667,37 +667,6 @@ class _ReactionPageState extends State<ReactionPage> {
             _buildResultCard(context, _result!),
             const SizedBox(height: 16),
 
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                icon: const Icon(Icons.star_border, size: 18),
-                label: const Text("收藏此反应"),
-                onPressed: () {
-                  try {
-                    final eq = ReactionEquation(
-                      title: result.completedEquation.length > 30
-                          ? '${result.completedEquation.substring(0, 30)}...'
-                          : result.completedEquation,
-                      rxnData: result.completedEquation,
-                    );
-                    ProviderScope.containerOf(context)
-                        .read(reactionFavoritesControllerProvider.notifier)
-                        .add(eq);
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text("已添加到反应收藏")),
-                      );
-                    }
-                  } catch (e) {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text("收藏失败: $e")),
-                      );
-                    }
-                  }
-                },
-              ),
             ),
           ],
           _buildKnowledgeManager(context),
@@ -835,6 +804,39 @@ class _ReactionPageState extends State<ReactionPage> {
         ],
       ),
     );
+
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.star_border, size: 18),
+                label: const Text("收藏此反应"),
+                onPressed: () {
+                  try {
+                    final eq = ReactionEquation(
+                      title: result.completedEquation.length > 30
+                          ? '${result.completedEquation.substring(0, 30)}...'
+                          : result.completedEquation,
+                      rxnData: result.completedEquation,
+                    );
+                    ProviderScope.containerOf(context)
+                        .read(reactionFavoritesControllerProvider.notifier)
+                        .add(eq);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("已添加到反应收藏")),
+                      );
+                    }
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text("收藏失败: $e")),
+                      );
+                    }
+                  }
+                },
+              ),
+            ),
   }
 
   Widget _buildKnowledgeManager(BuildContext context) {
