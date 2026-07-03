@@ -17,6 +17,7 @@ import '../widgets/primary_button.dart';
 import '../widgets/quick_tag.dart';
 import '../../providers/reaction_favorites_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../models/reaction_equation.dart';
 
 enum KnowledgeFilterOption {
   all,
@@ -667,7 +668,6 @@ class _ReactionPageState extends State<ReactionPage> {
             _buildResultCard(context, _result!),
             const SizedBox(height: 16),
 
-            ),
           ],
           _buildKnowledgeManager(context),
         ],
