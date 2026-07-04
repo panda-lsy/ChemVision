@@ -127,11 +127,6 @@ class ReactionMolecule {
     required this.smiles,
     this.name,
     this.svgString,
-    this.reactionType = '',
-    this.explanation = '',
-    this.conditionRationale = '',
-    this.sourceReferences = const [],
-    this.confidence = 0.0,
   });
 
   String smiles;
@@ -142,11 +137,6 @@ class ReactionMolecule {
         'smiles': smiles,
         'name': name,
         'svgString': svgString,
-        'reactionType': reactionType,
-        'explanation': explanation,
-        'conditionRationale': conditionRationale,
-        'sourceReferences': sourceReferences,
-        'confidence': confidence,
       };
 
   factory ReactionMolecule.fromJson(Map<String, dynamic> json) {
@@ -154,14 +144,6 @@ class ReactionMolecule {
       smiles: json['smiles']?.toString() ?? '',
       name: json['name'] as String?,
       svgString: json['svgString'] as String?,
-      reactionType: json['reactionType']?.toString() ?? '',
-      explanation: json['explanation']?.toString() ?? '',
-      conditionRationale: json['conditionRationale']?.toString() ?? '',
-      sourceReferences: (json['sourceReferences'] as List<dynamic>?)
-              ?.map((e) => e.toString())
-              .toList() ??
-          const [],
-      confidence: (json['confidence'] as num?)?.toDouble() ?? 0.0,
     );
   }
 }
