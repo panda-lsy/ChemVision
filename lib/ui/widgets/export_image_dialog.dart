@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../widgets/primary_button.dart';
 
-/// Export dialog for SVG/PNG with preview and background options
 class ExportImageDialog extends StatefulWidget {
   const ExportImageDialog({
     super.key,
@@ -42,7 +41,7 @@ class _ExportImageDialogState extends State<ExportImageDialog> {
       } else {
         final bg = _bgMode == 'transparent' ? 'transparent' : _bgMode;
         final png = await widget.exportPng(bg);
-        if (png != null && mounted) {
+        if (png != null && mounted && png.isNotEmpty && png != '{}') {
           setState(() => _previewDataUrl = png);
         }
       }

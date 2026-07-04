@@ -6,6 +6,7 @@ import '../../config/app_config.dart';
 import '../../models/structure_result.dart';
 import '../../providers/favorites_provider.dart';
 import '../../providers/theme_mode_provider.dart';
+import '../../providers/structure_service_provider.dart';
 import '../../theme/app_colors.dart';
 import '../widgets/accent_pill.dart';
 import '../widgets/app_scaffold.dart';
@@ -55,6 +56,29 @@ class _ResultPageState extends ConsumerState<ResultPage> {
     _currentSmiles = _activeCandidate.smiles;
     _pageTitle = _resolveTitleByCandidate(_activeCandidate);
     _checkIfFavorited();
+  }
+
+  void _resolveMolecularProperties(String smiles) async {
+    try {
+      final service = ref.read(structureServiceProvider);
+      final result = await service.reverseResolveName(smiles);
+      if (result.isValid && mounted) {
+        setState(() {
+          if (result.molecularFormula.isNotEmpty) {
+            _activeCandidate = StructureCandidate(
+              smiles: _activeCandidate.smiles,
+              resolvedName: _activeCandidate.resolvedName,
+              englishName: _activeCandidate.englishName,
+              chineseName: _activeCandidate.chineseName,
+              molecularFormula: result.molecularFormula,
+              molecularWeight: result.molecularWeight,
+              source: _activeCandidate.source,
+              confidence: _activeCandidate.confidence,
+            );
+          }
+        });
+      }
+    } catch (_) {}
   }
 
   void _checkIfFavorited() {
@@ -309,6 +333,8 @@ class _ResultPageState extends ConsumerState<ResultPage> {
         );
         _pageTitle = updatedName.isNotEmpty ? updatedName : '已修改结构';
       });
+      // Re-resolve molecular properties for the new SMILES
+      _resolveMolecularProperties(updatedSmiles);
       // Editor already handled naming. Just update display.
       if (!mounted) return;
       setState(() {
