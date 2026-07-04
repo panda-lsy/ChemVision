@@ -219,6 +219,46 @@ window.parent.postMessage=function(data,origin){
   return _origParentPostMessage(data,origin);
 };
 
+/* ======== 1.5 Export handlers (for Web postMessage bridge) ======== */
+window.addEventListener('message', function(e) {
+  var d = e && e.data;
+  if (!d || !d.channel || !d.type) return;
+  var k = window.ketcher;
+  if (!k) return;
+  try {
+    if (d.type === 'exportSvg') {
+      k.generateImageAsDataUrl('', { outputFormat: 'svg' }).then(function(url) {
+        window.parent.postMessage({
+          channel: d.channel,
+          type: 'exportSvgResult',
+          payload: { svgString: url }
+        }, '*');
+      }).catch(function(err) {
+        window.parent.postMessage({
+          channel: d.channel,
+          type: 'exportSvgResult',
+          payload: { svgString: null, error: String(err) }
+        }, '*');
+      });
+    } else if (d.type === 'exportPng') {
+      var bg = (d.payload && d.payload.data) || '#ffffff';
+      k.generateImageAsDataUrl('', { outputFormat: 'png', backgroundColor: bg }).then(function(url) {
+        window.parent.postMessage({
+          channel: d.channel,
+          type: 'exportPngResult',
+          payload: { dataUrl: url }
+        }, '*');
+      }).catch(function(err) {
+        window.parent.postMessage({
+          channel: d.channel,
+          type: 'exportPngResult',
+          payload: { dataUrl: null, error: String(err) }
+        }, '*');
+      });
+    }
+  } catch(e) {}
+});
+
 /* ======== 2. 触摸鼠标转发 + 双指缩放 ======== */
 var _pinchActive=false,_pinchDist0=0,_touching=false;
 
