@@ -11,6 +11,7 @@ import '../widgets/glass_panel.dart';
 import '../widgets/ketcher_editor_controller.dart';
 import '../widgets/ketcher_editor_view.dart';
 import '../widgets/primary_button.dart';
+import '../widgets/export_image_dialog.dart';
 
 /// 反应方程式编辑页面
 ///
@@ -89,6 +90,16 @@ class _ReactionEditorPageState extends ConsumerState<ReactionEditorPage> {
         const SnackBar(content: Text('反应方程式已保存到收藏')),
       );
     }
+  }
+
+  void _showExportDialog(BuildContext context, bool isDark) {
+    showDialog(
+      context: context,
+      builder: (_) => ExportImageDialog(
+        exportSvg: () => _controller?.exportSvg() ?? Future.value(null),
+        exportPng: (bg) => _controller?.exportPng(data: bg) ?? Future.value(null),
+      ),
+    );
   }
 
   /// 取消
@@ -183,6 +194,11 @@ class _ReactionEditorPageState extends ConsumerState<ReactionEditorPage> {
                   '反应方程式编辑器',
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.file_download_outlined),
+                tooltip: '导出图片',
+                onPressed: _controller == null ? null : () => _showExportDialog(context, isDark),
               ),
             ],
           ),

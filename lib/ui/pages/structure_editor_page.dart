@@ -12,6 +12,7 @@ import '../widgets/ketcher_editor_view.dart';
 import '../widgets/primary_button.dart';
 import '../widgets/structure_view.dart';
 import 'save_confirm_page.dart';
+import '../widgets/export_image_dialog.dart';
 import '../../providers/favorites_provider.dart';
 import '../../providers/reaction_favorites_provider.dart';
 import '../../models/structure_result.dart';
@@ -158,6 +159,16 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
     }
   }
 
+  void _showExportDialog(BuildContext context, bool isDark) {
+    showDialog(
+      context: context,
+      builder: (_) => ExportImageDialog(
+        exportSvg: () => _controller?.exportSvg() ?? Future.value(null),
+        exportPng: (bg) => _controller?.exportPng(data: bg) ?? Future.value(null),
+      ),
+    );
+  }
+
   Future<void> _cancel() async {
     if (!_isDirty) {
       Navigator.of(context).pop();
@@ -206,6 +217,11 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
                 child: Text(title,
                     style: Theme.of(context).textTheme.titleLarge,
                     overflow: TextOverflow.ellipsis),
+              ),
+              IconButton(
+                icon: const Icon(Icons.file_download_outlined),
+                tooltip: '导出图片',
+                onPressed: _controller == null ? null : () => _showExportDialog(context, isDark),
               ),
             ],
           ),
