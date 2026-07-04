@@ -91,6 +91,32 @@ class _ReactionFavoriteDetailPageState
     }
   }
 
+  void _editAllInfo(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => _EditReactionSheet(
+        equation: widget.item.equation,
+        onSaved: (updated) async {
+          // Create new item with updated equation
+          final newItem = ReactionFavoriteItem(
+            id: widget.item.id,
+            equation: updated,
+            createdAt: widget.item.createdAt,
+            category: widget.item.category,
+            tags: widget.item.tags,
+            notes: widget.item.notes,
+          );
+          await ref
+              .read(reactionFavoritesControllerProvider.notifier)
+              .updateItem(newItem);
+          setState(() {});
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -397,7 +423,7 @@ class _ReactionFavoriteDetailPageState
                   height: 48,
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.edit, size: 16),
-                    label: const Text('编辑方程式'),
+                    label: const Text('编辑', style: TextStyle(fontSize: 12)),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: isDark
                           ? AppColors.aqua
@@ -409,14 +435,9 @@ class _ReactionFavoriteDetailPageState
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(18),
                       ),
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
                     ),
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => ReactionEditorPage(
-                          initialEquation: eq,
-                        ),
-                      ),
-                    ),
+                    onPressed: () => _editAllInfo(context),
                   ),
                 ),
               ),
@@ -477,6 +498,151 @@ class _ReactionFavoriteDetailPageState
             ],
           ),
           const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+}
+
+
+class _EditReactionSheet extends StatefulWidget {
+  const _EditReactionSheet({required this.equation, this.onSaved});
+  final ReactionEquation equation;
+  final void Function(ReactionEquation updated)? onSaved;
+
+  @override
+  State<_EditReactionSheet> createState() => _EditReactionSheetState();
+}
+
+class _EditReactionSheetState extends State<_EditReactionSheet> {
+  late TextEditingController _titleCtrl;
+  late TextEditingController _eqCtrl;
+  late TextEditingController _typeCtrl;
+  late TextEditingController _tempCtrl;
+  late TextEditingController _catCtrl;
+  late TextEditingController _solCtrl;
+  late TextEditingController _otherCtrl;
+  late TextEditingController _rationaleCtrl;
+  late TextEditingController _explanationCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    final eq = widget.equation;
+    _titleCtrl = TextEditingController(text: eq.title);
+    _eqCtrl = TextEditingController(text: eq.rxnData ?? '');
+    _typeCtrl = TextEditingController(text: eq.reactionType);
+    _tempCtrl = TextEditingController(text: eq.conditions['temperature'] ?? '');
+    _catCtrl = TextEditingController(text: eq.conditions['catalyst'] ?? '');
+    _solCtrl = TextEditingController(text: eq.conditions['solvent'] ?? '');
+    _otherCtrl = TextEditingController(text: eq.conditions['other'] ?? '');
+    _rationaleCtrl = TextEditingController(text: eq.conditionRationale);
+    _explanationCtrl = TextEditingController(text: eq.explanation);
+  }
+
+  @override
+  void dispose() {
+    _titleCtrl.dispose();
+    _eqCtrl.dispose();
+    _typeCtrl.dispose();
+    _tempCtrl.dispose();
+    _catCtrl.dispose();
+    _solCtrl.dispose();
+    _otherCtrl.dispose();
+    _rationaleCtrl.dispose();
+    _explanationCtrl.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    final updated = widget.equation.copyWith(
+      title: _titleCtrl.text.trim(),
+      rxnData: _eqCtrl.text.trim(),
+      reactionType: _typeCtrl.text.trim(),
+      explanation: _explanationCtrl.text.trim(),
+      conditionRationale: _rationaleCtrl.text.trim(),
+      conditions: {
+        'temperature': _tempCtrl.text.trim(),
+        'catalyst': _catCtrl.text.trim(),
+        'solvent': _solCtrl.text.trim(),
+        'other': _otherCtrl.text.trim(),
+      },
+    );
+    widget.onSaved?.call(updated);
+    Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.85,
+      ),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF0d1627) : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            margin: const EdgeInsets.only(top: 12),
+            width: 40, height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text('编辑反应信息', style: Theme.of(context).textTheme.titleLarge),
+          ),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              children: [
+                TextField(controller: _titleCtrl, decoration: const InputDecoration(labelText: '标题')),
+                const SizedBox(height: 10),
+                TextField(controller: _eqCtrl, decoration: const InputDecoration(labelText: '反应方程式'), maxLines: 3),
+                const SizedBox(height: 10),
+                TextField(controller: _typeCtrl, decoration: const InputDecoration(labelText: '反应类型')),
+                const SizedBox(height: 10),
+                Text('反应条件', style: Theme.of(context).textTheme.titleSmall),
+                const SizedBox(height: 6),
+                Row(children: [
+                  Expanded(child: TextField(controller: _tempCtrl, decoration: const InputDecoration(labelText: '温度'))),
+                  const SizedBox(width: 8),
+                  Expanded(child: TextField(controller: _catCtrl, decoration: const InputDecoration(labelText: '催化剂'))),
+                ]),
+                const SizedBox(height: 8),
+                Row(children: [
+                  Expanded(child: TextField(controller: _solCtrl, decoration: const InputDecoration(labelText: '溶剂'))),
+                  const SizedBox(width: 8),
+                  Expanded(child: TextField(controller: _otherCtrl, decoration: const InputDecoration(labelText: '其他'))),
+                ]),
+                const SizedBox(height: 10),
+                TextField(controller: _rationaleCtrl, decoration: const InputDecoration(labelText: '条件推断依据'), maxLines: 2),
+                const SizedBox(height: 10),
+                TextField(controller: _explanationCtrl, decoration: const InputDecoration(labelText: '推理说明'), maxLines: 3),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: _save,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.aqua,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                    ),
+                    child: const Text('保存'),
+                  ),
+                ),
+                const SizedBox(height: 30),
+              ],
+            ),
+          ),
         ],
       ),
     );

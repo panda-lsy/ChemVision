@@ -74,6 +74,7 @@ class _ReactionPageState extends State<ReactionPage> {
   bool _isSavingEntry = false;
   String? _editingEntryId;
   String? _error;
+  bool _isResultFavorited = false;
   KnowledgeFilterOption _knowledgeFilter = KnowledgeFilterOption.all;
   KnowledgeSortOption _knowledgeSort = KnowledgeSortOption.newestFirst;
 
@@ -145,6 +146,7 @@ class _ReactionPageState extends State<ReactionPage> {
       if (!mounted) return;
       setState(() {
         _result = result;
+        _isResultFavorited = false;
       });
     } catch (e) {
       if (!mounted) return;
@@ -806,9 +808,21 @@ class _ReactionPageState extends State<ReactionPage> {
               width: double.infinity,
               child: OutlinedButton.icon(
                 icon: const Icon(Icons.star_border, size: 18),
-                label: const Text("收藏此反应"),
-                onPressed: () {
+                label: Text(_isResultFavorited ? "已收藏" : "收藏此反应"),
+                onPressed: _isResultFavorited ? null : () {
                   try {
+                    // dedup check
+                    final existing = ProviderScope.containerOf(context)
+                        .read(reactionFavoritesControllerProvider)
+                        .state.items
+                        .any((item) => item.equation.rxnData == result.completedEquation);
+                    if (existing) {
+                      setState(() => _isResultFavorited = true);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text("该反应已在收藏中")),
+                      );
+                      return;
+                    }
                     final eq = ReactionEquation(
                       title: result.completedEquation.length > 30
                           ? '${result.completedEquation.substring(0, 30)}...'
@@ -825,7 +839,8 @@ class _ReactionPageState extends State<ReactionPage> {
                         .read(reactionFavoritesControllerProvider.notifier)
                         .add(eq);
                     if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      setState(() => _isResultFavorited = true);
+                    ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text("已添加到反应收藏")),
                       );
                     }

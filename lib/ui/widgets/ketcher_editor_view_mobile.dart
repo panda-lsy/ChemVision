@@ -98,28 +98,15 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
         return result?.toString();
       },
       exportSvg: ({String? data}) async {
-        final structData = data ?? '';
         final result = await _webViewController?.evaluateJavascript(
-          source: '''
-            (async () => {
-              const k = window.ketcher;
-              if (!k || !k.generateImage) return null;
-              return await k.generateImage('$structData', { outputFormat: 'svg' });
-            })()
-          ''',
+          source: "window.ketcher?.generateImageAsDataUrl('', { outputFormat: 'svg' }) ?? ''",
         );
         return result?.toString();
       },
       exportPng: ({String? data}) async {
-        final structData = data ?? '';
+        final bgColor = data ?? 'transparent';
         final result = await _webViewController?.evaluateJavascript(
-          source: '''
-            (async () => {
-              const k = window.ketcher;
-              if (!k || !k.generateImage) return null;
-              return await k.generateImage('$structData', { outputFormat: 'png', backgroundColor: '#0b0f1a' });
-            })()
-          ''',
+          source: "window.ketcher?.generateImageAsDataUrl('', { outputFormat: 'png', backgroundColor: '" + bgColor + "' }) ?? ''",
         );
         return result?.toString();
       },
