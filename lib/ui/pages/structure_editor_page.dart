@@ -107,7 +107,10 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
       // 4. Confirm page (if not skip)
       if (widget.skipSaveConfirm) {
         if (!mounted) return;
-        Navigator.of(context).pop(finalSmiles);
+        Navigator.of(context).pop({
+          'smiles': finalSmiles,
+          'name': finalName,
+        });
         return;
       }
 
@@ -129,7 +132,7 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
             final equation = ReactionEquation(title: finalName, rxnData: finalSmiles);
             ref.read(reactionFavoritesControllerProvider.notifier).add(equation);
           } catch (_) {}
-          Navigator.of(context).pop(finalSmiles);
+          Navigator.of(context).pop({'smiles': finalSmiles, 'name': finalName});
         } else {
           // save to structure favorites
           try {
@@ -145,10 +148,10 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
             );
             await ref.read(favoritesControllerProvider.notifier).add(sResult, finalName);
           } catch (_) {}
-          Navigator.of(context).pop(finalSmiles);
+          Navigator.of(context).pop({'smiles': finalSmiles, 'name': finalName});
         }
       } else {
-        Navigator.of(context).pop(finalSmiles);
+        Navigator.of(context).pop({'smiles': finalSmiles, 'name': finalName});
       }
     } finally {
       if (mounted) setState(() => _isSaving = false);

@@ -25,12 +25,14 @@ class EditHubPage extends ConsumerWidget {
   /// 打开 Ketcher 编辑器，处理返回结果（区分结构式/反应式）
   Future<void> _openKetcherEditor(
       BuildContext context, WidgetRef ref) async {
-    final result = await Navigator.of(context).push<String>(
+    final resultMap = await Navigator.of(context).push<Map<String, String>>(
       MaterialPageRoute(
         builder: (_) => const StructureEditorPage(),
       ),
     );
-    if (result == null || result.isEmpty || !context.mounted) return;
+    if (resultMap == null || !context.mounted) return;
+    final result = resultMap['smiles'] ?? '';
+    if (result.isEmpty) return;
 
     // 区分结构式和反应式
     final isReaction = result.contains('>') || result.contains('>>');
@@ -40,6 +42,11 @@ class EditHubPage extends ConsumerWidget {
       final equation = ReactionEquation(
         title: '',
         rxnData: result,
+        reactionType: '',
+        explanation: '',
+        conditionRationale: '',
+        sourceReferences: const [],
+        confidence: 1.0,
       );
       ref.read(reactionFavoritesControllerProvider.notifier).add(equation);
       if (context.mounted) {

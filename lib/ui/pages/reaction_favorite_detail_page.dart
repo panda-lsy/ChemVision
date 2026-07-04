@@ -123,6 +123,138 @@ class _ReactionFavoriteDetailPageState
           ],
           const SizedBox(height: 16),
 
+          // 反应方程式（语义补全结果）
+          if (eq.rxnData != null && eq.rxnData!.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            GlassPanel(
+              padding: const EdgeInsets.all(16),
+              radius: 20,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('反应方程式',
+                      style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 8),
+                  SelectableText(
+                    eq.rxnData!,
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleMedium
+                        ?.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: isDark
+                              ? const Color(0xFFF9F3DD)
+                              : AppColors.dayBluePrimary,
+                        ),
+                  ),
+                  if (eq.reactionType.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(Icons.category_outlined, size: 16),
+                        const SizedBox(width: 6),
+                        Text('类型: ${eq.reactionType}',
+                            style: Theme.of(context).textTheme.bodyMedium),
+                      ],
+                    ),
+                  ],
+                  if (eq.confidence > 0) ...[
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(Icons.analytics_outlined, size: 16),
+                        const SizedBox(width: 6),
+                        Text(
+                            '置信度: ${(eq.confidence * 100).toStringAsFixed(0)}%',
+                            style: Theme.of(context).textTheme.bodySmall),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+          // 详细条件
+          if (eq.conditionSummary.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            GlassPanel(
+              padding: const EdgeInsets.all(16),
+              radius: 20,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('反应条件',
+                      style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 8),
+                  Text(eq.conditionSummary,
+                      style: Theme.of(context).textTheme.bodyMedium),
+                  if (eq.conditionRationale.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text('推断依据:',
+                        style: Theme.of(context).textTheme.bodySmall),
+                    const SizedBox(height: 4),
+                    Text(eq.conditionRationale,
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyMedium
+                            ?.copyWith(
+                              color: isDark
+                                  ? AppColors.textSecondary
+                                  : AppColors.dayTextSecondary,
+                            )),
+                  ],
+                ],
+              ),
+            ),
+          ],
+          // 推理说明
+          if (eq.explanation.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            GlassPanel(
+              padding: const EdgeInsets.all(16),
+              radius: 20,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('推理说明',
+                      style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 8),
+                  Text(eq.explanation,
+                      style: Theme.of(context).textTheme.bodyMedium),
+                ],
+              ),
+            ),
+          ],
+          // 来源引用
+          if (eq.sourceReferences.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            GlassPanel(
+              padding: const EdgeInsets.all(16),
+              radius: 20,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('来源引用',
+                      style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 8),
+                  ...eq.sourceReferences.map((ref) => Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.link, size: 14),
+                            const SizedBox(width: 6),
+                            Expanded(
+                                child: Text(ref,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall)),
+                          ],
+                        ),
+                      )),
+                ],
+              ),
+            ),
+          ],
           // SVG 预览（如果有）
           if (eq.svgString != null && eq.svgString!.isNotEmpty)
             GlassPanel(

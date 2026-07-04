@@ -282,7 +282,7 @@ class _ResultPageState extends ConsumerState<ResultPage> {
   }
 
   Future<void> _openEditorPage() async {
-    final updatedSmiles = await Navigator.of(context).push<String>(
+    final updatedResult = await Navigator.of(context).push<Map<String, String>>(
       MaterialPageRoute(
         builder: (_) => StructureEditorPage(
           initialSmiles: _currentSmiles,
@@ -291,12 +291,15 @@ class _ResultPageState extends ConsumerState<ResultPage> {
         ),
       ),
     );
-    if (updatedSmiles != null && updatedSmiles.isNotEmpty && mounted) {
+    if (updatedResult != null && mounted) {
+      final updatedSmiles = updatedResult['smiles'] ?? '';
+      final updatedName = updatedResult['name'] ?? '';
+      if (updatedSmiles.isEmpty) return;
       setState(() {
         _currentSmiles = updatedSmiles;
         _activeCandidate = StructureCandidate(
           smiles: updatedSmiles,
-          resolvedName: '已修改结构',
+          resolvedName: updatedName.isNotEmpty ? updatedName : null,
           englishName: null,
           chineseName: null,
           molecularFormula: _activeCandidate.molecularFormula,
@@ -304,7 +307,7 @@ class _ResultPageState extends ConsumerState<ResultPage> {
           source: _activeCandidate.source,
           confidence: _activeCandidate.confidence,
         );
-        _pageTitle = '已修改结构';
+        _pageTitle = updatedName.isNotEmpty ? updatedName : '已修改结构';
       });
       // Editor already handled naming. Just update display.
       if (!mounted) return;

@@ -10,6 +10,11 @@ class ReactionEquation {
     this.arrowType = ArrowType.forward,
     this.rxnData,
     this.svgString,
+    this.reactionType = '',
+    this.explanation = '',
+    this.conditionRationale = '',
+    this.sourceReferences = const [],
+    this.confidence = 0.0,
   });
 
   String title;
@@ -19,6 +24,11 @@ class ReactionEquation {
   ArrowType arrowType;
   String? rxnData;
   String? svgString;
+  String reactionType;
+  String explanation;
+  String conditionRationale;
+  List<String> sourceReferences;
+  double confidence;
 
   ReactionEquation copyWith({
     String? title,
@@ -28,6 +38,11 @@ class ReactionEquation {
     ArrowType? arrowType,
     String? rxnData,
     String? svgString,
+    String? reactionType,
+    String? explanation,
+    String? conditionRationale,
+    List<String>? sourceReferences,
+    double? confidence,
     bool clearRxn = false,
     bool clearSvg = false,
   }) {
@@ -39,6 +54,11 @@ class ReactionEquation {
       arrowType: arrowType ?? this.arrowType,
       rxnData: clearRxn ? null : (rxnData ?? this.rxnData),
       svgString: clearSvg ? null : (svgString ?? this.svgString),
+      reactionType: reactionType ?? this.reactionType,
+      explanation: explanation ?? this.explanation,
+      conditionRationale: conditionRationale ?? this.conditionRationale,
+      sourceReferences: sourceReferences ?? this.sourceReferences,
+      confidence: confidence ?? this.confidence,
     );
   }
 
@@ -50,6 +70,11 @@ class ReactionEquation {
         'arrowType': arrowType.index,
         'rxnData': rxnData,
         'svgString': svgString,
+        'reactionType': reactionType,
+        'explanation': explanation,
+        'conditionRationale': conditionRationale,
+        'sourceReferences': sourceReferences,
+        'confidence': confidence,
       };
 
   factory ReactionEquation.fromJson(Map<String, dynamic> json) {
@@ -71,6 +96,14 @@ class ReactionEquation {
       arrowType: ArrowType.values[json['arrowType'] as int? ?? 0],
       rxnData: json['rxnData'] as String?,
       svgString: json['svgString'] as String?,
+      reactionType: json['reactionType']?.toString() ?? '',
+      explanation: json['explanation']?.toString() ?? '',
+      conditionRationale: json['conditionRationale']?.toString() ?? '',
+      sourceReferences: (json['sourceReferences'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
+      confidence: (json['confidence'] as num?)?.toDouble() ?? 0.0,
     );
   }
 
@@ -94,6 +127,11 @@ class ReactionMolecule {
     required this.smiles,
     this.name,
     this.svgString,
+    this.reactionType = '',
+    this.explanation = '',
+    this.conditionRationale = '',
+    this.sourceReferences = const [],
+    this.confidence = 0.0,
   });
 
   String smiles;
@@ -104,6 +142,11 @@ class ReactionMolecule {
         'smiles': smiles,
         'name': name,
         'svgString': svgString,
+        'reactionType': reactionType,
+        'explanation': explanation,
+        'conditionRationale': conditionRationale,
+        'sourceReferences': sourceReferences,
+        'confidence': confidence,
       };
 
   factory ReactionMolecule.fromJson(Map<String, dynamic> json) {
@@ -111,6 +154,14 @@ class ReactionMolecule {
       smiles: json['smiles']?.toString() ?? '',
       name: json['name'] as String?,
       svgString: json['svgString'] as String?,
+      reactionType: json['reactionType']?.toString() ?? '',
+      explanation: json['explanation']?.toString() ?? '',
+      conditionRationale: json['conditionRationale']?.toString() ?? '',
+      sourceReferences: (json['sourceReferences'] as List<dynamic>?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          const [],
+      confidence: (json['confidence'] as num?)?.toDouble() ?? 0.0,
     );
   }
 }

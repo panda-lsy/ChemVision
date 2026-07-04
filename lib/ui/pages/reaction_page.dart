@@ -814,6 +814,12 @@ class _ReactionPageState extends State<ReactionPage> {
                           ? '${result.completedEquation.substring(0, 30)}...'
                           : result.completedEquation,
                       rxnData: result.completedEquation,
+                      reactionType: result.reactionType,
+                      explanation: result.explanation,
+                      conditionRationale: result.conditionRationale,
+                      conditions: result.conditionFields,
+                      sourceReferences: result.sourceReferences,
+                      confidence: result.confidence,
                     );
                     ProviderScope.containerOf(context)
                         .read(reactionFavoritesControllerProvider.notifier)
