@@ -98,17 +98,25 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
         return result?.toString();
       },
       exportSvg: ({String? data}) async {
-        final result = await _webViewController?.evaluateJavascript(
-          source: "window.ketcher?.generateImageAsDataUrl('', { outputFormat: 'svg' }) ?? ''",
-        );
-        return result?.toString();
+        try {
+          final result = await _webViewController?.evaluateJavascript(
+            source: "window.ketcher?.generateImageAsDataUrl?.('', { outputFormat: 'svg' }) ?? ''",
+          );
+          return result?.toString();
+        } catch (_) {
+          return null;
+        }
       },
       exportPng: ({String? data}) async {
-        final bgColor = data ?? 'transparent';
-        final result = await _webViewController?.evaluateJavascript(
-          source: "window.ketcher?.generateImageAsDataUrl('', { outputFormat: 'png', backgroundColor: '" + bgColor + "' }) ?? ''",
-        );
-        return result?.toString();
+        try {
+          final bgColor = data ?? 'transparent';
+          final result = await _webViewController?.evaluateJavascript(
+            source: "window.ketcher?.generateImageAsDataUrl?.('', { outputFormat: 'png', backgroundColor: '" + bgColor + "' }) ?? ''",
+          );
+          return result?.toString();
+        } catch (_) {
+          return null;
+        }
       },
       triggerSave: () {
         _sendCommand('triggerSave', {});
