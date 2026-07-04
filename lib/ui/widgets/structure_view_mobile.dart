@@ -260,9 +260,8 @@ class _StructureViewState extends State<StructureView> {
         disableHorizontalScroll: true,
         useHybridComposition: true,
       ),
-      gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
-        Factory<OneSequenceGestureRecognizer>(() => EagerGestureRecognizer()),
-      },
+      // No gesture recognizers: let touch events pass through to WebView
+      // for the JS pan/zoom handlers to work on mobile.
       onWebViewCreated: (controller) {
         _controller = controller;
         _registerHandlers(controller);

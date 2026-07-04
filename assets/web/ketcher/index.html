@@ -203,6 +203,14 @@
 if(window._chemvisionUIAdapted)return;
 window._chemvisionUIAdapted=true;
 
+/* ======== 0. 抑制已知噪音错误 ======== */
+var _origOnError = window.onerror;
+window.onerror = function(msg, src, line, col, err) {
+  if (typeof msg === 'string' && msg.indexOf('getBoundingClientRect') > -1) return true;
+  if (_origOnError) return _origOnError.apply(this, arguments);
+  return false;
+};
+
 /* ======== 1. SMILES 防抖 ======== */
 var _origParentPostMessage=window.parent.postMessage.bind(window.parent);
 var _smilesTimer=null,_lastSmilesPayload=null;
