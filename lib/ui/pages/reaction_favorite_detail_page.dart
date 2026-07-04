@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../models/reaction_equation.dart';
 import '../../models/reaction_favorite_item.dart';
 import '../../providers/reaction_favorites_provider.dart';
 import '../../theme/app_colors.dart';

@@ -814,7 +814,7 @@ class _ReactionPageState extends State<ReactionPage> {
                     // dedup check
                     final existing = ProviderScope.containerOf(context)
                         .read(reactionFavoritesControllerProvider)
-                        .state.items
+                        .items
                         .any((item) => item.equation.rxnData == result.completedEquation);
                     if (existing) {
                       setState(() => _isResultFavorited = true);
