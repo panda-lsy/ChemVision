@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -87,33 +88,60 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
       },
       getRxn: () async {
         final result = await _webViewController?.evaluateJavascript(
-          source: '''
-            (async () => {
-              const k = window.ketcher;
-              if (!k) return '';
-              return await k.getRxn();
-            })()
-          ''',
+          source: "window.ketcher?.getRxn() ?? ''",
         );
-        return result?.toString();
+        if (result == null) return null;
+        if (result is String) return result;
+        return result.toString();
       },
       exportSvg: ({String? data}) async {
         try {
-          final result = await _webViewController?.evaluateJavascript(
-            source: "window.ketcher?.generateImageAsDataUrl?.('', { outputFormat: 'svg' }) ?? ''",
-          );
-          return result?.toString();
+          const src = r'''(function(){
+  var svg=document.querySelector('.intermediate-canvas svg, .cliparea svg, [class*="StructEditor"] svg');
+  if(!svg)return null;
+  var s=svg.outerHTML;
+  if(s.indexOf('xmlns')<0)s=s.replace('<svg','<svg xmlns="http://www.w3.org/2000/svg"');
+  return 'data:image/svg+xml;base64,'+btoa(unescape(encodeURIComponent(s)));
+})()''';
+          final result = await _webViewController?.evaluateJavascript(source: src);
+          final s = result?.toString();
+          return (s != null && s.startsWith('data:')) ? s : null;
         } catch (_) {
           return null;
         }
       },
       exportPng: ({String? data}) async {
         try {
-          final bgColor = data ?? 'transparent';
-          final result = await _webViewController?.evaluateJavascript(
-            source: "window.ketcher?.generateImageAsDataUrl?.('', { outputFormat: 'png', backgroundColor: '" + bgColor + "' }) ?? ''",
-          );
-          return result?.toString();
+          final bg = data ?? 'transparent';
+          // 注意：必须用 raw 字符串 + 双引号转义乱杀，防止内嵌 JS 中的双引号打断 Dart
+          const src = r'''(function(bg){
+  var svg=document.querySelector('.intermediate-canvas svg, .cliparea svg, [class*="StructEditor"] svg');
+  if(!svg)return null;
+  var s=svg.outerHTML;
+  if(s.indexOf('xmlns')<0)s=s.replace('<svg','<svg xmlns="http://www.w3.org/2000/svg"');
+  return new Promise(function(res){
+    var img=new Image();
+    var blob=new Blob([s],{type:'image/svg+xml;charset=utf-8'});
+    var url=URL.createObjectURL(blob);
+    img.onload=function(){
+      var w=svg.clientWidth||img.naturalWidth||800;
+      var h=svg.clientHeight||img.naturalHeight||600;
+      var c=document.createElement('canvas');
+      c.width=w*2;c.height=h*2;
+      var ctx=c.getContext('2d');ctx.scale(2,2);
+      if(bg&&bg!=='transparent'){ctx.fillStyle=bg;ctx.fillRect(0,0,w,h);}
+      ctx.drawImage(img,0,0,w,h);
+      res(c.toDataURL('image/png'));
+      URL.revokeObjectURL(url);
+    };
+    img.onerror=function(){res(null);URL.revokeObjectURL(url);};
+    img.src=url;
+  });
+})(''';
+          final wrapped = src + "('$bg')";
+          final result = await _webViewController?.evaluateJavascript(source: wrapped);
+          final s = result?.toString();
+          return (s != null && s.startsWith('data:')) ? s : null;
         } catch (_) {
           return null;
         }

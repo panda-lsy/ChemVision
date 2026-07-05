@@ -15,7 +15,6 @@ import 'save_confirm_page.dart';
 import '../widgets/export_image_dialog.dart';
 import '../../providers/favorites_provider.dart';
 import '../../providers/reaction_favorites_provider.dart';
-import '../../models/structure_result.dart';
 import '../../models/reaction_equation.dart';
 
 class StructureEditorPage extends ConsumerStatefulWidget {
@@ -159,12 +158,15 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
     }
   }
 
+
   void _showExportDialog(BuildContext context, bool isDark) {
-    showDialog(
-      context: context,
-      builder: (_) => ExportImageDialog(
-        exportSvg: () => _controller?.exportSvg() ?? Future.value(null),
-        exportPng: (bg) => _controller?.exportPng(data: bg) ?? Future.value(null),
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => ExportImageDialog(
+          exportSvg: (bg) => _controller?.exportSvg(data: bg) ?? Future.value(null),
+          exportPng: (bg) => _controller?.exportPng(data: bg) ?? Future.value(null),
+        ),
       ),
     );
   }

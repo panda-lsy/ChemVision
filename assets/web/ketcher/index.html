@@ -199,17 +199,40 @@
           new MutationObserver(function(){tr();fixDark();}).observe(document.body,{childList:true});
         }
         if(document.body){start();}else{document.addEventListener('DOMContentLoaded',start);}
-      })();</script><script defer="defer" src="./static/js/main.5a7f84a1.js"></script><link href="./static/css/main.6ea49138.css" rel="stylesheet"><script defer="defer" src="./static/js/main.605c5cdc.js"></script><link href="./static/css/main.98e54a35.css" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div><script data-cv-adaptation>(function(){
+      })();</script><script defer="defer" src="./static/js/main.5a7f84a1.js"></script><link href="./static/css/main.6ea49138.css" rel="stylesheet"><script defer="defer" src="./static/js/main.73c73ca3.js"></script><link href="./static/css/main.98e54a35.css" rel="stylesheet"></head><body><noscript>You need to enable JavaScript to run this app.</noscript><div id="root"></div><script data-cv-adaptation>(function(){
 if(window._chemvisionUIAdapted)return;
 window._chemvisionUIAdapted=true;
 
-/* ======== 0. 抑制已知噪音错误 ======== */
-var _origOnError = window.onerror;
-window.onerror = function(msg, src, line, col, err) {
-  if (typeof msg === 'string' && msg.indexOf('getBoundingClientRect') > -1) return true;
-  if (_origOnError) return _origOnError.apply(this, arguments);
-  return false;
-};
+/* ======== 0. 全局安全包装 ======== */
+(function() {
+  // Patch Object.defineProperty to intercept getBoundingClientRect calls
+  var _gbr = Element.prototype.getBoundingClientRect;
+  if (_gbr) {
+    Element.prototype.getBoundingClientRect = function() {
+      if (this == null || this.nodeType == null) {
+        return {width:0,height:0,left:0,top:0,right:0,bottom:0,x:0,y:0};
+      }
+      try { return _gbr.call(this); }
+      catch(e) { return {width:0,height:0,left:0,top:0,right:0,bottom:0,x:0,y:0}; }
+    };
+  }
+  // Also patch HTMLElement, SVGElement etc
+  var proto = HTMLElement?.prototype || Element.prototype;
+  if (proto !== Element.prototype && proto.getBoundingClientRect) {
+    var _gbr2 = proto.getBoundingClientRect;
+    proto.getBoundingClientRect = function() {
+      if (this == null) return {width:0,height:0,left:0,top:0,right:0,bottom:0,x:0,y:0};
+      try { return _gbr2.call(this); }
+      catch(e) { return {width:0,height:0,left:0,top:0,right:0,bottom:0,x:0,y:0}; }
+    };
+  }
+  // Suppress in console
+  var _err = window.onerror;
+  window.onerror = function(m) {
+    if (typeof m === 'string' && m.indexOf('getBoundingClientRect') > -1) return true;
+    return _err ? _err.apply(this, arguments) : false;
+  };
+})();
 
 /* ======== 1. SMILES 防抖 ======== */
 var _origParentPostMessage=window.parent.postMessage.bind(window.parent);
@@ -227,47 +250,158 @@ window.parent.postMessage=function(data,origin){
   return _origParentPostMessage(data,origin);
 };
 
-/* ======== 1.5 Export handlers (for Web postMessage bridge) ======== */
+/* ======== 1.5 Export handlers ======== */
+// 仿 Ketcher 官方 getSvgFromDrawnStructures：以 window.ketcher.editor.canvas 为根，
+// 克隆出干净的结构 SVG（去掉 selection-area、dynamic-element、覆盖整幅画布的背景 rect），
+// 再按所选 bgColor 调整“墨水”描边色，避免黑线在深色 PNG 上不可见、或在浅色 PNG 上变白线。
+function _cvFindCanvasSvg() {
+  try {
+    var k = window.ketcher;
+    if (k && k.editor && k.editor.canvas && k.editor.canvas.tagName.toUpperCase() === 'SVG') {
+      return k.editor.canvas;
+    }
+  } catch (e) {}
+  var drawn = document.querySelector('g.drawn-structures, .drawn-structures');
+  if (drawn) { var svg = drawn.closest('svg'); if (svg) return svg; }
+  return document.querySelector('svg.drawn-structures')
+    || document.querySelector('.intermediate-canvas svg')
+    || document.querySelector('.cliparea svg')
+    || document.querySelector('[class*="StructEditor"] svg');
+}
+
+// 解析 #rrggbb 颜色的相对亮度（粗略 0~1），用于按 bgColor 选择描边明/暗
+function _cvLuminance(hex) {
+  if (!hex || hex === 'transparent') return null;
+  var m = String(hex).match(/^#?([0-9a-fA-F]{6})$/);
+  if (!m) return null;
+  var r = parseInt(m[1].slice(0,2),16), g = parseInt(m[1].slice(2,4),16), b = parseInt(m[1].slice(4,6),16);
+  return (0.2126*r + 0.7152*g + 0.0722*b) / 255;
+}
+
+// 按所选 bgColor 决定墨水描边色：透明跟随当前 iframe 主题；浅色底→黑墨；深色底→浅墨
+function _cvTargetStroke(bg) {
+  var isDarkIframe = document.documentElement.getAttribute('data-theme') === 'dark';
+  if (!bg || bg === 'transparent') return isDarkIframe ? '#e9eef5' : '#000';
+  var L = _cvLuminance(bg);
+  if (L === null) return '#000';
+  return L > 0.5 ? '#000' : '#e9eef5';
+}
+
+// 把 wrapper SVG 内的“墨水”色（#000 / black / #e9eef5 / #fff / white）替换为 target
+function _cvApplyInkColor(node, target) {
+  var inks = ['#000', '#000000', 'black', '#e9eef5', '#fff', '#ffffff', 'white'];
+  function isInk(v) { return v && inks.indexOf(String(v).toLowerCase()) >= 0; }
+  node.querySelectorAll('[stroke]').forEach(function(el){ if (isInk(el.getAttribute('stroke'))) el.setAttribute('stroke', target); });
+  node.querySelectorAll('[fill]').forEach(function(el){ var f=el.getAttribute('fill'); if (isInk(f)) el.setAttribute('fill', target); });
+  node.querySelectorAll('[style]').forEach(function(el){
+    var st = el.getAttribute('style') || '';
+    if (!/#[0-9a-fA-F]{3,6}|black|white/.test(st)) return;
+    var ns = st
+      .replace(/stroke:\s*#000(?:000)?\b/g, 'stroke: '+target)
+      .replace(/stroke:\s*black\b/g, 'stroke: '+target)
+      .replace(/stroke:\s*#fff(?:fff)?\b/g, 'stroke: '+target)
+      .replace(/stroke:\s*white\b/g, 'stroke: '+target)
+      .replace(/fill:\s*#000(?:000)?\b/g, 'fill: '+target)
+      .replace(/fill:\s*black\b/g, 'fill: '+target);
+    el.setAttribute('style', ns);
+  });
+}
+
+// 构造用于导出的干净 SVG 字符串；返回 {svg, width, height}，svg 始终是裸 SVG 文本
+function _cvBuildExportSvg(bg) {
+  var canvas = _cvFindCanvasSvg();
+  if (!canvas) return null;
+  var inner = canvas.innerHTML || '';
+  var wrapper = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  wrapper.innerHTML = inner;
+  try { if (wrapper.querySelector('#rectangle-selection-area')) wrapper.querySelector('#rectangle-selection-area').remove(); } catch (e) {}
+  var dyn = wrapper.querySelectorAll('.dynamic-element, [class*="dynamic-element"]');
+  if (dyn && dyn.forEach) dyn.forEach(function(el){ el.remove(); });
+  // 去掉整幅画布的背景 rect：与画布等宽/或 100% 的 rect
+  var vbParts = (canvas.getAttribute('viewBox') || '').split(/\s+/).map(Number);
+  var cw = vbParts[2], ch = vbParts[3];
+  wrapper.querySelectorAll('rect').forEach(function(r){
+    var w = r.getAttribute('width'), h = r.getAttribute('height');
+    var wn = parseFloat(w || ''), hn = parseFloat(h || '');
+    var cover = (w === '100%' && h === '100%')
+      || (!isNaN(wn) && !isNaN(hn) && cw && ch && wn >= cw - 0.5 && hn >= ch - 0.5);
+    if (cover) r.remove();
+  });
+  try { wrapper.querySelectorAll('text').forEach(function(el){ el.setAttribute('cursor','default'); }); } catch(e) {}
+  try { wrapper.querySelectorAll('g').forEach(function(el){ if (el.hasAttribute('opacity')) el.removeAttribute('opacity'); }); } catch(e) {}
+  _cvApplyInkColor(wrapper, _cvTargetStroke(bg));
+
+  // 紧凑 viewBox：取 .drawn-structures 的 boundingRect
+  var drawnEl = null;
+  try { drawnEl = canvas.getElementsByClassName('drawn-structures')[0] || canvas.querySelector('.drawn-structures'); } catch(e) {}
+  var rect = null;
+  try { rect = drawnEl ? drawnEl.getBoundingClientRect() : null; } catch(e) {}
+  if (!rect || !rect.width || !rect.height) { return null; }
+  var mL = 50, mT = 54, mH = 10, mV = 10;
+  var vbX = rect.x - mL - mH, vbY = rect.y - mT - mV, vbW = rect.width + mH*2, vbH = rect.height + mV*2;
+  var innerOut = wrapper.innerHTML || inner;
+  innerOut = innerOut.replace(/\bcursor:\s*pointer;\s*/g, '');
+  // 注入中文字体，避免乱码（字符串级替换，绕开 DOM 重复属性）
+  innerOut = innerOut.replace(/font-family="[^"]*"/g, "font-family=\"'Noto Sans SC', 'Microsoft YaHei', Arial, sans-serif\"");
+  var s = "<svg xmlns='http://www.w3.org/2000/svg' width='" + vbW + "' height='" + vbH + "' viewBox='" + vbX + " " + vbY + " " + vbW + " " + vbH + "'>" + innerOut + "</svg>";
+  return { svg: s, width: vbW, height: vbH };
+}
+
+window._cvExportSvg = function(bg) {
+  var built = _cvBuildExportSvg(bg || 'transparent');
+  if (!built || !built.svg) return null;
+  try {
+    return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(built.svg)));
+  } catch (e) {
+    return built.svg; // 退化返回裸 SVG 文本，由 Dart 端兜底包装
+  }
+};
+
+window._cvExportPng = function(bg) {
+  return new Promise(function(resolve) {
+    var built = _cvBuildExportSvg(bg || 'transparent');
+    if (!built || !built.svg) { resolve(null); return; }
+    var blob = new Blob([built.svg], { type: 'image/svg+xml;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var img = new Image();
+    img.onload = function() {
+      var w = Math.max(1, Math.round(built.width));
+      var h = Math.max(1, Math.round(built.height));
+      var scale = 2;
+      var canvas = document.createElement('canvas');
+      canvas.width = w * scale; canvas.height = h * scale;
+      var ctx = canvas.getContext('2d');
+      ctx.scale(scale, scale);
+      if (bg && bg !== 'transparent') { ctx.fillStyle = bg; ctx.fillRect(0, 0, w, h); }
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/png'));
+      URL.revokeObjectURL(url);
+    };
+    img.onerror = function() { resolve(null); URL.revokeObjectURL(url); };
+    img.src = url;
+  });
+};
+
 window.addEventListener('message', function(e) {
   var d = e && e.data;
   if (!d || !d.channel || !d.type) return;
-  var k = window.ketcher;
-  if (!k) return;
   try {
     if (d.type === 'exportSvg') {
-      k.generateImageAsDataUrl('', { outputFormat: 'svg' }).then(function(url) {
-        window.parent.postMessage({
-          channel: d.channel,
-          type: 'exportSvgResult',
-          payload: { svgString: url }
-        }, '*');
-      }).catch(function(err) {
-        window.parent.postMessage({
-          channel: d.channel,
-          type: 'exportSvgResult',
-          payload: { svgString: null, error: String(err) }
-        }, '*');
-      });
+      var bg = (d.payload && d.payload.data) || 'transparent';
+      var url = window._cvExportSvg(bg);
+      window.parent.postMessage({channel:d.channel,type:'exportSvgResult',payload:{svgString:url}}, '*');
     } else if (d.type === 'exportPng') {
       var bg = (d.payload && d.payload.data) || '#ffffff';
-      k.generateImageAsDataUrl('', { outputFormat: 'png', backgroundColor: bg }).then(function(url) {
-        window.parent.postMessage({
-          channel: d.channel,
-          type: 'exportPngResult',
-          payload: { dataUrl: url }
-        }, '*');
-      }).catch(function(err) {
-        window.parent.postMessage({
-          channel: d.channel,
-          type: 'exportPngResult',
-          payload: { dataUrl: null, error: String(err) }
-        }, '*');
+      window._cvExportPng(bg).then(function(url) {
+        window.parent.postMessage({channel:d.channel,type:'exportPngResult',payload:{dataUrl:url}}, '*');
       });
     }
-  } catch(e) {}
+  } catch(ex) {
+    window.parent.postMessage({channel:d.channel,type:d.type==='exportSvg'?'exportSvgResult':'exportPngResult',payload:{dataUrl:null}}, '*');
+  }
 });
 
-/* ======== 2. 触摸鼠标转发 + 双指缩放 ======== */
+/* ======== 2. 触摸鼠标转发 + 双指缩放 ======== */ + 双指缩放 ======== */
 var _pinchActive=false,_pinchDist0=0,_touching=false;
 
 function isInteractive(el){

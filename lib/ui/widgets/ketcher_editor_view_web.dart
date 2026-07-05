@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:html' as html;
 import 'dart:ui_web' as ui;
 
@@ -118,7 +119,14 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
           if (d is Map &&
               d['channel'] == _channel &&
               d['type'] == 'exportSvgResult') {
-            completer.complete(d['payload']?['svgString'] as String?);
+            final raw = d['payload']?['svgString'] as String?;
+            // 兼容 iframe 退化返回的裸 SVG：统一包成 data URL，便于下载与预览
+            if (raw != null && raw.isNotEmpty && !raw.startsWith('data:')) {
+              final b64 = base64Encode(utf8.encode(raw));
+              completer.complete('data:image/svg+xml;base64,$b64');
+            } else {
+              completer.complete(raw);
+            }
             sub.cancel();
           }
         });

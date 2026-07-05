@@ -92,12 +92,15 @@ class _ReactionEditorPageState extends ConsumerState<ReactionEditorPage> {
     }
   }
 
+
   void _showExportDialog(BuildContext context, bool isDark) {
-    showDialog(
-      context: context,
-      builder: (_) => ExportImageDialog(
-        exportSvg: () => _controller?.exportSvg() ?? Future.value(null),
-        exportPng: (bg) => _controller?.exportPng(data: bg) ?? Future.value(null),
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => ExportImageDialog(
+          exportSvg: (bg) => _controller?.exportSvg(data: bg) ?? Future.value(null),
+          exportPng: (bg) => _controller?.exportPng(data: bg) ?? Future.value(null),
+        ),
       ),
     );
   }
