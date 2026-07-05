@@ -18,7 +18,7 @@ class ExportImageDialog extends StatefulWidget {
 }
 
 class _ExportImageDialogState extends State<ExportImageDialog> {
-  String _format = 'png';
+  String _format = 'svg';
   String _bgMode = 'transparent';
   String? _previewDataUrl;
   bool _loading = false;

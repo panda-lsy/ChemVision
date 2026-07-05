@@ -218,11 +218,7 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
                     style: Theme.of(context).textTheme.titleLarge,
                     overflow: TextOverflow.ellipsis),
               ),
-              IconButton(
-                icon: const Icon(Icons.file_download_outlined),
-                tooltip: '导出图片',
-                onPressed: _controller == null ? null : () => _showExportDialog(context, isDark),
-              ),
+
             ],
           ),
           const SizedBox(height: 6),

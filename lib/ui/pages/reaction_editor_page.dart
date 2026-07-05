@@ -195,11 +195,7 @@ class _ReactionEditorPageState extends ConsumerState<ReactionEditorPage> {
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
               ),
-              IconButton(
-                icon: const Icon(Icons.file_download_outlined),
-                tooltip: '导出图片',
-                onPressed: _controller == null ? null : () => _showExportDialog(context, isDark),
-              ),
+
             ],
           ),
           const SizedBox(height: 10),
