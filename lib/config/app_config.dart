@@ -9,11 +9,11 @@ class AppConfig {
 
   /// Ketcher 编辑器入口（Web 端，Flutter 构建后实际路径多一层 assets/）
   static const String ketcherWebEntry = 'assets/assets/web/ketcher/index.html';
-  static const String vivoAigcBaseUrl = 'https://api-ai.vivo.com.cn/v1';
+  static const String vivoAigcBaseUrl = 'https://api.chemvision.qzz.io/v1';
   static const String vivoTextGenerationPath = '/chat/completions';
   static const String vivoTextGenerationUrl =
       '$vivoAigcBaseUrl$vivoTextGenerationPath';
-  static const String proxyBaseUrl = 'http://localhost:8787';
+  static const String proxyBaseUrl = 'https://api.chemvision.qzz.io';
 
   /// Cloudflare Worker CORS 代理地址（部署后替换为实际 URL）
   /// 部署方式：cd cloudflare-worker && npx wrangler deploy
