@@ -175,17 +175,14 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
 
   @override
   Widget build(BuildContext context) {
-return InAppWebView(
+    return InAppWebView(
       initialFile: AppConfig.ketcherEntry,
       // 不声明 gestureRecognizers：flutter_inappwebview 默认混合合成，画布触摸
       // 原生送达 webview，由注入脚本转为鼠标事件供 ketcher 绘制长碳链。
       onWebViewCreated: (controller) {
-        _setupHandlers(controller);
-      },
+        _webViewController = controller;
 
-  void _setupHandlers(InAppWebViewController controller) {
-    _webViewController = controller;
-    controller.addJavaScriptHandler(
+        controller.addJavaScriptHandler(
           handlerName: 'onBridgeReady',
           callback: (_) {
             _ready = true;
