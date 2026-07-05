@@ -1,6 +1,8 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
+import 'dart:io' show Platform;
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../../config/app_config.dart';
@@ -175,14 +177,41 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
 
   @override
   Widget build(BuildContext context) {
+    // On desktop (Windows), assets are embedded - load from bundle
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      return FutureBuilder<String>(
+        future: rootBundle.loadString(AppConfig.ketcherEntry),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          return InAppWebView(
+            initialData: InAppWebViewInitialData(data: snapshot.data!),
+            initialSettings: InAppWebViewSettings(
+              javaScriptEnabled: true,
+              transparentBackground: true,
+            ),
+            onWebViewCreated: (controller) {
+              _webViewController = controller;
+              _setupHandlers(controller);
+            },
+            onLoadStop: (controller, uri) async {
+              await controller.evaluateJavascript(source: _injectScript);
+            },
+          );
+        },
+      );
+    }
     return InAppWebView(
       initialFile: AppConfig.ketcherEntry,
       // 不声明 gestureRecognizers：flutter_inappwebview 默认混合合成，画布触摸
       // 原生送达 webview，由注入脚本转为鼠标事件供 ketcher 绘制长碳链。
-      onWebViewCreated: (controller) {
-        _webViewController = controller;
+      _setupHandlers(controller);
+      },
 
-        controller.addJavaScriptHandler(
+  void _setupHandlers(InAppWebViewController controller) {
+    _webViewController = controller;
+    controller.addJavaScriptHandler(
           handlerName: 'onBridgeReady',
           callback: (_) {
             _ready = true;
