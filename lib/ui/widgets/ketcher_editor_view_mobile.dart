@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../../config/app_config.dart';
+import '../../utils/ketcher_asset_helper.dart';
 import 'ketcher_editor_controller.dart';
 
 class KetcherEditorView extends StatefulWidget {
@@ -32,10 +34,26 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
   InAppWebViewController? _webViewController;
   KetcherEditorController? _controller;
   bool _ready = false;
+  bool _desktopAssetsReady = false;
 
   /// ketcher 最近一次通过 onSmilesUpdated 回报的 SMILES。
   /// 用于在 didUpdateWidget 中阻断规范化回音循环。
   String? _lastReceivedSmiles;
+
+  @override
+  void initState() {
+    super.initState();
+    _initDesktop();
+  }
+
+  Future<void> _initDesktop() async {
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      await KetcherAssetHelper.prepare();
+      if (mounted) setState(() => _desktopAssetsReady = true);
+    } else {
+      _desktopAssetsReady = true;
+    }
+  }
 
   @override
   void didUpdateWidget(covariant KetcherEditorView oldWidget) {
