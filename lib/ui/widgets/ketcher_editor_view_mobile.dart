@@ -1,8 +1,6 @@
 import 'dart:convert';
 
-import 'dart:io' show Platform;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../../config/app_config.dart';
@@ -176,78 +174,7 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
   ''';
 
   @override
-  @override
   Widget build(BuildContext context) {
-    // Desktop: assets are embedded, use rootBundle
-    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-      return FutureBuilder<String>(
-        future: rootBundle.loadString(AppConfig.ketcherEntry),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          return InAppWebView(
-            initialData: InAppWebViewInitialData(data: snapshot.data!),
-            initialSettings: InAppWebViewSettings(
-              javaScriptEnabled: true,
-              transparentBackground: true,
-              allowFileAccessFromFileURLs: true,
-              allowUniversalAccessFromFileURLs: true,
-            ),
-            onWebViewCreated: (controller) {
-              _webViewController = controller;
-              _webViewController = controller;
-                            controller.addJavaScriptHandler(
-              handlerName: 'onBridgeReady',
-              callback: (_) {
-              _ready = true;
-              _ensureController();
-              // sync initial theme (override ketcher auto-detection)
-              if (widget.themeMode != ThemeMode.dark) {
-              controller.evaluateJavascript(
-              source: "document.documentElement.removeAttribute('data-theme');",
-              );
-              }
-              if (widget.initialSmiles.isNotEmpty) {
-              _sendCommand('setMolecule', {'data': widget.initialSmiles});
-              }
-              if (widget.readOnly) {
-              _sendCommand('setReadOnly', {'readOnly': true});
-              }
-              },
-              );
-              controller.addJavaScriptHandler(
-              handlerName: 'onSmilesUpdated',
-              callback: (args) {
-              if (args.isNotEmpty) {
-              final data = args[0];
-              final smiles = data is Map ? data['smiles']?.toString() : null;
-              if (smiles != null && smiles.isNotEmpty) {
-              _lastReceivedSmiles = smiles;
-              widget.onSmilesUpdated?.call(smiles);
-              }
-              }
-              },
-              );
-              controller.addJavaScriptHandler(
-              handlerName: 'onError',
-              callback: (args) {
-              if (args.isNotEmpty) {
-              final data = args[0];
-              final message = data is Map ? data['message']?.toString() : null;
-              if (message != null) {
-              widget.onError?.call(message);
-              }
-              }
-              },
-              );
-            onLoadStop: (controller, uri) async {
-              await controller.evaluateJavascript(source: _injectScript);
-            },
-          );
-        },
-      );
-    }
     return InAppWebView(
       initialFile: AppConfig.ketcherEntry,
       // 不声明 gestureRecognizers：flutter_inappwebview 默认混合合成，画布触摸
