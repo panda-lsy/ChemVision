@@ -5,8 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../models/scan_history_item.dart';
 import '../../models/structure_recognition_result.dart';
 import '../../models/structure_result.dart';
+import '../../providers/scan_history_provider.dart';
 import '../../providers/structure_recognition_controller.dart';
 import '../../providers/structure_service_provider.dart';
 import '../../providers/theme_mode_provider.dart';
@@ -18,7 +20,17 @@ import '../widgets/primary_button.dart';
 import 'result_page.dart';
 
 class StructureRecognitionPage extends ConsumerStatefulWidget {
-  const StructureRecognitionPage({super.key});
+  const StructureRecognitionPage({super.key, this.viewItem});
+
+  /// 从扫描历史进入时的只读视图项(非空时进入 view-only 模式)
+  final ScanHistoryItem? viewItem;
+
+  /// 从扫描历史项构造 view-only 实例
+  factory StructureRecognitionPage.fromScanHistory(
+    ScanHistoryItem item, {
+    Key? key,
+  }) =>
+      StructureRecognitionPage(key: key, viewItem: item);
 
   @override
   ConsumerState<StructureRecognitionPage> createState() =>
@@ -30,6 +42,18 @@ class _StructureRecognitionPageState
   Uint8List? _imageBytes;
   String? _dataUri;
   int? _selectedIndex;
+  bool _isViewOnly = false;
+  ScanHistoryItem? _viewItem;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.viewItem != null) {
+      _isViewOnly = true;
+      _viewItem = widget.viewItem;
+      _imageBytes = widget.viewItem!.imageBytes;
+    }
+  }
 
   Future<void> _pickImage(ImageSource source) async {
     try {
@@ -108,6 +132,56 @@ class _StructureRecognitionPageState
   void _confirmSelection(StructureCandidate candidate) {
     final service = ref.read(imageStructureServiceProvider);
     final result = service.resolveToStructure(candidate);
+
+    // 保存扫描历史(原图 + 识别结果),供对照记忆
+    // view-only 模式(从扫描历史进入)不重复保存
+    if (!_isViewOnly && _imageBytes != null) {
+      final recognitionState = ref.read(structureRecognitionControllerProvider);
+      final recognizedSmiles =
+          recognitionState.result?.recognizedSmiles ?? candidate.smiles;
+      final completenessScore =
+          recognitionState.result?.completenessScore ?? 0.5;
+      ref.read(scanHistoryControllerProvider.notifier).add(
+            ScanHistoryItem.fromRecognition(
+              imageBytes: _imageBytes!,
+              recognizedSmiles: recognizedSmiles,
+              completenessScore: completenessScore,
+              resolvedName: candidate.resolvedName,
+              englishName: candidate.englishName,
+              chineseName: candidate.chineseName,
+              molecularFormula: candidate.molecularFormula,
+              molecularWeight: candidate.molecularWeight,
+            ),
+          );
+    }
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ResultPage(
+          query: candidate.englishName ?? candidate.resolvedName ?? candidate.smiles,
+          result: result,
+        ),
+      ),
+    );
+  }
+
+  /// view-only 模式下从扫描历史项直接进入详情页
+  void _enterResultPageFromView() {
+    final item = _viewItem;
+    if (item == null) return;
+    final candidate = StructureCandidate(
+      smiles: item.recognizedSmiles,
+      resolvedName: item.resolvedName,
+      englishName: item.englishName,
+      chineseName: item.chineseName,
+      molecularFormula: item.molecularFormula,
+      molecularWeight: item.molecularWeight,
+      source: '扫描历史',
+      confidence: item.completenessScore,
+    );
+    // view-only 模式不重复保存历史
+    final service = ref.read(imageStructureServiceProvider);
+    final result = service.resolveToStructure(candidate);
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => ResultPage(
@@ -134,6 +208,54 @@ class _StructureRecognitionPageState
     final isLoading = state.status == StructureRecognitionStatus.analyzing ||
         state.status == StructureRecognitionStatus.scoring ||
         state.status == StructureRecognitionStatus.searching;
+
+    // view-only 模式(从扫描历史进入):只展示原图 + 已识别结果,不触发识别
+    if (_isViewOnly && _viewItem != null) {
+      return AppScaffold(
+        scroll: true,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: const Icon(Icons.arrow_back),
+                  color: isDark
+                      ? AppColors.textPrimary
+                      : AppColors.dayTextPrimary,
+                ),
+                const SizedBox(width: 4),
+                Text('ChemVISION',
+                    style: Theme.of(context).textTheme.labelLarge),
+                const Spacer(),
+                const AccentPill(label: '扫描历史'),
+              ],
+            ),
+            const SizedBox(height: 18),
+            // 原图
+            GlassPanel(
+              radius: 22,
+              padding: const EdgeInsets.all(12),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: Image.memory(_viewItem!.imageBytes,
+                    height: 220,
+                    width: double.infinity,
+                    fit: BoxFit.contain),
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildViewOnlySummary(context, _viewItem!, isDark),
+            const SizedBox(height: 16),
+            PrimaryButton(
+              label: '查看结构详情',
+              onPressed: _enterResultPageFromView,
+            ),
+          ],
+        ),
+      );
+    }
 
     return AppScaffold(
       scroll: true,
@@ -524,6 +646,110 @@ class _StructureRecognitionPageState
       default:
         return '处理中...';
     }
+  }
+
+  /// view-only 模式:展示扫描历史项的识别摘要
+  Widget _buildViewOnlySummary(
+      BuildContext context, ScanHistoryItem item, bool isDark) {
+    final score = item.completenessScore;
+    final scoreColor = score > 0.7
+        ? AppColors.aqua
+        : score > 0.4
+            ? AppColors.amber
+            : Colors.redAccent;
+    return GlassPanel(
+      radius: 22,
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 完整度评分
+          Row(
+            children: [
+              SizedBox(
+                width: 56,
+                height: 56,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      value: score,
+                      strokeWidth: 5,
+                      backgroundColor: (isDark
+                              ? AppColors.textMuted
+                              : AppColors.dayTextMuted)
+                          .withValues(alpha: 0.2),
+                      valueColor: AlwaysStoppedAnimation<Color>(scoreColor),
+                    ),
+                    Text(
+                      '${(score * 100).toInt()}%',
+                      style: Theme.of(context)
+                          .textTheme
+                          .bodySmall
+                          ?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: scoreColor,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item.displayName,
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w700),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (item.molecularFormula.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        item.molecularWeight > 0
+                            ? '${item.molecularFormula} · 分子量 ${item.molecularWeight.toStringAsFixed(2)}'
+                            : item.molecularFormula,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: isDark
+                                  ? AppColors.textMuted
+                                  : AppColors.dayTextMuted,
+                            ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Text('识别 SMILES', style: Theme.of(context).textTheme.bodySmall),
+          const SizedBox(height: 6),
+          Container(
+            width: double.infinity,
+            padding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? AppColors.glassStrong
+                  : AppColors.dayGlassStrong,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: SelectableText(
+              item.recognizedSmiles,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontFamily: 'monospace',
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

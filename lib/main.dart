@@ -9,14 +9,17 @@ import 'models/adapters/edit_history_item_adapter.dart';
 import 'models/adapters/favorite_item_adapter.dart';
 import 'models/adapters/reaction_equation_adapter.dart';
 import 'models/adapters/reaction_favorite_item_adapter.dart';
+import 'models/adapters/scan_history_item_adapter.dart';
 import 'models/adapters/structure_candidate_adapter.dart';
 import 'models/adapters/structure_result_adapter.dart';
 import 'providers/favorites_provider.dart';
 import 'providers/edit_history_provider.dart';
 import 'providers/reaction_favorites_provider.dart';
+import 'providers/scan_history_provider.dart';
 import 'services/favorites_service.dart';
 import 'services/edit_history_service.dart';
 import 'services/reaction_favorites_service.dart';
+import 'services/scan_history_service.dart';
 import 'services/search_history_service.dart';
 import 'services/app_version_service.dart';
 
@@ -102,6 +105,7 @@ class _InitializationWrapperState extends State<_InitializationWrapper> {
   ReactionFavoritesService? _reactionFavoritesService;
   EditHistoryService? _editHistoryService;
   SearchHistoryService? _searchHistoryService;
+  ScanHistoryService? _scanHistoryService;
   bool _initialized = false;
 
   @override
@@ -131,6 +135,7 @@ class _InitializationWrapperState extends State<_InitializationWrapper> {
         Hive.registerAdapter(ReactionEquationAdapter());
         Hive.registerAdapter(EditHistoryItemAdapter());
         Hive.registerAdapter(ReactionFavoriteItemAdapter());
+        Hive.registerAdapter(ScanHistoryItemAdapter());
 
         // 初始化服务
         _favoritesService = FavoritesService();
@@ -144,6 +149,9 @@ class _InitializationWrapperState extends State<_InitializationWrapper> {
 
         _searchHistoryService = SearchHistoryService();
         await _searchHistoryService!.init();
+
+        _scanHistoryService = ScanHistoryService();
+        await _scanHistoryService!.init();
         
         // 初始化版本服务
         await AppVersionService().init();
@@ -178,6 +186,7 @@ class _InitializationWrapperState extends State<_InitializationWrapper> {
         editHistoryServiceProvider.overrideWithValue(_editHistoryService!),
         reactionFavoritesServiceProvider.overrideWithValue(_reactionFavoritesService!),
         searchHistoryServiceProvider.overrideWithValue(_searchHistoryService!),
+        scanHistoryServiceProvider.overrideWithValue(_scanHistoryService!),
       ],
       child: const ChemVisionApp(),
     );
