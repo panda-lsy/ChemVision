@@ -56,29 +56,76 @@ class _ResultPageState extends ConsumerState<ResultPage> {
     _currentSmiles = _activeCandidate.smiles;
     _pageTitle = _resolveTitleByCandidate(_activeCandidate);
     _checkIfFavorited();
+    // 进入详情页时，若 candidate 缺少名称或分子式（如 OCSR 兜底进入），
+    // 异步调用 PubChem + LLM 反查 SMILES 的名称/分子式/分子量
+    if (_needsResolve(_activeCandidate)) {
+      _resolvingNames = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _resolveMolecularProperties(_currentSmiles);
+      });
+    }
+  }
+
+  /// 判断 candidate 是否需要触发 reverseResolveName 补全字段
+  bool _needsResolve(StructureCandidate c) {
+    final hasEnglish = c.englishName != null && c.englishName!.trim().isNotEmpty;
+    final hasFormula = c.molecularFormula.trim().isNotEmpty;
+    // 当名称或分子式缺失时（如 OCSR "使用识别结果" 兜底进入），需要反查
+    if (!hasEnglish || !hasFormula) return true;
+    // 当 resolvedName 仍是兜底的"识别结果"时，也需要用真实名称替换
+    if (c.resolvedName == '识别结果') return true;
+    return false;
   }
 
   void _resolveMolecularProperties(String smiles) async {
     try {
       final service = ref.read(structureServiceProvider);
       final result = await service.reverseResolveName(smiles);
-      if (result.isValid && mounted) {
-        setState(() {
-          if (result.molecularFormula.isNotEmpty) {
-            _activeCandidate = StructureCandidate(
-              smiles: _activeCandidate.smiles,
-              resolvedName: _activeCandidate.resolvedName,
-              englishName: _activeCandidate.englishName,
-              chineseName: _activeCandidate.chineseName,
-              molecularFormula: result.molecularFormula,
-              molecularWeight: result.molecularWeight,
-              source: _activeCandidate.source,
-              confidence: _activeCandidate.confidence,
-            );
-          }
-        });
+      if (!mounted) return;
+      setState(() {
+        // 合并字段：仅在原字段为空时才用反查结果覆盖，避免覆盖已有的好数据
+        final newFormula = result.molecularFormula.isNotEmpty
+            ? result.molecularFormula
+            : _activeCandidate.molecularFormula;
+        final newWeight = result.molecularWeight > 0
+            ? result.molecularWeight
+            : _activeCandidate.molecularWeight;
+        final oldEn = _activeCandidate.englishName ?? '';
+        final newEnglish = oldEn.trim().isNotEmpty
+            ? _activeCandidate.englishName
+            : result.englishName;
+        final oldZh = _activeCandidate.chineseName ?? '';
+        final newChinese = oldZh.trim().isNotEmpty
+            ? _activeCandidate.chineseName
+            : result.chineseName;
+        // resolvedName：若原来是兜底的"识别结果"或为空，用反查结果替换
+        final oldResolved = _activeCandidate.resolvedName ?? '';
+        final newResolved = (oldResolved.isEmpty || oldResolved == '识别结果')
+            ? result.resolvedName
+            : _activeCandidate.resolvedName;
+
+        _activeCandidate = StructureCandidate(
+          smiles: _activeCandidate.smiles,
+          resolvedName: newResolved,
+          englishName: newEnglish,
+          chineseName: newChinese,
+          molecularFormula: newFormula,
+          molecularWeight: newWeight,
+          source: _activeCandidate.source,
+          confidence: _activeCandidate.confidence,
+        );
+        // 用真实名称刷新页面标题（仅当原标题是兜底的"识别结果"时，避免覆盖用户输入）
+        if (_pageTitle == '识别结果' || _pageTitle.trim().isEmpty) {
+          _pageTitle = _resolveTitleByCandidate(_activeCandidate);
+        }
+        _resolvingNames = false;
+        _checkIfFavorited();
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() => _resolvingNames = false);
       }
-    } catch (_) {}
+    }
   }
 
   void _checkIfFavorited() {

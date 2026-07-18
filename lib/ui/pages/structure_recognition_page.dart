@@ -225,18 +225,22 @@ class _StructureRecognitionPageState
 
           // Loading state
           if (isLoading) ...[
-            GlassPanel(
-              radius: 22,
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  const CircularProgressIndicator(strokeWidth: 2),
-                  const SizedBox(height: 12),
-                  Text(
-                    _statusText(state.status),
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
-                ],
+            Center(
+              child: GlassPanel(
+                radius: 22,
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CircularProgressIndicator(strokeWidth: 2),
+                    const SizedBox(height: 12),
+                    Text(
+                      _statusText(state.status),
+                      style: Theme.of(context).textTheme.bodyMedium,
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 16),
