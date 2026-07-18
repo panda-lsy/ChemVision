@@ -10,11 +10,13 @@ class AiSettings {
   final String? embeddingModel;
   final String? rerankModel;
   final String baseUrl;
+  final String ocsrEndpoint;
 
   const AiSettings({
     required this.apiKey,
     required this.textModel,
     required this.baseUrl,
+    required this.ocsrEndpoint,
     this.embeddingModel,
     this.rerankModel,
   });
@@ -23,6 +25,7 @@ class AiSettings {
     String? apiKey,
     String? textModel,
     String? baseUrl,
+    String? ocsrEndpoint,
     String? embeddingModel,
     String? rerankModel,
   }) {
@@ -30,6 +33,7 @@ class AiSettings {
       apiKey: apiKey ?? this.apiKey,
       textModel: textModel ?? this.textModel,
       baseUrl: baseUrl ?? this.baseUrl,
+      ocsrEndpoint: ocsrEndpoint ?? this.ocsrEndpoint,
       embeddingModel: embeddingModel ?? this.embeddingModel,
       rerankModel: rerankModel ?? this.rerankModel,
     );
@@ -42,6 +46,7 @@ class AiSettingsStore {
   static const String _embeddingModelKey = 'vivo_embedding_model';
   static const String _rerankModelKey = 'vivo_rerank_model';
   static const String _baseUrlKey = 'vivo_base_url';
+  static const String _ocsrEndpointKey = 'ocsr_endpoint';
 
   Future<AiSettings> load() async {
     final prefs = await SharedPreferences.getInstance();
@@ -51,11 +56,15 @@ class AiSettingsStore {
     final rerankModel = prefs.getString(_rerankModelKey);
     final hasBaseUrl = prefs.containsKey(_baseUrlKey);
     final rawBaseUrl = prefs.getString(_baseUrlKey) ?? defaultAigcBaseUrl;
+    final rawOcsrEndpoint = prefs.getString(_ocsrEndpointKey) ?? '';
 
     final textModel = _migrateTextModel(rawTextModel);
     final baseUrl = hasBaseUrl
       ? _migrateBaseUrl(rawBaseUrl)
       : _defaultAigcBaseUrl();
+    final ocsrEndpoint = rawOcsrEndpoint.trim().isEmpty
+        ? _defaultOcsrEndpoint()
+        : rawOcsrEndpoint.trim();
 
     if (textModel != rawTextModel) {
       await prefs.setString(_textModelKey, textModel);
@@ -70,6 +79,7 @@ class AiSettingsStore {
       embeddingModel: _normalizeOptional(embeddingModel),
       rerankModel: _normalizeOptional(rerankModel),
       baseUrl: baseUrl,
+      ocsrEndpoint: ocsrEndpoint,
     );
   }
 
@@ -80,6 +90,7 @@ class AiSettingsStore {
     await _setOptional(prefs, _embeddingModelKey, settings.embeddingModel);
     await _setOptional(prefs, _rerankModelKey, settings.rerankModel);
     await prefs.setString(_baseUrlKey, settings.baseUrl);
+    await prefs.setString(_ocsrEndpointKey, settings.ocsrEndpoint);
   }
 
   String? _normalizeOptional(String? value) {
@@ -141,6 +152,14 @@ class AiSettingsStore {
       return AppConfig.webProxyBaseUrl;
     }
     return defaultAigcBaseUrl;
+  }
+
+  /// OCSR 默认端点：Web 端走 CF Worker 代理，其他平台走本地代理或直连
+  String _defaultOcsrEndpoint() {
+    if (kIsWeb) {
+      return AppConfig.webDecimerBaseUrl;
+    }
+    return AppConfig.decimerBaseUrl;
   }
 
   Future<void> _setOptional(

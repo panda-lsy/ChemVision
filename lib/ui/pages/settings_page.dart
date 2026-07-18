@@ -32,6 +32,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   final TextEditingController _apiKeyController = TextEditingController();
   final TextEditingController _customModelController = TextEditingController();
   final TextEditingController _baseUrlController = TextEditingController();
+  final TextEditingController _ocsrEndpointController = TextEditingController();
 
   final AiSettingsStore _settingsStore = AiSettingsStore();
   final VivoAigcClient _client = VivoAigcClient();
@@ -63,6 +64,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     _apiKeyController.dispose();
     _customModelController.dispose();
     _baseUrlController.dispose();
+    _ocsrEndpointController.dispose();
     _modelPathController.dispose();
     super.dispose();
   }
@@ -77,6 +79,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
     _apiKeyController.text = settings.apiKey;
     _baseUrlController.text = settings.baseUrl;
+    _ocsrEndpointController.text = settings.ocsrEndpoint;
     _selectedEmbeddingModel = settings.embeddingModel;
     _selectedRerankModel = settings.rerankModel;
 
@@ -130,12 +133,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     final apiKey = _apiKeyController.text.trim();
     final textModel = _resolveTextModel();
     final baseUrl = _resolveBaseUrl();
+    final ocsrEndpoint = _resolveOcsrEndpoint();
 
     await _settingsStore.save(
       AiSettings(
         apiKey: apiKey,
         textModel: textModel,
         baseUrl: baseUrl,
+        ocsrEndpoint: ocsrEndpoint,
         embeddingModel: _selectedEmbeddingModel,
         rerankModel: _selectedRerankModel,
       ),
@@ -153,6 +158,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   String _resolveBaseUrl() {
     final raw = _baseUrlController.text.trim();
     return raw.isEmpty ? defaultAigcBaseUrl : raw;
+  }
+
+  String _resolveOcsrEndpoint() {
+    final raw = _ocsrEndpointController.text.trim();
+    return raw;
   }
 
   Future<void> _runConnectionTest() async {
@@ -482,6 +492,27 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   keyboardType: TextInputType.url,
                   decoration: const InputDecoration(
                     hintText: 'https://api-ai.vivo.com.cn',
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text('OCSR 服务地址',
+                    style: Theme.of(context).textTheme.titleMedium),
+                const SizedBox(height: 6),
+                Text(
+                  '结构式识别（DECIMER）服务地址，留空使用默认值。默认走 Cloudflare Worker 的 /decimer 子路径代理，Worker 通过 DECIMER_UPSTREAM 环境变量转发到自部署的 DECIMER 服务（推荐部署到 Hugging Face Spaces，详见 tools/decimer_hf_space/README.md）',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: isDark
+                            ? AppColors.textMuted
+                            : AppColors.dayTextMuted,
+                      ),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _ocsrEndpointController,
+                  onChanged: (_) => _scheduleSave(),
+                  keyboardType: TextInputType.url,
+                  decoration: const InputDecoration(
+                    hintText: 'https://api.chemvision.qzz.io/decimer',
                   ),
                 ),
               ],

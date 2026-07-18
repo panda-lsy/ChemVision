@@ -27,4 +27,18 @@ class AppConfig {
 
   /// Web 端 OPSIN 代理地址（需部署 Cloudflare Worker 后配置）
   static const String webOpsinProxyBaseUrl = '$cloudflareWorkerUrl/opsin';
+
+  /// DECIMER OCSR 默认端点（用户需自部署 FastAPI 包装器，详见 tools/decimer_server.py）
+  /// 走 Cloudflare Worker 的 /decimer 子路径代理（见 cloudflare-worker/worker.js）
+  /// 完整请求路径为：{decimerBaseUrl}/process_image → Worker 转发到 env.DECIMER_UPSTREAM/process_image
+  static const String decimerBaseUrl = '$cloudflareWorkerUrl/decimer';
+
+  /// DECIMER 处理图片路径（POST + multipart/form-data，字段名 image）
+  static const String decimerProcessPath = '/process_image';
+
+  /// DECIMER 完整处理 URL
+  static const String decimerProcessUrl = '$decimerBaseUrl$decimerProcessPath';
+
+  /// Web 端 DECIMER 代理地址（与 CF Worker 复用同一域名）
+  static const String webDecimerBaseUrl = decimerBaseUrl;
 }

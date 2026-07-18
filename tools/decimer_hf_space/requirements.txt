@@ -1,0 +1,6 @@
+# DECIMER OCSR Python 依赖
+# Hugging Face Spaces 部署用
+decimer==2.8.0
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-multipart==0.0.20
