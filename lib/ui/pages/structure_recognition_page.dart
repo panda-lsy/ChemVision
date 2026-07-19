@@ -91,13 +91,21 @@ class _StructureRecognitionPageState
   }
 
   Future<void> _showImageSourceSheet() async {
+    final isDark = ref.watch(themeModeProvider) != ThemeMode.light;
+    final bgColor =
+        isDark ? AppColors.navy : AppColors.dayGlass;
+    final accentColor =
+        isDark ? AppColors.aqua : AppColors.dayBluePrimary;
+    final dividerColor = isDark
+        ? Colors.white.withValues(alpha: 0.06)
+        : AppColors.dayBluePrimary.withValues(alpha: 0.08);
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
-        decoration: const BoxDecoration(
-          color: AppColors.navy,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: SafeArea(
           top: false,
@@ -105,18 +113,19 @@ class _StructureRecognitionPageState
             padding: const EdgeInsets.all(20),
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('选择图片来源',
                     style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 16),
                 ListTile(
-                  leading: const Icon(Icons.camera_alt, color: AppColors.aqua),
+                  leading: Icon(Icons.camera_alt, color: accentColor),
                   title: const Text('拍照'),
                   onTap: () => Navigator.pop(context, ImageSource.camera),
                 ),
+                Divider(color: dividerColor, height: 1),
                 ListTile(
-                  leading:
-                      const Icon(Icons.photo_library, color: AppColors.aqua),
+                  leading: Icon(Icons.photo_library, color: accentColor),
                   title: const Text('从相册选择'),
                   onTap: () => Navigator.pop(context, ImageSource.gallery),
                 ),
