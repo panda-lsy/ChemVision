@@ -20,6 +20,11 @@
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="A new Flutter project.">
 
+  <!-- 阻止 HTTP 层缓存本页面（微信内置浏览器等强缓存环境必需） -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+
   <style>
     html,
     body {
@@ -52,5 +57,30 @@
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
   <script src="flutter_bootstrap.js" async></script>
+
+  <!-- 微信等强缓存环境下，主动清理旧 Service Worker，确保拿到最新版本 -->
+  <!-- 用 sessionStorage 防止死循环：每个标签页最多 reload 一次 -->
+  <script>
+    (function () {
+      if (!('serviceWorker' in navigator)) return;
+      var KEY = '__cv_sw_cleaned__';
+      navigator.serviceWorker.getRegistrations().then(function (regs) {
+        if (regs.length === 0) {
+          sessionStorage.removeItem(KEY);
+          return;
+        }
+        if (sessionStorage.getItem(KEY)) {
+          // 已 reload 过一次，不再重复 reload，但后台仍清理残留 SW
+          regs.forEach(function (r) { r.unregister(); });
+          sessionStorage.removeItem(KEY);
+          return;
+        }
+        sessionStorage.setItem(KEY, '1');
+        Promise.all(regs.map(function (r) { return r.unregister(); }))
+          .then(function () { location.reload(); })
+          .catch(function () { sessionStorage.removeItem(KEY); });
+      }).catch(function () {});
+    })();
+  </script>
 </body>
 </html>

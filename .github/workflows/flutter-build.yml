@@ -101,6 +101,9 @@ jobs:
           channel: 'stable'
       - run: flutter pub get
       - run: flutter build web --release --base-href "/"
+      - name: 给 flutter_bootstrap.js 加版本查询参数以打破微信/CDN 缓存
+        run: |
+          sed -i 's|flutter_bootstrap\.js|flutter_bootstrap.js?v=${{ github.sha }}|g' build/web/index.html
       - uses: actions/upload-artifact@v4
         with:
           name: web-build
