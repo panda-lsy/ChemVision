@@ -15,11 +15,13 @@ class AppConfig {
       '$vivoAigcBaseUrl$vivoTextGenerationPath';
   static const String proxyBaseUrl = 'http://localhost:8787';
 
-  /// Cloudflare Worker CORS 代理地址（部署后替换为实际 URL）
+  /// Cloudflare Worker CORS 代理地址
   /// 部署方式：cd cloudflare-worker && npx wrangler deploy
-  static const String cloudflareWorkerUrl = 'http://localhost:8787';
+  /// 同时代理 vivo/OpenAI/Anthropic/PubChem/Opsin/DECIMER 多路由
+  static const String cloudflareWorkerUrl = 'https://api.chemvision.qzz.io';
 
-  /// Web 端默认使用 Cloudflare Worker 代理，本地开发时可用 localhost:8787
+  /// Web 端默认使用 Cloudflare Worker 代理（生产环境）
+  /// 本地开发时可在设置页改为 http://localhost:8787
   static const String webProxyBaseUrl = cloudflareWorkerUrl;
 
   /// OPSIN 代理地址（Web 端需要代理避免 CORS）
