@@ -1,6 +1,11 @@
 node_modules/
-doc/
+doc/*
+!doc/GOAI/
 .venv/
+
+# 根目录临时图片/设计素材(不影响 assets/ 下的资源)
+/*.png
+/*.psd
 backend/.pytest_cache/
 backend/resolver_cache.json
 backend/__pycache__/
