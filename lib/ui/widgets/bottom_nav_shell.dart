@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../main.dart';
 import '../../theme/app_colors.dart';
+import '../pages/agent_page.dart';
 import '../pages/edit_hub_page.dart';
 import '../pages/favorites_page.dart';
 import '../pages/history_page.dart';
@@ -19,6 +20,7 @@ class BottomNavShell extends ConsumerStatefulWidget {
 class _BottomNavShellState extends ConsumerState<BottomNavShell> {
   static const _pages = <Widget>[
     InputPage(),
+    AgentPage(),
     EditHubPage(),
     HistoryPage(),
     FavoritesPage(),
@@ -62,6 +64,11 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell> {
               icon: Icon(Icons.science_outlined),
               activeIcon: Icon(Icons.science),
               label: '识别',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.smart_toy_outlined),
+              activeIcon: Icon(Icons.smart_toy),
+              label: 'Agent',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.edit_note_outlined),

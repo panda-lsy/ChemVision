@@ -16,6 +16,7 @@ import '../../theme/app_colors.dart';
 import '../../utils/favorites_export.dart';
 import '../widgets/accent_pill.dart';
 import '../widgets/app_scaffold.dart';
+import '../widgets/compliance/privacy_compliance_panel.dart';
 import '../widgets/glass_panel.dart';
 import '../widgets/primary_button.dart';
 
@@ -538,6 +539,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ],
             ),
           ),
+          const SizedBox(height: 16),
+          // ── 隐私与合规 ──
+          Text('隐私与合规', style: Theme.of(context).textTheme.headlineMedium),
+          const SizedBox(height: 16),
+          const PrivacyCompliancePanel(),
           const SizedBox(height: 16),
           // ── 关于 ──
           Text('关于', style: Theme.of(context).textTheme.headlineMedium),

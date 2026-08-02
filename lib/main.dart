@@ -7,6 +7,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'app.dart';
 import 'models/adapters/edit_history_item_adapter.dart';
 import 'models/adapters/favorite_item_adapter.dart';
+import 'models/adapters/learning_record_adapter.dart';
 import 'models/adapters/reaction_equation_adapter.dart';
 import 'models/adapters/reaction_favorite_item_adapter.dart';
 import 'models/adapters/scan_history_item_adapter.dart';
@@ -18,6 +19,8 @@ import 'providers/reaction_favorites_provider.dart';
 import 'providers/scan_history_provider.dart';
 import 'services/favorites_service.dart';
 import 'services/edit_history_service.dart';
+import 'services/learning_record_service.dart';
+import 'providers/learning_profile_provider.dart';
 import 'services/reaction_favorites_service.dart';
 import 'services/scan_history_service.dart';
 import 'services/search_history_service.dart';
@@ -106,6 +109,7 @@ class _InitializationWrapperState extends State<_InitializationWrapper> {
   EditHistoryService? _editHistoryService;
   SearchHistoryService? _searchHistoryService;
   ScanHistoryService? _scanHistoryService;
+  LearningRecordService? _learningRecordService;
   bool _initialized = false;
 
   @override
@@ -136,6 +140,7 @@ class _InitializationWrapperState extends State<_InitializationWrapper> {
         Hive.registerAdapter(EditHistoryItemAdapter());
         Hive.registerAdapter(ReactionFavoriteItemAdapter());
         Hive.registerAdapter(ScanHistoryItemAdapter());
+        Hive.registerAdapter(LearningRecordAdapter());
 
         // 初始化服务
         _favoritesService = FavoritesService();
@@ -152,6 +157,9 @@ class _InitializationWrapperState extends State<_InitializationWrapper> {
 
         _scanHistoryService = ScanHistoryService();
         await _scanHistoryService!.init();
+
+        _learningRecordService = LearningRecordService();
+        await _learningRecordService!.init();
         
         // 初始化版本服务
         await AppVersionService().init();
@@ -187,6 +195,7 @@ class _InitializationWrapperState extends State<_InitializationWrapper> {
         reactionFavoritesServiceProvider.overrideWithValue(_reactionFavoritesService!),
         searchHistoryServiceProvider.overrideWithValue(_searchHistoryService!),
         scanHistoryServiceProvider.overrideWithValue(_scanHistoryService!),
+        learningRecordServiceProvider.overrideWithValue(_learningRecordService!),
       ],
       child: const ChemVisionApp(),
     );
