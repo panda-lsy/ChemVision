@@ -9,9 +9,10 @@ class ReactionFavoritesService {
   static const _boxName = 'reaction_favorites';
   late Box<ReactionFavoriteItem> _box;
 
-  Future<void> init() async {
-    _box = await Hive.openBox<ReactionFavoriteItem>(_boxName);
-    debugPrint('[ReactionFavoritesService] 初始化完成，当前数：${_box.length}');
+  /// 初始化,userId 用作 box 名前缀实现多用户数据隔离
+  Future<void> init({String userId = 'default'}) async {
+    _box = await Hive.openBox<ReactionFavoriteItem>('${userId}_$_boxName');
+    debugPrint('[ReactionFavoritesService] 初始化完成(userId=$userId)，当前数：${_box.length}');
   }
 
   Future<void> add(ReactionFavoriteItem item) async {

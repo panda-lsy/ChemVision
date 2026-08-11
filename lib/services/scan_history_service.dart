@@ -8,8 +8,9 @@ class ScanHistoryService {
   static const _maxItems = 30;
   late Box<ScanHistoryItem> _box;
 
-  Future<void> init() async {
-    _box = await Hive.openBox<ScanHistoryItem>(_boxName);
+  /// 初始化,userId 用作 box 名前缀实现多用户数据隔离
+  Future<void> init({String userId = 'default'}) async {
+    _box = await Hive.openBox<ScanHistoryItem>('${userId}_$_boxName');
   }
 
   Future<void> add(ScanHistoryItem item) async {

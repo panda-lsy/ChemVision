@@ -5,7 +5,10 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import 'app.dart';
+import 'models/adapters/agent_session_record_adapter.dart';
+import 'models/adapters/app_user_adapter.dart';
 import 'models/adapters/edit_history_item_adapter.dart';
+import 'models/adapters/error_book_item_adapter.dart';
 import 'models/adapters/favorite_item_adapter.dart';
 import 'models/adapters/learning_record_adapter.dart';
 import 'models/adapters/reaction_equation_adapter.dart';
@@ -17,6 +20,8 @@ import 'providers/favorites_provider.dart';
 import 'providers/edit_history_provider.dart';
 import 'providers/reaction_favorites_provider.dart';
 import 'providers/scan_history_provider.dart';
+import 'services/agent_session_store.dart';
+import 'services/error_book_service.dart';
 import 'services/favorites_service.dart';
 import 'services/edit_history_service.dart';
 import 'services/learning_record_service.dart';
@@ -25,6 +30,7 @@ import 'services/reaction_favorites_service.dart';
 import 'services/scan_history_service.dart';
 import 'services/search_history_service.dart';
 import 'services/app_version_service.dart';
+import 'services/user_service.dart';
 
 // 导出 provider 供其他文件使用
 export 'providers/favorites_provider.dart';
@@ -90,8 +96,8 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   // 立即启动应用，减少首帧渲染时间
-  runApp(ProviderScope(
-    child: const _InitializationWrapper(),
+  runApp(const ProviderScope(
+    child: _InitializationWrapper(),
   ));
 }
 
@@ -104,18 +110,48 @@ class _InitializationWrapper extends StatefulWidget {
 }
 
 class _InitializationWrapperState extends State<_InitializationWrapper> {
+  UserService? _userService;
   FavoritesService? _favoritesService;
   ReactionFavoritesService? _reactionFavoritesService;
   EditHistoryService? _editHistoryService;
   SearchHistoryService? _searchHistoryService;
   ScanHistoryService? _scanHistoryService;
   LearningRecordService? _learningRecordService;
+  AgentSessionStore? _agentSessionStore;
+  ErrorBookService? _errorBookService;
   bool _initialized = false;
 
   @override
   void initState() {
     super.initState();
     _initializeAsync();
+  }
+
+  /// 用指定 userId 初始化所有数据 Service
+  Future<void> _initServicesForUser(String userId) async {
+    _favoritesService ??= FavoritesService();
+    await _favoritesService!.init(userId: userId);
+
+    _reactionFavoritesService ??= ReactionFavoritesService();
+    await _reactionFavoritesService!.init(userId: userId);
+
+    _editHistoryService ??= EditHistoryService();
+    await _editHistoryService!.init(userId: userId);
+
+    _searchHistoryService ??= SearchHistoryService();
+    await _searchHistoryService!.init(userId: userId);
+
+    _scanHistoryService ??= ScanHistoryService();
+    await _scanHistoryService!.init(userId: userId);
+
+    _learningRecordService ??= LearningRecordService();
+    await _learningRecordService!.init(userId: userId);
+
+    _agentSessionStore ??= AgentSessionStore();
+    await _agentSessionStore!.init(userId: userId);
+
+    _errorBookService ??= ErrorBookService();
+    await _errorBookService!.init(userId: userId);
   }
 
   Future<void> _initializeAsync() async {
@@ -126,10 +162,10 @@ class _InitializationWrapperState extends State<_InitializationWrapper> {
         if (!kIsWeb) {
           await _requestPermissions();
         }
-        
+
         // 初始化 Hive
         await Hive.initFlutter();
-        
+
         // 注册适配器
         Hive.registerAdapter(StructureResultAdapter());
         Hive.registerAdapter(StructureCandidateAdapter());
@@ -141,33 +177,31 @@ class _InitializationWrapperState extends State<_InitializationWrapper> {
         Hive.registerAdapter(ReactionFavoriteItemAdapter());
         Hive.registerAdapter(ScanHistoryItemAdapter());
         Hive.registerAdapter(LearningRecordAdapter());
+        Hive.registerAdapter(AgentSessionRecordAdapter());
+        Hive.registerAdapter(AgentSessionSectionAdapter());
+        Hive.registerAdapter(ErrorBookItemAdapter());
+        Hive.registerAdapter(AppUserAdapter());
 
-        // 初始化服务
-        _favoritesService = FavoritesService();
-        await _favoritesService!.init();
+        // 先初始化 UserService(管理多用户)
+        _userService = UserService();
+        await _userService!.init();
 
-        _reactionFavoritesService = ReactionFavoritesService();
-        await _reactionFavoritesService!.init();
+        // 用当前用户的 userId 初始化所有数据 Service
+        final userId = _userService!.currentUserId;
+        await _initServicesForUser(userId);
 
-        _editHistoryService = EditHistoryService();
-        await _editHistoryService!.init();
+        // 注册切换用户时的重新初始化回调
+        _userService!.registerReinitCallback((newUserId) async {
+          await _initServicesForUser(newUserId);
+        });
 
-        _searchHistoryService = SearchHistoryService();
-        await _searchHistoryService!.init();
-
-        _scanHistoryService = ScanHistoryService();
-        await _scanHistoryService!.init();
-
-        _learningRecordService = LearningRecordService();
-        await _learningRecordService!.init();
-        
         // 初始化版本服务
         await AppVersionService().init();
       } catch (e) {
         debugPrint('初始化失败：$e');
       }
     });
-    
+
     if (mounted) {
       setState(() {
         _initialized = true;
@@ -187,15 +221,18 @@ class _InitializationWrapperState extends State<_InitializationWrapper> {
         ),
       );
     }
-    
+
     return ProviderScope(
       overrides: [
+        userServiceProvider.overrideWithValue(_userService!),
         favoritesServiceProvider.overrideWithValue(_favoritesService!),
         editHistoryServiceProvider.overrideWithValue(_editHistoryService!),
         reactionFavoritesServiceProvider.overrideWithValue(_reactionFavoritesService!),
         searchHistoryServiceProvider.overrideWithValue(_searchHistoryService!),
         scanHistoryServiceProvider.overrideWithValue(_scanHistoryService!),
         learningRecordServiceProvider.overrideWithValue(_learningRecordService!),
+        agentSessionStoreProvider.overrideWithValue(_agentSessionStore!),
+        errorBookServiceProvider.overrideWithValue(_errorBookService!),
       ],
       child: const ChemVisionApp(),
     );

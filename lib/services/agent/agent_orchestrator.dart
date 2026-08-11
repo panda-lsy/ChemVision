@@ -13,6 +13,8 @@
 /// - 步骤间通过 @slot.field 引用上一步结果
 /// - 步骤失败时按严重性决定中止/降级
 /// - 通过 onProgress 回调实时推送状态(供 UI 展示进度)
+library;
+
 import 'package:flutter/foundation.dart';
 
 import '../../models/agent_task.dart';
@@ -40,6 +42,10 @@ class AgentOrchestrator {
   final ToolRegistry _registry;
   final LearningRecordService? _recordService;
   final TaskPlanner _planner;
+
+  /// 活跃会话的上下文映射(key: taskId/sessionId, value: AgentContext)
+  /// 用于多轮对话:后续追问时复用之前的工具结果和对话历史
+  final Map<String, AgentContext> _sessions = {};
 
   /// 执行一个完整任务
   ///
@@ -94,6 +100,9 @@ class AgentOrchestrator {
     )..profile = profile;
     context.currentTask = task;
     context.addUserMessage(userInput);
+
+    // 保存上下文到会话映射(供多轮追问使用)
+    _sessions[taskId] = context;
 
     onProgress?.call(task);
 
@@ -298,6 +307,160 @@ class AgentOrchestrator {
   /// 取消任务(供 UI 取消按钮调用)
   AgentTask cancel(AgentTask task) {
     return task.copyWith(status: AgentTaskStatus.cancelled);
+  }
+
+  /// 多轮追问:只调 LLM,注入之前的对话历史和工具结果
+  ///
+  /// 与 [run] 的区别:
+  /// - 不重新执行 OCSR/PubChem/Knowledge 工具链
+  /// - 复用之前会话的 AgentContext(含工具结果和对话历史)
+  /// - 只执行一个 LLM 步骤,把用户的新问题 + 上下文传给 LLM
+  Future<AgentTask> runFollowUp({
+    required String userInput,
+    required String sessionId,
+    required List<AgentMessage> previousMessages,
+    required AgentTaskType taskType,
+    String userStage = 'highschool',
+    LearningProfile? profile,
+    AgentProgressCallback? onProgress,
+  }) async {
+    // 获取或创建上下文
+    var context = _sessions[sessionId];
+    if (context == null) {
+      // 会话上下文已丢失(可能被清理),从消息列表恢复
+      context = AgentContext(
+        taskId: sessionId,
+        taskType: taskType,
+        userStage: userStage,
+      )..profile = profile;
+      for (final msg in previousMessages) {
+        context.messages.add(msg);
+      }
+      _sessions[sessionId] = context;
+    }
+
+    // 构造追问任务(只有一个 LLM 步骤)
+    final followUpId =
+        '${sessionId}_f${DateTime.now().microsecondsSinceEpoch.toRadixString(36)}';
+    final followUpStep = AgentStep(
+      id: 'followup_llm',
+      name: '回答追问',
+      toolName: 'llm',
+      toolInput: {
+        'prompt': userInput,
+        'context': context.buildLlmContext(focusSlot: ''),
+        'taskType': taskType.name,
+        'isFollowUp': true,
+      },
+    );
+
+    var task = AgentTask(
+      id: followUpId,
+      type: taskType,
+      userInput: userInput,
+      steps: [followUpStep],
+      createdAt: DateTime.now(),
+      status: AgentTaskStatus.executing,
+      context: {
+        'userStage': userStage,
+        'isFollowUp': true,
+        'sessionId': sessionId,
+      },
+    );
+
+    context.currentTask = task;
+    context.addUserMessage(userInput);
+
+    onProgress?.call(task);
+
+    // 执行唯一的 LLM 步骤
+    final step = task.steps[0];
+    final executingStep = step.copyWith(
+      status: AgentStepStatus.executing,
+      startedAt: DateTime.now(),
+    );
+    task = _replaceStep(task, 0, executingStep);
+    onProgress?.call(task);
+
+    final resolvedInput = _resolveReferences(step.toolInput, context);
+    final result = await _registry.invoke('llm', resolvedInput);
+
+    final completedStep = executingStep.copyWith(
+      status: result.ok ? AgentStepStatus.completed : AgentStepStatus.failed,
+      toolOutput: result.data,
+      result: result.ok ? '完成' : (result.error ?? '失败'),
+      error: result.ok ? null : result.error,
+      completedAt: DateTime.now(),
+      toolInput: resolvedInput,
+    );
+    task = _replaceStep(task, 0, completedStep);
+
+    if (!result.ok) {
+      task = task.copyWith(
+        status: AgentTaskStatus.failed,
+        error: '追问失败: ${result.error ?? "未知错误"}',
+      );
+      onProgress?.call(task);
+      return task;
+    }
+
+    // 聚合结果
+    final aggregated = _aggregateFollowUpResult(task, context, taskType);
+    task = task.copyWith(
+      status: AgentTaskStatus.completed,
+      result: aggregated,
+    );
+    context.addAssistantMessage(aggregated.summary,
+        metadata: {'type': 'followup_result'});
+
+    onProgress?.call(task);
+    return task;
+  }
+
+  /// 聚合追问结果(简化版,只有 LLM 文本)
+  AgentTaskResult _aggregateFollowUpResult(
+    AgentTask task,
+    AgentContext context,
+    AgentTaskType taskType,
+  ) {
+    final llmResult = context.getToolResult('explain');
+    // 追问的 LLM 结果在 followup_llm 步骤中
+    final followUpData = task.steps.isNotEmpty
+        ? task.steps.last.toolOutput
+        : null;
+    final llmText = (followUpData?['text'] as String?) ??
+        (llmResult?['text'] as String?) ??
+        '';
+
+    final title = _taskTitle(taskType);
+
+    final sections = <AgentResultSection>[];
+    if (llmText.isNotEmpty) {
+      sections.add(AgentResultSection(
+        title: '回答',
+        content: llmText,
+        type: _sectionTypeForTask(taskType),
+      ));
+    }
+
+    return AgentTaskResult(
+      title: title,
+      summary: llmText.isNotEmpty
+          ? (llmText.length > 120
+              ? '${llmText.substring(0, 120)}...'
+              : llmText)
+          : '已回复',
+      sections: sections,
+      suggestedActions: const [],
+      safetyNotice: _safetyNotice(taskType),
+    );
+  }
+
+  /// 获取指定会话的对话消息列表(供 AgentController 注入多轮上下文)
+  List<AgentMessage> getSessionMessages(String sessionId) {
+    final context = _sessions[sessionId];
+    if (context == null) return const [];
+    return List.unmodifiable(context.messages);
   }
 
   /// 解析 toolInput 中的 @slot.field 引用

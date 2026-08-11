@@ -7,8 +7,9 @@ class EditHistoryService {
   static const _maxItems = 50;
   late Box<EditHistoryItem> _box;
 
-  Future<void> init() async {
-    _box = await Hive.openBox<EditHistoryItem>(_boxName);
+  /// 初始化,userId 用作 box 名前缀实现多用户数据隔离
+  Future<void> init({String userId = 'default'}) async {
+    _box = await Hive.openBox<EditHistoryItem>('${userId}_$_boxName');
   }
 
   Future<void> add(EditHistoryItem item) async {
