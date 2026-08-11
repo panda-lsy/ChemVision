@@ -77,10 +77,27 @@ class _StructureRecognitionPageState
         _selectedIndex = null;
       });
 
-      // Auto-trigger recognition
-      ref
+      // Auto-trigger recognition (await 完成后自动保存扫描历史)
+      await ref
           .read(structureRecognitionControllerProvider.notifier)
           .recognizeFromImage(_dataUri!);
+
+      // 识别完成后自动保存扫描历史(无论是否有候选)
+      // view-only 模式(从扫描历史进入)不重复保存
+      if (!_isViewOnly && _imageBytes != null && mounted) {
+        final recognitionState =
+            ref.read(structureRecognitionControllerProvider);
+        final result = recognitionState.result;
+        if (result != null && result.recognizedSmiles.isNotEmpty) {
+          ref.read(scanHistoryControllerProvider.notifier).add(
+                ScanHistoryItem.fromRecognition(
+                  imageBytes: _imageBytes!,
+                  recognizedSmiles: result.recognizedSmiles,
+                  completenessScore: result.completenessScore,
+                ),
+              );
+        }
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -142,27 +159,7 @@ class _StructureRecognitionPageState
     final service = ref.read(imageStructureServiceProvider);
     final result = service.resolveToStructure(candidate);
 
-    // 保存扫描历史(原图 + 识别结果),供对照记忆
-    // view-only 模式(从扫描历史进入)不重复保存
-    if (!_isViewOnly && _imageBytes != null) {
-      final recognitionState = ref.read(structureRecognitionControllerProvider);
-      final recognizedSmiles =
-          recognitionState.result?.recognizedSmiles ?? candidate.smiles;
-      final completenessScore =
-          recognitionState.result?.completenessScore ?? 0.5;
-      ref.read(scanHistoryControllerProvider.notifier).add(
-            ScanHistoryItem.fromRecognition(
-              imageBytes: _imageBytes!,
-              recognizedSmiles: recognizedSmiles,
-              completenessScore: completenessScore,
-              resolvedName: candidate.resolvedName,
-              englishName: candidate.englishName,
-              chineseName: candidate.chineseName,
-              molecularFormula: candidate.molecularFormula,
-              molecularWeight: candidate.molecularWeight,
-            ),
-          );
-    }
+    // 扫描历史已在识别完成时自动保存,此处不再重复
 
     Navigator.of(context).push(
       MaterialPageRoute(
