@@ -16,7 +16,7 @@ Future<void> exportFavorites(String json, BuildContext context) async {
     await file.writeAsString(json);
     await Share.shareXFiles(
       [XFile(file.path)],
-      text: 'ChemVISION 收藏数据',
+      text: 'ChemEdu 收藏数据',
     );
   } catch (e) {
     if (context.mounted) {

@@ -406,7 +406,7 @@ class _ResultPageState extends ConsumerState<ResultPage> {
             children: [
               Expanded(
                 child: Text(
-                  'ChemVISION',
+                  'ChemEdu',
                   style: Theme.of(context).textTheme.labelLarge,
                   overflow: TextOverflow.ellipsis,
                 ),

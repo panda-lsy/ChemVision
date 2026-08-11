@@ -5,7 +5,7 @@ import 'vivo_aigc_client.dart';
 
 /// 模型路由器
 ///
-/// 根据设置自动选择云端 API 或端侧 BlueLM。
+/// 根据设置自动选择云端 API 或端侧模型。
 class ModelRouter {
   ModelRouter({
     VivoAigcClient? cloudClient,

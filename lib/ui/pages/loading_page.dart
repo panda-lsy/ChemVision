@@ -38,13 +38,13 @@ class _LoadingPageState extends ConsumerState<LoadingPage> {
   static const _defaultStages = [
     _StageInfo(
       statusText: '意图识别中...',
-      pillText: '端侧 BlueLM',
+      pillText: '端侧模型',
       subtle: '端侧路由 · 延迟 <100ms',
     ),
     _StageInfo(
       statusText: 'SMILES 生成中...',
       pillText: '结构推理中',
-      subtle: '云端 BlueLM API · 命名解析 → SMILES',
+      subtle: '云端 AI API · 命名解析 → SMILES',
     ),
     _StageInfo(
       statusText: '规则校验中...',
@@ -76,7 +76,7 @@ class _LoadingPageState extends ConsumerState<LoadingPage> {
         return const _StageInfo(
           statusText: '候选生成中...',
           pillText: '推测推理中',
-          subtle: '云端 BlueLM API · 候选名称推理',
+          subtle: '云端 AI API · 候选名称推理',
         );
       case 2:
         final countText =
@@ -129,7 +129,7 @@ class _LoadingPageState extends ConsumerState<LoadingPage> {
         children: [
           Row(
             children: [
-              Text('ChemVISION',
+              Text('ChemEdu',
                   style: Theme.of(context).textTheme.labelLarge),
               const Spacer(),
               AccentPill(label: stage.pillText),

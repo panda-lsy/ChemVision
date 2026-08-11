@@ -267,7 +267,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         children: [
           Row(
             children: [
-              Text('ChemVISION',
+              Text('ChemEdu',
                   style: Theme.of(context).textTheme.labelLarge),
               const Spacer(),
               const AccentPill(label: '云端配置'),
@@ -330,7 +330,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   _scheduleSave();
                 }),
                 _buildModelTab(context, isDark,
-                    label: '端侧 BlueLM',
+                    label: '端侧模型',
                     icon: Icons.phone_android,
                     selected: _useLocalModel,
                     onTap: () {
@@ -342,7 +342,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
           const SizedBox(height: 16),
 
-          // ── 端侧 BlueLM 配置 ──
+          // ── 端侧模型配置 ──
           if (_useLocalModel) ...[
             GlassPanel(
               child: Column(
@@ -780,7 +780,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('ChemVISION',
+                  Text('ChemEdu',
                       style: Theme.of(context)
                           .textTheme
                           .titleMedium
@@ -820,12 +820,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           const SizedBox(height: 16),
           const Divider(height: 1),
           const SizedBox(height: 12),
-          Text('© 2026 ChemVISION Team',
+          Text('© 2026 ChemEdu Team',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppColors.textMuted,
                   )),
           const SizedBox(height: 4),
-          Text('基于 vivo 蓝心大模型（BlueLM）',
+          Text('基于 AI 大模型',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppColors.textMuted,
                   )),

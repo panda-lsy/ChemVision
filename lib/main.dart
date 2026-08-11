@@ -234,7 +234,7 @@ class _InitializationWrapperState extends State<_InitializationWrapper> {
         agentSessionStoreProvider.overrideWithValue(_agentSessionStore!),
         errorBookServiceProvider.overrideWithValue(_errorBookService!),
       ],
-      child: const ChemVisionApp(),
+      child: const ChemEduApp(),
     );
   }
 }

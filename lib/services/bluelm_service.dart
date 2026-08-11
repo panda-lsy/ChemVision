@@ -1,6 +1,6 @@
 import 'package:flutter/services.dart';
 
-/// BlueLM 端侧大模型服务
+/// 端侧大模型服务
 ///
 /// 通过 Flutter MethodChannel 与 Android 原生 LlmManager 通信。
 /// 仅在 Android arm64 设备上可用。
@@ -53,14 +53,14 @@ class BlueLmService {
 
   /// 纯文本推理
   Future<String> generate(String prompt) async {
-    if (!_initialized) throw Exception('BlueLM 未初始化');
+    if (!_initialized) throw Exception('端侧模型未初始化');
     try {
       final result = await _channel.invokeMethod<String>('generate', {
         'prompt': '[|Human|]:$prompt\n[|AI|]:',
       });
       return _stripEosNoise(result ?? '');
     } catch (e) {
-      throw Exception('BlueLM 推理失败: $e');
+      throw Exception('端侧模型推理失败: $e');
     }
   }
 

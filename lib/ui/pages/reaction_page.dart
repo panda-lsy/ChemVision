@@ -600,7 +600,7 @@ class _ReactionPageState extends State<ReactionPage> {
         children: [
           Row(
             children: [
-              Text('ChemVISION', style: Theme.of(context).textTheme.labelLarge),
+              Text('ChemEdu', style: Theme.of(context).textTheme.labelLarge),
               const Spacer(),
               AccentPill(label: '知识库 ${_knowledgeEntries.length}'),
             ],

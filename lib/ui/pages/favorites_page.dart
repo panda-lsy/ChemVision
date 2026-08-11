@@ -42,7 +42,7 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
         children: [
           Row(
             children: [
-              Text('ChemVISION',
+              Text('ChemEdu',
                   style: Theme.of(context).textTheme.labelLarge),
               const Spacer(),
               AccentPill(label: switch (_currentTab) {

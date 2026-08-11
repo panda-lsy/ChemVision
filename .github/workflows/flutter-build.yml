@@ -80,11 +80,11 @@ jobs:
       - run: flutter pub get
       - run: flutter build windows
       - name: Zip Windows build
-        run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath chemvision-windows.zip
+        run: Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath chemedu-windows.zip
       - uses: actions/upload-artifact@v4
         with:
           name: windows-build
-          path: chemvision-windows.zip
+          path: chemedu-windows.zip
 
   # ── Web ──
   build-web:
@@ -159,9 +159,9 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ needs.bump-version.outputs.version }}
-          name: ChemVision v${{ needs.bump-version.outputs.version }}
+          name: ChemEdu v${{ needs.bump-version.outputs.version }}
           generate_release_notes: true
           files: |
             artifacts/app-release.apk
             artifacts/app-debug.apk
-            artifacts/chemvision-windows.zip
+            artifacts/chemedu-windows.zip
