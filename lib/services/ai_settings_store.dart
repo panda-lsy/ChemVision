@@ -64,13 +64,16 @@ class AiSettingsStore {
       : _defaultAigcBaseUrl();
     final ocsrEndpoint = rawOcsrEndpoint.trim().isEmpty
         ? _defaultOcsrEndpoint()
-        : rawOcsrEndpoint.trim();
+        : _migrateOcsrEndpoint(rawOcsrEndpoint.trim());
 
     if (textModel != rawTextModel) {
       await prefs.setString(_textModelKey, textModel);
     }
     if (baseUrl != rawBaseUrl) {
       await prefs.setString(_baseUrlKey, baseUrl);
+    }
+    if (ocsrEndpoint != rawOcsrEndpoint.trim()) {
+      await prefs.setString(_ocsrEndpointKey, ocsrEndpoint);
     }
 
     return AiSettings(
@@ -160,6 +163,16 @@ class AiSettingsStore {
       return AppConfig.webDecimerBaseUrl;
     }
     return AppConfig.decimerBaseUrl;
+  }
+
+  /// 迁移旧的 Cloudflare Worker OCSR 代理 URL 到新的直连域名
+  /// 旧: https://api.chemvision.qzz.io/decimer (Worker 代理,有 1003 错误)
+  /// 新: https://agent.shengxia.me/decimer (直连,SSL 通过 Cloudflare 代理)
+  String _migrateOcsrEndpoint(String value) {
+    if (value.contains('api.chemvision.qzz.io') && value.contains('decimer')) {
+      return AppConfig.decimerBaseUrl;
+    }
+    return value;
   }
 
   Future<void> _setOptional(

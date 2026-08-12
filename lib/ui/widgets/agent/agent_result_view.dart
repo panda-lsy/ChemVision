@@ -1,16 +1,30 @@
 /// Agent 结果展示组件 — 分章节渲染最终结果
 ///
 /// 对应赛题"结果交付"环节:把 Agent 的输出以结构化、可读的方式呈现给用户。
+library;
+
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 
 import '../../../models/agent_task.dart';
 import '../../../theme/app_colors.dart';
 import '../glass_panel.dart';
 
+/// 建议操作回调
+/// [action] 被点击的建议操作
+typedef SuggestedActionCallback = void Function(SuggestedAction action);
+
 class AgentResultView extends StatelessWidget {
-  const AgentResultView({super.key, required this.result});
+  const AgentResultView({
+    super.key,
+    required this.result,
+    this.onAction,
+  });
 
   final AgentTaskResult result;
+
+  /// 建议操作点击回调(为 null 时显示 SnackBar 提示)
+  final SuggestedActionCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
@@ -20,42 +34,27 @@ class AgentResultView extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 标题 + 摘要
+        // 标题 Card(只显示标题,不显示缩略摘要)
         GlassPanel(
           padding: const EdgeInsets.all(16),
           radius: 18,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Row(
             children: [
-              Row(
-                children: [
-                  Icon(
-                    Icons.check_circle,
-                    color: isDark ? AppColors.lime : AppColors.dayBluePrimary,
-                    size: 22,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      result.title,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: isDark
-                            ? AppColors.textPrimary
-                            : AppColors.dayTextPrimary,
-                      ),
-                    ),
-                  ),
-                ],
+              Icon(
+                Icons.check_circle,
+                color: isDark ? AppColors.lime : AppColors.dayBluePrimary,
+                size: 22,
               ),
-              const SizedBox(height: 8),
-              Text(
-                result.summary,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: isDark
-                      ? AppColors.textSecondary
-                      : AppColors.dayTextSecondary,
-                  height: 1.6,
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  result.title,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: isDark
+                        ? AppColors.textPrimary
+                        : AppColors.dayTextPrimary,
+                  ),
                 ),
               ),
             ],
@@ -63,16 +62,19 @@ class AgentResultView extends StatelessWidget {
         ),
         const SizedBox(height: 12),
 
-        // 分章节内容
+        // 分章节内容(完整结果,支持 Markdown 渲染)
         ...result.sections.map((s) => Padding(
               padding: const EdgeInsets.only(bottom: 10),
-              child: _SectionCard(section: s),
+              child: _SectionCard(section: s, isDark: isDark),
             )),
 
         // 建议操作
         if (result.suggestedActions.isNotEmpty) ...[
           const SizedBox(height: 8),
-          _SuggestedActionsCard(actions: result.suggestedActions),
+          _SuggestedActionsCard(
+            actions: result.suggestedActions,
+            onAction: onAction,
+          ),
         ],
 
         // 安全提示
@@ -86,13 +88,13 @@ class AgentResultView extends StatelessWidget {
 }
 
 class _SectionCard extends StatelessWidget {
-  const _SectionCard({required this.section});
+  const _SectionCard({required this.section, required this.isDark});
 
   final AgentResultSection section;
+  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final theme = Theme.of(context);
     final accent = _sectionAccent(section.type, isDark);
 
@@ -118,14 +120,53 @@ class _SectionCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          SelectableText(
-            section.content,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: isDark
-                  ? AppColors.textSecondary
-                  : AppColors.dayTextSecondary,
-              height: 1.7,
-              fontSize: 14,
+          MarkdownBody(
+            data: section.content,
+            selectable: true,
+            styleSheet: MarkdownStyleSheet(
+              p: theme.textTheme.bodyMedium?.copyWith(
+                color: isDark
+                    ? AppColors.textSecondary
+                    : AppColors.dayTextSecondary,
+                height: 1.7,
+                fontSize: 14,
+              ),
+              h1: theme.textTheme.titleLarge?.copyWith(
+                color: isDark
+                    ? AppColors.textPrimary
+                    : AppColors.dayTextPrimary,
+              ),
+              h2: theme.textTheme.titleMedium?.copyWith(
+                color: isDark
+                    ? AppColors.textPrimary
+                    : AppColors.dayTextPrimary,
+              ),
+              h3: theme.textTheme.titleSmall?.copyWith(
+                color: isDark
+                    ? AppColors.textPrimary
+                    : AppColors.dayTextPrimary,
+              ),
+              code: theme.textTheme.bodySmall?.copyWith(
+                backgroundColor: isDark
+                    ? AppColors.glassStrong
+                    : AppColors.dayGlass,
+                color: isDark ? AppColors.aqua : AppColors.dayBluePrimary,
+              ),
+              codeblockDecoration: BoxDecoration(
+                color: isDark ? AppColors.glassStrong : AppColors.dayGlass,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              listBullet: theme.textTheme.bodyMedium?.copyWith(
+                color: isDark
+                    ? AppColors.textSecondary
+                    : AppColors.dayTextSecondary,
+              ),
+              strong: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: isDark
+                    ? AppColors.textPrimary
+                    : AppColors.dayTextPrimary,
+              ),
             ),
           ),
         ],
@@ -152,9 +193,13 @@ class _SectionCard extends StatelessWidget {
 }
 
 class _SuggestedActionsCard extends StatelessWidget {
-  const _SuggestedActionsCard({required this.actions});
+  const _SuggestedActionsCard({
+    required this.actions,
+    this.onAction,
+  });
 
   final List<SuggestedAction> actions;
+  final SuggestedActionCallback? onAction;
 
   @override
   Widget build(BuildContext context) {
@@ -208,10 +253,13 @@ class _SuggestedActionsCard extends StatelessWidget {
                   fontWeight: FontWeight.w500,
                 ),
                 onPressed: () {
-                  // TODO: 后续阶段接入具体操作(练习/诊断/收藏)
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('即将开放:${a.label}')),
-                  );
+                  if (onAction != null) {
+                    onAction!(a);
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('即将开放:${a.label}')),
+                    );
+                  }
                 },
               );
             }).toList(),

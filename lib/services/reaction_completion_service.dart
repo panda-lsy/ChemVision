@@ -240,7 +240,7 @@ class ReactionCompletionService {
             .join('\n\n');
 
     return '''
-你是 ChemVISION 的化学反应式语义补全引擎。
+你是 ChemEdu 的化学反应式语义补全引擎。
 任务：根据用户输入，补全可能的完整反应方程式，并提供教材级别的结构化信息。
 
 要求：

@@ -107,7 +107,7 @@ class _FavoriteDetailPageState extends ConsumerState<FavoriteDetailPage> {
         children: [
           Row(
             children: [
-              Text('ChemVISION',
+              Text('ChemEdu',
                   style: Theme.of(context).textTheme.labelLarge),
               const Spacer(),
               const AccentPill(label: '收藏详情'),

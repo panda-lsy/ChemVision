@@ -8,7 +8,7 @@ import '../pages/edit_hub_page.dart';
 import '../pages/favorites_page.dart';
 import '../pages/history_page.dart';
 import '../pages/input_page.dart';
-import '../pages/settings_page.dart';
+import '../pages/profile_page.dart';
 
 class BottomNavShell extends ConsumerStatefulWidget {
   const BottomNavShell({super.key});
@@ -24,7 +24,7 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell> {
     EditHubPage(),
     HistoryPage(),
     FavoritesPage(),
-    SettingsPage(),
+    ProfilePage(),
   ];
 
   @override
@@ -86,9 +86,9 @@ class _BottomNavShellState extends ConsumerState<BottomNavShell> {
               label: '收藏',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.settings_outlined),
-              activeIcon: Icon(Icons.settings),
-              label: '设置',
+              icon: Icon(Icons.person_outline),
+              activeIcon: Icon(Icons.person),
+              label: '我的',
             ),
           ],
         ),

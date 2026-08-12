@@ -10,9 +10,10 @@ class FavoritesService {
   static const _boxName = 'favorites';
   late Box<FavoriteItem> _box;
 
-  Future<void> init() async {
-    _box = await Hive.openBox<FavoriteItem>(_boxName);
-    debugPrint('[FavoritesService] 初始化完成，当前收藏数：${_box.length}');
+  /// 初始化,userId 用作 box 名前缀实现多用户数据隔离
+  Future<void> init({String userId = 'default'}) async {
+    _box = await Hive.openBox<FavoriteItem>('${userId}_$_boxName');
+    debugPrint('[FavoritesService] 初始化完成(userId=$userId)，当前收藏数：${_box.length}');
   }
 
   Future<void> add(FavoriteItem item) async {

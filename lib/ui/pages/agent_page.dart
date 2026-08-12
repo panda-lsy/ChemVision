@@ -4,6 +4,8 @@
 /// - 顶部:任务输入框(文本/拍照) + 快捷入口
 /// - 中部:任务步骤进度卡片(实时更新)
 /// - 底部:结果展示(分章节 + 建议操作 + 安全提示)
+library;
+
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -11,12 +13,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 
-import '../../providers/agent_provider.dart';
+import '../../models/agent_session_record.dart';
 import '../../models/agent_task.dart';
+import '../../models/error_book_item.dart';
+import '../../providers/agent_provider.dart';
+import '../../services/agent/agent_context.dart';
+import '../../providers/error_book_provider.dart';
 import '../../theme/app_colors.dart';
 import '../widgets/agent/agent_result_view.dart';
 import '../widgets/agent/agent_step_card.dart';
 import '../widgets/agent/agent_usage_notice_dialog.dart';
+import '../widgets/agent/markdown_chat_content.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/glass_panel.dart';
 import 'learning_profile_page.dart';
@@ -31,9 +38,17 @@ class AgentPage extends ConsumerStatefulWidget {
 class _AgentPageState extends ConsumerState<AgentPage> {
   final TextEditingController _inputController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  final ScrollController _chatScrollController = ScrollController();
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   /// 已选图片(作业辅导)
   String? _attachedDataUri;
+
+  /// 右侧任务进度侧栏是否展开(窄屏时用按钮控制)
+  bool _showSidebar = false;
+
+  /// 宽屏时右侧任务进度侧栏是否折叠(向右收起,让对话区占满)
+  bool _sidebarCollapsed = false;
 
   @override
   void initState() {
@@ -49,6 +64,7 @@ class _AgentPageState extends ConsumerState<AgentPage> {
   void dispose() {
     _inputController.dispose();
     _scrollController.dispose();
+    _chatScrollController.dispose();
     super.dispose();
   }
 
@@ -199,6 +215,91 @@ class _AgentPageState extends ConsumerState<AgentPage> {
     _submit();
   }
 
+  /// 处理"建议下一步"操作
+  void _handleSuggestedAction(SuggestedAction action, AgentTask sourceTask) {
+    switch (action.actionType) {
+      case SuggestedActionType.practice:
+        _startPractice(action, sourceTask);
+        break;
+      case SuggestedActionType.diagnose:
+        _quickDiagnosis();
+        break;
+      case SuggestedActionType.saveFavorite:
+        _saveToErrorBook(sourceTask, action);
+        break;
+      case SuggestedActionType.planLearning:
+        _quickPlanning();
+        break;
+      case SuggestedActionType.review:
+        _startReview(action, sourceTask);
+        break;
+      case SuggestedActionType.explainMore:
+        // 聚焦输入框,让用户继续追问
+        FocusScope.of(context).requestFocus();
+        break;
+    }
+  }
+
+  /// 生成同类练习题
+  void _startPractice(SuggestedAction action, AgentTask sourceTask) {
+    if (ref.read(agentControllerProvider).isRunning) return;
+    final kpIds = (action.payload?['knowledgePointIds'] as List?)?.cast<String>() ?? [];
+    final compoundName = sourceTask.context['inputName'] as String? ?? '';
+    final prompt = kpIds.isNotEmpty
+        ? '请基于知识点 ${kpIds.join(", ")} 生成 3 道同类练习题(含答案解析)'
+        : compoundName.isNotEmpty
+            ? '请围绕"$compoundName"生成 3 道练习题(含答案解析)'
+            : '请生成 3 道高中化学练习题(含答案解析)';
+    _inputController.text = prompt;
+    _submit();
+  }
+
+  /// 开始薄弱点复习
+  void _startReview(SuggestedAction action, AgentTask sourceTask) {
+    if (ref.read(agentControllerProvider).isRunning) return;
+    final kpIds = (action.payload?['knowledgePointIds'] as List?)?.cast<String>() ?? [];
+    final prompt = kpIds.isNotEmpty
+        ? '请帮我复习知识点 ${kpIds.join(", ")},给出核心概念和典型例题'
+        : '请帮我复习本次辅导涉及的化学知识点';
+    _inputController.text = prompt;
+    _submit();
+  }
+
+  /// 收藏到错题本
+  Future<void> _saveToErrorBook(AgentTask task, SuggestedAction action) async {
+    final result = task.result;
+    if (result == null) return;
+
+    final kpIds = (action.payload?['knowledgePointIds'] as List?)?.cast<String>() ??
+        result.relatedKnowledgePoints;
+
+    // 从任务上下文提取化合物信息
+    final smiles = task.context['inputSmiles'] as String? ?? '';
+    final compoundName = task.context['inputName'] as String? ?? '';
+
+    final item = ErrorBookItem(
+      id: DateTime.now().microsecondsSinceEpoch.toRadixString(36),
+      title: result.title,
+      content: result.summary,
+      createdAt: DateTime.now(),
+      knowledgePointIds: kpIds,
+      smiles: smiles,
+      compoundName: compoundName,
+      sourceSessionId: task.id,
+    );
+
+    await ref.read(errorBookControllerProvider.notifier).add(item);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('已收藏到错题本'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+    }
+  }
+
   String _detectMimeType(List<int> bytes) {
     if (bytes.length >= 4) {
       if (bytes[0] == 0x89 && bytes[1] == 0x50) return 'image/png';
@@ -213,18 +314,45 @@ class _AgentPageState extends ConsumerState<AgentPage> {
     final state = ref.watch(agentControllerProvider);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final task = state.currentTask;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isWideScreen = screenWidth > 720;
+    // 宽屏:有任务且未折叠时显示;窄屏:由按钮切换
+    final showSidebar = isWideScreen
+        ? (task != null && !_sidebarCollapsed)
+        : _showSidebar;
 
     return AppScaffold(
+      scaffoldKey: _scaffoldKey,
       padding: EdgeInsets.zero,
+      drawer: _buildConversationDrawer(isDark),
       child: Column(
         children: [
-          _buildHeader(isDark),
+          _buildHeader(isDark, isWideScreen, showSidebar),
           Expanded(
-            child: state.error != null
-                ? _buildErrorView(state.error!, isDark)
-                : (task == null
-                    ? _buildEmptyView(isDark)
-                    : _buildTaskView(task, state.isRunning, isDark)),
+            child: Row(
+              children: [
+                // 左侧:对话区(始终可见)
+                Expanded(
+                  child: _buildChatArea(state, isDark),
+                ),
+                // 右侧:任务进度侧栏
+                if (showSidebar) ...[
+                  Container(
+                    width: 1,
+                    color: isDark ? Colors.white12 : const Color(0x113D77DE),
+                  ),
+                  isWideScreen
+                      ? SizedBox(
+                          width: 320,
+                          child: _buildTaskSidebar(task!, state.isRunning, isDark),
+                        )
+                      : SizedBox(
+                          width: 280,
+                          child: _buildTaskSidebar(task!, state.isRunning, isDark),
+                        ),
+                ],
+              ],
+            ),
           ),
           _buildInputBar(isDark, state.isRunning),
         ],
@@ -232,11 +360,306 @@ class _AgentPageState extends ConsumerState<AgentPage> {
     );
   }
 
-  Widget _buildHeader(bool isDark) {
+  /// 对话区 — 渲染消息气泡 + 结果,始终可见
+  Widget _buildChatArea(AgentControllerState state, bool isDark) {
+    final messages = state.messages;
+    final task = state.currentTask;
+
+    // 无消息且无任务 → 空视图(快捷入口)
+    if (messages.isEmpty && task == null) {
+      return _buildEmptyView(isDark);
+    }
+
+    return ListView(
+      controller: _chatScrollController,
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+      children: [
+        // 渲染对话消息气泡
+        for (final msg in messages)
+          _ChatBubble(message: msg, isDark: isDark),
+
+        // 任务运行中 → 显示打字动画
+        if (state.isRunning)
+          const Padding(
+            padding: EdgeInsets.only(top: 8),
+            child: _TypingDots(),
+          ),
+
+        // 错误
+        if (state.error != null) ...[
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFDECEC).withValues(alpha: isDark ? 0.3 : 1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Color(0xFFC62828), size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    state.error!,
+                    style: const TextStyle(color: Color(0xFFC62828), fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+
+        // 结果展示(任务完成时在对话区底部显示)
+        if (task != null &&
+            task.result != null &&
+            task.status == AgentTaskStatus.completed) ...[
+          const SizedBox(height: 12),
+          AgentResultView(
+            result: task.result!,
+            onAction: (action) => _handleSuggestedAction(action, task),
+          ),
+        ],
+
+        // 新对话按钮(任务完成后)
+        if (task != null &&
+            (task.status == AgentTaskStatus.completed ||
+                task.status == AgentTaskStatus.failed ||
+                task.status == AgentTaskStatus.cancelled)) ...[
+          const SizedBox(height: 12),
+          _buildNewChatButton(isDark),
+        ],
+      ],
+    );
+  }
+
+  /// 任务进度侧栏 — 显示步骤、状态(不取代对话区)
+  Widget _buildTaskSidebar(AgentTask task, bool isRunning, bool isDark) {
+    return Container(
+      color: isDark ? AppColors.navyDeep : AppColors.daySurface,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // 侧栏标题
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 8, 8),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.timeline,
+                  size: 16,
+                  color: isDark ? AppColors.aqua : AppColors.dayBluePrimary,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '任务进度',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? AppColors.textPrimary : AppColors.dayTextPrimary,
+                  ),
+                ),
+                const Spacer(),
+                if (MediaQuery.of(context).size.width <= 720)
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 18),
+                    onPressed: () => setState(() => _showSidebar = false),
+                    color: isDark ? AppColors.textMuted : AppColors.dayTextMuted,
+                    constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  ),
+              ],
+            ),
+          ),
+          Divider(
+            color: isDark
+                ? Colors.white12
+                : AppColors.dayBluePrimary.withValues(alpha: 0.08),
+          ),
+          // 任务类型徽章
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            child: _TaskHeader(task: task, isDark: isDark),
+          ),
+          // 步骤进度
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
+                  child: Text(
+                    '执行进度 (${task.completedStepCount}/${task.steps.length})',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? AppColors.textSecondary : AppColors.dayTextSecondary,
+                    ),
+                  ),
+                ),
+                for (var i = 0; i < task.steps.length; i++)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: AgentStepCard(
+                      step: task.steps[i],
+                      index: i,
+                      total: task.steps.length,
+                    ),
+                  ),
+                // 错误状态
+                if (task.status == AgentTaskStatus.failed && task.error != null) ...[
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFDECEC).withValues(alpha: isDark ? 0.3 : 1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.error_outline, color: Color(0xFFC62828), size: 16),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            task.error!,
+                            style: const TextStyle(color: Color(0xFFC62828), fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 历史对话侧边栏(Drawer)
+  Widget _buildConversationDrawer(bool isDark) {
+    final state = ref.watch(agentControllerProvider);
+    final sessions = state.sessions;
+
+    return Drawer(
+      backgroundColor: isDark ? AppColors.navyDeep : AppColors.dayBackground,
+      width: 320,
+      child: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // 侧边栏标题
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 12, 8),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.chat_bubble_outline,
+                    size: 20,
+                    color: isDark ? AppColors.aqua : AppColors.dayBluePrimary,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    '历史对话',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: isDark
+                          ? AppColors.textPrimary
+                          : AppColors.dayTextPrimary,
+                    ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 20),
+                    onPressed: () => Navigator.of(context).pop(),
+                    color: isDark
+                        ? AppColors.textMuted
+                        : AppColors.dayTextMuted,
+                  ),
+                ],
+              ),
+            ),
+            Divider(
+              color: isDark
+                  ? Colors.white12
+                  : AppColors.dayBluePrimary.withValues(alpha: 0.08),
+            ),
+            // 会话列表
+            Expanded(
+              child: sessions.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.forum_outlined,
+                            size: 40,
+                            color: isDark
+                                ? AppColors.textMuted
+                                : AppColors.dayTextMuted,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '暂无历史对话',
+                            style: TextStyle(
+                              fontSize: 13,
+                              color: isDark
+                                  ? AppColors.textMuted
+                                  : AppColors.dayTextMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 8),
+                      itemCount: sessions.length,
+                      itemBuilder: (context, index) {
+                        final session = sessions[index];
+                        final isActive =
+                            state.activeSessionId == session.id;
+                        final isRunning = state.isRunning && isActive;
+                        return _DrawerSessionCard(
+                          session: session,
+                          isDark: isDark,
+                          isActive: isActive,
+                          isRunning: isRunning,
+                          onTap: () {
+                            ref
+                                .read(agentControllerProvider.notifier)
+                                .resumeSession(session);
+                            Navigator.of(context).pop();
+                          },
+                          onDelete: () => ref
+                              .read(agentControllerProvider.notifier)
+                              .deleteSession(session.id),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHeader(bool isDark, bool isWideScreen, bool showSidebar) {
+    final state = ref.watch(agentControllerProvider);
+    final task = state.currentTask;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+      padding: const EdgeInsets.fromLTRB(12, 16, 12, 8),
       child: Row(
         children: [
+          IconButton(
+            icon: Icon(
+              Icons.menu,
+              color: isDark ? AppColors.textPrimary : AppColors.dayTextPrimary,
+            ),
+            onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+            tooltip: '历史对话',
+          ),
+          const SizedBox(width: 4),
           Container(
             width: 36,
             height: 36,
@@ -266,23 +689,69 @@ class _AgentPageState extends ConsumerState<AgentPage> {
                   ),
                 ),
                 Text(
-                  '化学学习智能助手',
+                  state.hasActiveSession ? '对话进行中' : '化学学习智能助手',
                   style: TextStyle(
                     fontSize: 12,
-                    color: isDark
-                        ? AppColors.textMuted
-                        : AppColors.dayTextMuted,
+                    color: state.hasActiveSession
+                        ? (isDark ? AppColors.aqua : AppColors.dayBluePrimary)
+                        : (isDark
+                            ? AppColors.textMuted
+                            : AppColors.dayTextMuted),
                   ),
                 ),
               ],
             ),
           ),
-          if (ref.watch(agentControllerProvider).currentTask != null)
+          // 任务进度侧栏切换按钮
+          // - 宽屏:折叠/展开右侧任务进度(向右折叠)
+          // - 窄屏:切换侧栏显隐
+          if (task != null)
             IconButton(
-              icon: const Icon(Icons.refresh),
-              tooltip: '清空',
+              icon: Icon(
+                isWideScreen
+                    ? (_sidebarCollapsed
+                        ? Icons.chevron_left
+                        : Icons.chevron_right)
+                    : (_showSidebar
+                        ? Icons.view_sidebar
+                        : Icons.view_sidebar_outlined),
+                size: 20,
+                color: (isWideScreen ? !_sidebarCollapsed : _showSidebar)
+                    ? (isDark ? AppColors.aqua : AppColors.dayBluePrimary)
+                    : (isDark ? AppColors.textMuted : AppColors.dayTextMuted),
+              ),
+              onPressed: () => setState(() {
+                if (isWideScreen) {
+                  _sidebarCollapsed = !_sidebarCollapsed;
+                } else {
+                  _showSidebar = !_showSidebar;
+                }
+              }),
+              tooltip: isWideScreen
+                  ? (_sidebarCollapsed ? '展开任务进度' : '向右折叠任务进度')
+                  : '任务进度',
+            ),
+          if (state.currentTask != null)
+            TextButton.icon(
               onPressed: _clearCurrent,
-              color: isDark ? AppColors.textSecondary : AppColors.dayTextSecondary,
+              icon: Icon(
+                Icons.add,
+                size: 16,
+                color: isDark ? AppColors.aqua : AppColors.dayBluePrimary,
+              ),
+              label: Text(
+                '新对话',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? AppColors.aqua : AppColors.dayBluePrimary,
+                ),
+              ),
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                minimumSize: const Size(0, 32),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
             ),
         ],
       ),
@@ -335,56 +804,6 @@ class _AgentPageState extends ConsumerState<AgentPage> {
           ),
           const SizedBox(height: 16),
 
-          // 快捷入口
-          Text(
-            '快捷入口',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: isDark ? AppColors.textSecondary : AppColors.dayTextSecondary,
-            ),
-          ),
-          const SizedBox(height: 10),
-          _QuickActionGrid(
-            isDark: isDark,
-            actions: [
-              _QuickAction(
-                icon: Icons.camera_alt,
-                label: '拍照辅导',
-                description: '作业拍照 → 分步启发',
-                onTap: _pickImage,
-              ),
-              _QuickAction(
-                icon: Icons.radar,
-                label: '学情画像',
-                description: '雷达图查看掌握度分布',
-                onTap: _openProfile,
-              ),
-              _QuickAction(
-                icon: Icons.insights_outlined,
-                label: 'AI 学情诊断',
-                description: '生成诊断报告与改进建议',
-                onTap: _quickDiagnosis,
-              ),
-              _QuickAction(
-                icon: Icons.route_outlined,
-                label: '学习规划',
-                description: '生成个性化学习路径',
-                onTap: _quickPlanning,
-              ),
-              _QuickAction(
-                icon: Icons.menu_book,
-                label: '化合物讲解',
-                description: '输入名称或 SMILES 查询',
-                onTap: () {
-                  _inputController.text = '请讲解乙醇的结构和性质';
-                  _submit();
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
           // 使用提示
           GlassPanel(
             padding: const EdgeInsets.all(14),
@@ -434,113 +853,34 @@ class _AgentPageState extends ConsumerState<AgentPage> {
     );
   }
 
-  Widget _buildTaskView(AgentTask task, bool isRunning, bool isDark) {
-    return ListView(
-      controller: _scrollController,
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-      children: [
-        // 任务类型徽章 + 进度
-        _TaskHeader(task: task, isDark: isDark),
-        const SizedBox(height: 12),
-
-        // 步骤进度卡片
-        Text(
-          '执行进度 (${task.completedStepCount}/${task.steps.length})',
+  /// "开始新对话"按钮 — 清空当前任务,回到空视图
+  Widget _buildNewChatButton(bool isDark) {
+    return SizedBox(
+      width: double.infinity,
+      child: TextButton.icon(
+        onPressed: _clearCurrent,
+        icon: Icon(
+          Icons.add_circle_outline,
+          size: 18,
+          color: isDark ? AppColors.aqua : AppColors.dayBluePrimary,
+        ),
+        label: Text(
+          '开始新对话',
           style: TextStyle(
-            fontSize: 13,
+            fontSize: 14,
             fontWeight: FontWeight.w600,
-            color: isDark ? AppColors.textSecondary : AppColors.dayTextSecondary,
+            color: isDark ? AppColors.aqua : AppColors.dayBluePrimary,
           ),
         ),
-        const SizedBox(height: 8),
-        ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: task.steps.length,
-          itemBuilder: (context, index) => Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: AgentStepCard(
-              step: task.steps[index],
-              index: index,
-              total: task.steps.length,
-            ),
+        style: TextButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
-        ),
-
-        // 错误状态
-        if (task.status == AgentTaskStatus.failed && task.error != null) ...[
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFDECEC),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.error_outline, color: Color(0xFFC62828)),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    task.error!,
-                    style: const TextStyle(
-                      color: Color(0xFFC62828),
-                      fontSize: 13,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+          side: BorderSide(
+            color: (isDark ? AppColors.aqua : AppColors.dayBluePrimary)
+                .withValues(alpha: 0.3),
           ),
-        ],
-
-        // 结果展示
-        if (task.result != null &&
-            task.status == AgentTaskStatus.completed) ...[
-          const SizedBox(height: 16),
-          Text(
-            '执行结果',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: isDark ? AppColors.textPrimary : AppColors.dayTextPrimary,
-            ),
-          ),
-          const SizedBox(height: 10),
-          AgentResultView(result: task.result!),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildErrorView(String error, bool isDark) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.error_outline,
-              size: 48,
-              color: isDark ? const Color(0xFFE57373) : const Color(0xFFC62828),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              error,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: isDark
-                    ? AppColors.textSecondary
-                    : AppColors.dayTextSecondary,
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextButton(
-              onPressed: _clearCurrent,
-              child: const Text('重试'),
-            ),
-          ],
         ),
       ),
     );
@@ -561,6 +901,8 @@ class _AgentPageState extends ConsumerState<AgentPage> {
         top: false,
         child: Column(
           children: [
+            // 快捷入口(始终显示在输入框上方)
+            _buildQuickActions(isDark, isRunning),
             // 图片附件预览
             if (_attachedDataUri != null) ...[
               Container(
@@ -615,7 +957,10 @@ class _AgentPageState extends ConsumerState<AgentPage> {
                     textInputAction: TextInputAction.send,
                     onSubmitted: (_) => _submit(),
                     decoration: InputDecoration(
-                      hintText: '输入问题,如"讲解乙醇的性质"',
+                      hintText: ref.watch(agentControllerProvider
+                              .select((s) => s.hasActiveSession))
+                          ? '继续追问...'
+                          : '输入问题,如"讲解乙醇的性质"',
                       hintStyle: TextStyle(
                         fontSize: 14,
                         color: isDark
@@ -678,6 +1023,121 @@ class _AgentPageState extends ConsumerState<AgentPage> {
               ],
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  /// 快捷入口条 — 输入框上方紧凑展示 4 个入口
+  ///
+  /// 用户原话:"当开始对话时,快捷入口显示在输入框上方,
+  ///           [学情画像]、[AI学情诊断]、[学习规划]、[化合物讲解]"
+  /// 所以这里展示这 4 个入口(拍照按钮已在输入框右侧,不重复)。
+  /// 任务运行中禁用,避免重复触发。
+  Widget _buildQuickActions(bool isDark, bool isRunning) {
+    final accent = isDark ? AppColors.aqua : AppColors.dayBluePrimary;
+    final actions = <_QuickChipAction>[
+      _QuickChipAction(
+        icon: Icons.radar,
+        label: '学情画像',
+        onTap: isRunning ? null : _openProfile,
+      ),
+      _QuickChipAction(
+        icon: Icons.insights_outlined,
+        label: 'AI 学情诊断',
+        onTap: isRunning ? null : _quickDiagnosis,
+      ),
+      _QuickChipAction(
+        icon: Icons.route_outlined,
+        label: '学习规划',
+        onTap: isRunning ? null : _quickPlanning,
+      ),
+      _QuickChipAction(
+        icon: Icons.menu_book,
+        label: '化合物讲解',
+        onTap: isRunning
+            ? null
+            : () {
+                _inputController.text = '请讲解乙醇的结构和性质';
+                _submit();
+              },
+      ),
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            for (var i = 0; i < actions.length; i++) ...[
+              _QuickChip(action: actions[i], isDark: isDark, accent: accent),
+              if (i < actions.length - 1) const SizedBox(width: 8),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// 快捷入口数据
+class _QuickChipAction {
+  const _QuickChipAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+}
+
+/// 快捷入口芯片
+class _QuickChip extends StatelessWidget {
+  const _QuickChip({
+    required this.action,
+    required this.isDark,
+    required this.accent,
+  });
+
+  final _QuickChipAction action;
+  final bool isDark;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    final disabled = action.onTap == null;
+    final color = disabled
+        ? (isDark ? AppColors.textMuted : AppColors.dayTextMuted)
+        : accent;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: action.onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.04),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: color.withValues(alpha: 0.25)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(action.icon, size: 14, color: color),
+              const SizedBox(width: 4),
+              Text(
+                action.label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -879,108 +1339,364 @@ class _TaskTypeVisual {
   }
 }
 
-class _QuickAction {
-  const _QuickAction({
-    required this.icon,
-    required this.label,
-    required this.description,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final String description;
-  final VoidCallback onTap;
-}
-
-class _QuickActionGrid extends StatelessWidget {
-  const _QuickActionGrid({
+/// 侧边栏会话卡片 — 支持高亮活跃会话和"..."加载动画
+class _DrawerSessionCard extends StatelessWidget {
+  const _DrawerSessionCard({
+    required this.session,
     required this.isDark,
-    required this.actions,
+    required this.isActive,
+    required this.isRunning,
+    required this.onTap,
+    required this.onDelete,
   });
 
+  final AgentSessionRecord session;
   final bool isDark;
-  final List<_QuickAction> actions;
+  final bool isActive;
+  final bool isRunning;
+  final VoidCallback onTap;
+  final VoidCallback onDelete;
 
   @override
   Widget build(BuildContext context) {
-    return GridView.count(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: 2,
-      mainAxisSpacing: 10,
-      crossAxisSpacing: 10,
-      childAspectRatio: 2.4,
-      children: actions.map((a) => _QuickActionCard(action: a, isDark: isDark)).toList(),
-    );
-  }
-}
-
-class _QuickActionCard extends StatelessWidget {
-  const _QuickActionCard({required this.action, required this.isDark});
-
-  final _QuickAction action;
-  final bool isDark;
-
-  @override
-  Widget build(BuildContext context) {
-    return GlassPanel(
-      padding: const EdgeInsets.all(12),
-      radius: 14,
-      child: InkWell(
-        onTap: action.onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: (isDark ? AppColors.aqua : AppColors.dayBluePrimary)
-                    .withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                action.icon,
-                size: 18,
-                color: isDark ? AppColors.aqua : AppColors.dayBluePrimary,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    action.label,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: isDark
-                          ? AppColors.textPrimary
-                          : AppColors.dayTextPrimary,
+    final typeColor = _typeColor(session.type, isDark);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: isActive
+            ? (isDark
+                ? AppColors.aqua.withValues(alpha: 0.08)
+                : AppColors.dayBluePrimary.withValues(alpha: 0.06))
+            : (isDark
+                ? AppColors.glass
+                : AppColors.dayGlass),
+        borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: typeColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        session.typeLabel,
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: typeColor,
+                        ),
+                      ),
                     ),
+                    const SizedBox(width: 6),
+                    if (session.status == AgentTaskStatus.failed)
+                      Text(
+                        '· 失败',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: isDark
+                              ? const Color(0xFFE57373)
+                              : const Color(0xFFC62828),
+                        ),
+                      )
+                    else if (session.status == AgentTaskStatus.cancelled)
+                      Text(
+                        '· 已取消',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: isDark
+                              ? AppColors.textMuted
+                              : AppColors.dayTextMuted,
+                        ),
+                      ),
+                    const Spacer(),
+                    if (isRunning)
+                      const _TypingDots()
+                    else
+                      Text(
+                        _formatCardTime(session.createdAt),
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: isDark
+                              ? AppColors.textMuted
+                              : AppColors.dayTextMuted,
+                        ),
+                      ),
+                    const SizedBox(width: 4),
+                    IconButton(
+                      icon: Icon(
+                        Icons.close,
+                        size: 14,
+                        color: isDark
+                            ? AppColors.textMuted
+                            : AppColors.dayTextMuted,
+                      ),
+                      onPressed: onDelete,
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(
+                        minWidth: 24,
+                        minHeight: 24,
+                      ),
+                      tooltip: '删除',
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  session.userInput,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: isDark
+                        ? AppColors.textPrimary
+                        : AppColors.dayTextPrimary,
                   ),
+                ),
+                if (!isRunning && session.preview.isNotEmpty) ...[
+                  const SizedBox(height: 4),
                   Text(
-                    action.description,
+                    session.preview,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 11,
                       color: isDark
-                          ? AppColors.textMuted
-                          : AppColors.dayTextMuted,
+                          ? AppColors.textSecondary
+                          : AppColors.dayTextSecondary,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
-              ),
+              ],
             ),
-          ],
+          ),
         ),
+      ),
+    );
+  }
+
+  String _formatCardTime(DateTime dt) {
+    final now = DateTime.now();
+    final diff = now.difference(dt);
+    if (diff.inMinutes < 1) return '刚刚';
+    if (diff.inHours < 1) return '${diff.inMinutes}分钟前';
+    if (diff.inDays < 1) return '${diff.inHours}小时前';
+    if (diff.inDays < 7) return '${diff.inDays}天前';
+    return '${dt.month}/${dt.day}';
+  }
+}
+
+/// 对话消息气泡
+///
+/// - 用户消息:右对齐,普通 Text(用户输入通常是简短问题,无需 Markdown)
+/// - 助手消息:左对齐,占满可用宽度,用 MarkdownChatContent 渲染完整内容
+///   (含 ### 标题、列表、化学公式 $\ce{}$ 等)
+/// - 系统/工具消息:居中小字,不抢视觉焦点
+class _ChatBubble extends StatelessWidget {
+  const _ChatBubble({required this.message, required this.isDark});
+  final AgentMessage message;
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    final isUser = message.role == 'user';
+    final isSystem = message.role == 'system' || message.role == 'tool';
+    final accent = isDark ? AppColors.aqua : AppColors.dayBluePrimary;
+
+    if (isSystem) {
+      // 系统/工具消息 → 居中小字
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              message.content,
+              style: TextStyle(
+                fontSize: 11,
+                color: isDark ? AppColors.textMuted : AppColors.dayTextMuted,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        mainAxisAlignment:
+            isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (!isUser) ...[
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: isDark
+                      ? [AppColors.aqua, AppColors.lime]
+                      : [AppColors.dayBluePrimary, AppColors.dayBlueAccent],
+                ),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.smart_toy, color: Colors.white, size: 16),
+            ),
+            const SizedBox(width: 8),
+          ],
+          // 用户消息:限制最大宽度 80%(右对齐气泡)
+          // 助手消息:占满剩余宽度(完整展示 Markdown 回答)
+          isUser
+              ? Flexible(
+                  child: Container(
+                    constraints: BoxConstraints(
+                      maxWidth: MediaQuery.of(context).size.width * 0.8,
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.12),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(16),
+                        topRight: Radius.circular(16),
+                        bottomLeft: Radius.circular(16),
+                        bottomRight: Radius.circular(4),
+                      ),
+                      border: Border.all(
+                        color: accent.withValues(alpha: 0.2),
+                      ),
+                    ),
+                    child: Text(
+                      message.content,
+                      style: TextStyle(
+                        fontSize: 14,
+                        height: 1.5,
+                        color: isDark
+                            ? AppColors.textPrimary
+                            : AppColors.dayTextPrimary,
+                      ),
+                    ),
+                  ),
+                )
+              : Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.glass : AppColors.dayGlass,
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(16),
+                        topRight: Radius.circular(16),
+                        bottomLeft: Radius.circular(4),
+                        bottomRight: Radius.circular(16),
+                      ),
+                      border: Border.all(
+                        color: accent.withValues(alpha: 0.08),
+                      ),
+                    ),
+                    child: MarkdownChatContent(
+                      content: message.content,
+                      isDark: isDark,
+                    ),
+                  ),
+                ),
+        ],
       ),
     );
   }
 }
 
+/// "..." 动态加载动画(三个点循环闪烁)
+class _TypingDots extends StatefulWidget {
+  const _TypingDots();
+
+  @override
+  State<_TypingDots> createState() => _TypingDotsState();
+}
+
+class _TypingDotsState extends State<_TypingDots>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final color = isDark ? AppColors.aqua : AppColors.dayBluePrimary;
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(3, (i) {
+            final t = (_controller.value * 3 - i) % 1.0;
+            final opacity = t < 0.5 ? t * 2 : (1 - t) * 2;
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 1),
+              child: Container(
+                width: 5,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.3 + opacity * 0.7),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            );
+          }),
+        );
+      },
+    );
+  }
+}
+
 String _encodeBytes(Uint8List bytes) => base64Encode(bytes);
+
+Color _typeColor(AgentTaskType type, bool isDark) {
+  switch (type) {
+    case AgentTaskType.homeworkTutor:
+      return isDark ? const Color(0xFF80DEEA) : const Color(0xFF0288D1);
+    case AgentTaskType.compoundExplain:
+      return isDark ? AppColors.lime : const Color(0xFF2E7D32);
+    case AgentTaskType.diagnosis:
+      return isDark ? AppColors.amber : const Color(0xFFE65100);
+    case AgentTaskType.planning:
+      return isDark ? AppColors.aqua : AppColors.dayBlueAccent;
+    case AgentTaskType.practice:
+      return isDark ? const Color(0xFFCE93D8) : const Color(0xFF6A1B9A);
+    case AgentTaskType.errorAnalysis:
+      return isDark ? const Color(0xFFEF9A9A) : const Color(0xFFC62828);
+    case AgentTaskType.chat:
+      return isDark ? AppColors.textSecondary : AppColors.dayTextSecondary;
+  }
+}

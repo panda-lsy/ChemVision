@@ -5,7 +5,10 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import 'app.dart';
+import 'models/adapters/agent_session_record_adapter.dart';
+import 'models/adapters/app_user_adapter.dart';
 import 'models/adapters/edit_history_item_adapter.dart';
+import 'models/adapters/error_book_item_adapter.dart';
 import 'models/adapters/favorite_item_adapter.dart';
 import 'models/adapters/learning_record_adapter.dart';
 import 'models/adapters/reaction_equation_adapter.dart';
@@ -17,6 +20,8 @@ import 'providers/favorites_provider.dart';
 import 'providers/edit_history_provider.dart';
 import 'providers/reaction_favorites_provider.dart';
 import 'providers/scan_history_provider.dart';
+import 'services/agent_session_store.dart';
+import 'services/error_book_service.dart';
 import 'services/favorites_service.dart';
 import 'services/edit_history_service.dart';
 import 'services/learning_record_service.dart';
@@ -25,6 +30,9 @@ import 'services/reaction_favorites_service.dart';
 import 'services/scan_history_service.dart';
 import 'services/search_history_service.dart';
 import 'services/app_version_service.dart';
+import 'services/user_service.dart';
+import 'theme/app_theme.dart';
+import 'ui/pages/onboarding_page.dart';
 
 // 导出 provider 供其他文件使用
 export 'providers/favorites_provider.dart';
@@ -90,8 +98,8 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   // 立即启动应用，减少首帧渲染时间
-  runApp(ProviderScope(
-    child: const _InitializationWrapper(),
+  runApp(const ProviderScope(
+    child: _InitializationWrapper(),
   ));
 }
 
@@ -104,18 +112,53 @@ class _InitializationWrapper extends StatefulWidget {
 }
 
 class _InitializationWrapperState extends State<_InitializationWrapper> {
+  UserService? _userService;
   FavoritesService? _favoritesService;
   ReactionFavoritesService? _reactionFavoritesService;
   EditHistoryService? _editHistoryService;
   SearchHistoryService? _searchHistoryService;
   ScanHistoryService? _scanHistoryService;
   LearningRecordService? _learningRecordService;
+  AgentSessionStore? _agentSessionStore;
+  ErrorBookService? _errorBookService;
   bool _initialized = false;
+  bool _needsOnboarding = false;
 
   @override
   void initState() {
     super.initState();
     _initializeAsync();
+  }
+
+  /// 用指定 userId 初始化所有数据 Service
+  /// 单个 Service 失败不影响其他 Service
+  Future<void> _initServicesForUser(String userId) async {
+    await Future.wait([
+      _initService(_favoritesService, () => FavoritesService(), (s) async => await s.init(userId: userId), (s) => _favoritesService = s),
+      _initService(_reactionFavoritesService, () => ReactionFavoritesService(), (s) async => await s.init(userId: userId), (s) => _reactionFavoritesService = s),
+      _initService(_editHistoryService, () => EditHistoryService(), (s) async => await s.init(userId: userId), (s) => _editHistoryService = s),
+      _initService(_searchHistoryService, () => SearchHistoryService(), (s) async => await s.init(userId: userId), (s) => _searchHistoryService = s),
+      _initService(_scanHistoryService, () => ScanHistoryService(), (s) async => await s.init(userId: userId), (s) => _scanHistoryService = s),
+      _initService(_learningRecordService, () => LearningRecordService(), (s) async => await s.init(userId: userId), (s) => _learningRecordService = s),
+      _initService(_agentSessionStore, () => AgentSessionStore(), (s) async => await s.init(userId: userId), (s) => _agentSessionStore = s),
+      _initService(_errorBookService, () => ErrorBookService(), (s) async => await s.init(userId: userId), (s) => _errorBookService = s),
+    ]);
+  }
+
+  /// 安全初始化单个 Service — 失败时创建实例但不让异常冒泡
+  Future<void> _initService<T>(
+    T? existing,
+    T Function() create,
+    Future<void> Function(T) init,
+    void Function(T) assign,
+  ) async {
+    final service = existing ?? create();
+    assign(service);
+    try {
+      await init(service);
+    } catch (e) {
+      debugPrint('Service 初始化失败($T): $e');
+    }
   }
 
   Future<void> _initializeAsync() async {
@@ -126,10 +169,10 @@ class _InitializationWrapperState extends State<_InitializationWrapper> {
         if (!kIsWeb) {
           await _requestPermissions();
         }
-        
+
         // 初始化 Hive
         await Hive.initFlutter();
-        
+
         // 注册适配器
         Hive.registerAdapter(StructureResultAdapter());
         Hive.registerAdapter(StructureCandidateAdapter());
@@ -141,33 +184,34 @@ class _InitializationWrapperState extends State<_InitializationWrapper> {
         Hive.registerAdapter(ReactionFavoriteItemAdapter());
         Hive.registerAdapter(ScanHistoryItemAdapter());
         Hive.registerAdapter(LearningRecordAdapter());
+        Hive.registerAdapter(AgentSessionRecordAdapter());
+        Hive.registerAdapter(AgentSessionSectionAdapter());
+        Hive.registerAdapter(ErrorBookItemAdapter());
+        Hive.registerAdapter(AppUserAdapter());
 
-        // 初始化服务
-        _favoritesService = FavoritesService();
-        await _favoritesService!.init();
+        // 先初始化 UserService(管理多用户)
+        _userService = UserService();
+        await _userService!.init();
 
-        _reactionFavoritesService = ReactionFavoritesService();
-        await _reactionFavoritesService!.init();
+        // 用当前用户的 userId 初始化所有数据 Service
+        final userId = _userService!.currentUserId;
+        await _initServicesForUser(userId);
 
-        _editHistoryService = EditHistoryService();
-        await _editHistoryService!.init();
+        // 注册切换用户时的重新初始化回调
+        _userService!.registerReinitCallback((newUserId) async {
+          await _initServicesForUser(newUserId);
+        });
 
-        _searchHistoryService = SearchHistoryService();
-        await _searchHistoryService!.init();
-
-        _scanHistoryService = ScanHistoryService();
-        await _scanHistoryService!.init();
-
-        _learningRecordService = LearningRecordService();
-        await _learningRecordService!.init();
-        
         // 初始化版本服务
         await AppVersionService().init();
+
+        // 检查是否需要 onboarding(初次启动引导)
+        _needsOnboarding = !await isOnboardingCompleted();
       } catch (e) {
         debugPrint('初始化失败：$e');
       }
     });
-    
+
     if (mounted) {
       setState(() {
         _initialized = true;
@@ -187,17 +231,31 @@ class _InitializationWrapperState extends State<_InitializationWrapper> {
         ),
       );
     }
-    
+
     return ProviderScope(
       overrides: [
+        userServiceProvider.overrideWithValue(_userService!),
         favoritesServiceProvider.overrideWithValue(_favoritesService!),
         editHistoryServiceProvider.overrideWithValue(_editHistoryService!),
         reactionFavoritesServiceProvider.overrideWithValue(_reactionFavoritesService!),
         searchHistoryServiceProvider.overrideWithValue(_searchHistoryService!),
         scanHistoryServiceProvider.overrideWithValue(_scanHistoryService!),
         learningRecordServiceProvider.overrideWithValue(_learningRecordService!),
+        agentSessionStoreProvider.overrideWithValue(_agentSessionStore!),
+        errorBookServiceProvider.overrideWithValue(_errorBookService!),
       ],
-      child: const ChemVisionApp(),
+      child: _needsOnboarding
+          ? MaterialApp(
+              debugShowCheckedModeBanner: false,
+              theme: AppTheme.light(),
+              darkTheme: AppTheme.dark(),
+              home: OnboardingPage(
+                onCompleted: () {
+                  setState(() => _needsOnboarding = false);
+                },
+              ),
+            )
+          : const ChemEduApp(),
     );
   }
 }

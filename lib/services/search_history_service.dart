@@ -5,17 +5,20 @@ class SearchHistoryService {
   static const String _boxName = 'search_history';
   Box<String>? _box;
   bool _initialized = false;
+  String _userId = 'default';
 
   /// 确保初始化
   Future<void> _ensureInitialized() async {
     if (!_initialized) {
-      _box = await Hive.openBox<String>(_boxName);
+      _box = await Hive.openBox<String>('${_userId}_$_boxName');
       _initialized = true;
     }
   }
 
-  /// 初始化（可选，会在首次使用时自动初始化）
-  Future<void> init() async {
+  /// 初始化,userId 用作 box 名前缀实现多用户数据隔离
+  Future<void> init({String userId = 'default'}) async {
+    _userId = userId;
+    _initialized = false;
     await _ensureInitialized();
   }
 

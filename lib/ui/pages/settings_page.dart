@@ -19,6 +19,7 @@ import '../widgets/app_scaffold.dart';
 import '../widgets/compliance/privacy_compliance_panel.dart';
 import '../widgets/glass_panel.dart';
 import '../widgets/primary_button.dart';
+import '../widgets/user_management_section.dart';
 
 const String _customModelValue = '__custom__';
 
@@ -266,7 +267,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         children: [
           Row(
             children: [
-              Text('ChemVISION',
+              Text('ChemEdu',
                   style: Theme.of(context).textTheme.labelLarge),
               const Spacer(),
               const AccentPill(label: '云端配置'),
@@ -299,6 +300,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ),
           ),
           const SizedBox(height: 16),
+          Text('用户', style: Theme.of(context).textTheme.headlineMedium),
+          const SizedBox(height: 14),
+          const UserManagementSection(),
+          const SizedBox(height: 16),
           Text('模型设置', style: Theme.of(context).textTheme.headlineMedium),
           const SizedBox(height: 16),
 
@@ -325,7 +330,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   _scheduleSave();
                 }),
                 _buildModelTab(context, isDark,
-                    label: '端侧 BlueLM',
+                    label: '端侧模型',
                     icon: Icons.phone_android,
                     selected: _useLocalModel,
                     onTap: () {
@@ -337,7 +342,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
           const SizedBox(height: 16),
 
-          // ── 端侧 BlueLM 配置 ──
+          // ── 端侧模型配置 ──
           if (_useLocalModel) ...[
             GlassPanel(
               child: Column(
@@ -500,7 +505,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 6),
                 Text(
-                  '结构式识别（DECIMER）服务地址，留空使用默认值。默认走 Cloudflare Worker 的 /decimer 子路径代理，Worker 通过 DECIMER_UPSTREAM 环境变量转发到自部署的 DECIMER 服务（推荐部署到 Hugging Face Spaces，详见 tools/decimer_hf_space/README.md）',
+                  '结构式识别（DECIMER）服务地址，留空使用默认值。默认通过 agent.shengxia.me 域名访问自部署的 DECIMER 服务（阿里云 ECS + Nginx 反代 + Cloudflare SSL 代理）。',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: isDark
                             ? AppColors.textMuted
@@ -513,7 +518,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   onChanged: (_) => _scheduleSave(),
                   keyboardType: TextInputType.url,
                   decoration: const InputDecoration(
-                    hintText: 'https://api.chemvision.qzz.io/decimer',
+                    hintText: 'https://agent.shengxia.me/decimer',
                   ),
                 ),
               ],
@@ -775,7 +780,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('ChemVISION',
+                  Text('ChemEdu',
                       style: Theme.of(context)
                           .textTheme
                           .titleMedium
@@ -815,12 +820,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           const SizedBox(height: 16),
           const Divider(height: 1),
           const SizedBox(height: 12),
-          Text('© 2026 ChemVISION Team',
+          Text('© 2026 ChemEdu Team',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppColors.textMuted,
                   )),
           const SizedBox(height: 4),
-          Text('基于 vivo 蓝心大模型（BlueLM）',
+          Text('基于 AI 大模型',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppColors.textMuted,
                   )),

@@ -15,8 +15,9 @@ class LearningRecordService {
   static const _maxItems = 500;
   late Box<LearningRecord> _box;
 
-  Future<void> init() async {
-    _box = await Hive.openBox<LearningRecord>(_boxName);
+  /// 初始化,userId 用作 box 名前缀实现多用户数据隔离
+  Future<void> init({String userId = 'default'}) async {
+    _box = await Hive.openBox<LearningRecord>('${userId}_$_boxName');
   }
 
   Future<void> add(LearningRecord record) async {

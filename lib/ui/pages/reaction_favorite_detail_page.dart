@@ -130,7 +130,7 @@ class _ReactionFavoriteDetailPageState
         children: [
           Row(
             children: [
-              Text('ChemVISION',
+              Text('ChemEdu',
                   style: Theme.of(context).textTheme.labelLarge),
               const Spacer(),
               const AccentPill(label: '反应收藏'),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../models/error_book_item.dart';
+import '../../providers/error_book_provider.dart';
 import '../../providers/favorites_provider.dart';
 import '../../providers/reaction_favorites_provider.dart';
 import '../../theme/app_colors.dart';
@@ -10,7 +12,7 @@ import '../widgets/glass_panel.dart';
 import 'favorite_detail_page.dart';
 import 'reaction_favorite_detail_page.dart';
 
-enum _FavoritesTab { structure, reaction }
+enum _FavoritesTab { structure, reaction, errorBook }
 
 class FavoritesPage extends ConsumerStatefulWidget {
   const FavoritesPage({super.key});
@@ -40,12 +42,17 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
         children: [
           Row(
             children: [
-              Text('ChemVISION',
+              Text('ChemEdu',
                   style: Theme.of(context).textTheme.labelLarge),
               const Spacer(),
-              AccentPill(label: _currentTab == _FavoritesTab.structure
-                  ? '${ref.watch(favoritesControllerProvider).items.length} 个结构式'
-                  : '${ref.watch(reactionFavoritesControllerProvider).items.length} 个反应式'),
+              AccentPill(label: switch (_currentTab) {
+                _FavoritesTab.structure =>
+                  '${ref.watch(favoritesControllerProvider).items.length} 个结构式',
+                _FavoritesTab.reaction =>
+                  '${ref.watch(reactionFavoritesControllerProvider).items.length} 个反应式',
+                _FavoritesTab.errorBook =>
+                  '${ref.watch(errorBookControllerProvider).items.length} 条错题',
+              }),
             ],
           ),
           const SizedBox(height: 18),
@@ -62,9 +69,11 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
 
           // 内容区
           Expanded(
-            child: _currentTab == _FavoritesTab.structure
-                ? _buildStructureTab(isDark)
-                : _buildReactionTab(isDark),
+            child: switch (_currentTab) {
+              _FavoritesTab.structure => _buildStructureTab(isDark),
+              _FavoritesTab.reaction => _buildReactionTab(isDark),
+              _FavoritesTab.errorBook => _buildErrorBookTab(isDark),
+            },
           ),
         ],
       ),
@@ -96,6 +105,12 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
             tab: _FavoritesTab.reaction,
             label: '反应式',
             icon: Icons.device_thermostat,
+          ),
+          _buildTabOption(
+            isDark,
+            tab: _FavoritesTab.errorBook,
+            label: '错题本',
+            icon: Icons.menu_book_outlined,
           ),
         ],
       ),
@@ -163,9 +178,11 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
       style: TextStyle(
           color: isDark ? AppColors.textPrimary : AppColors.dayTextPrimary),
       decoration: InputDecoration(
-        hintText: _currentTab == _FavoritesTab.structure
-            ? '搜索名称、分子式...'
-            : '搜索反应标题、条件...',
+        hintText: switch (_currentTab) {
+          _FavoritesTab.structure => '搜索名称、分子式...',
+          _FavoritesTab.reaction => '搜索反应标题、条件...',
+          _FavoritesTab.errorBook => '搜索错题标题、内容...',
+        },
         prefixIcon: Icon(Icons.search,
             color:
                 isDark ? AppColors.textSecondary : AppColors.dayTextSecondary),
@@ -175,12 +192,15 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
                 color: isDark ? AppColors.textMuted : AppColors.dayTextMuted,
                 onPressed: () {
                   _searchController.clear();
-                  if (_currentTab == _FavoritesTab.structure) {
-                    ref.read(favoritesControllerProvider.notifier).search('');
-                  } else {
-                    ref
-                        .read(reactionFavoritesControllerProvider.notifier)
-                        .search('');
+                  switch (_currentTab) {
+                    case _FavoritesTab.structure:
+                      ref.read(favoritesControllerProvider.notifier).search('');
+                    case _FavoritesTab.reaction:
+                      ref
+                          .read(reactionFavoritesControllerProvider.notifier)
+                          .search('');
+                    case _FavoritesTab.errorBook:
+                      ref.read(errorBookControllerProvider.notifier).search('');
                   }
                   setState(() {});
                 },
@@ -188,10 +208,13 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
             : null,
       ),
       onChanged: (v) {
-        if (_currentTab == _FavoritesTab.structure) {
-          ref.read(favoritesControllerProvider.notifier).search(v);
-        } else {
-          ref.read(reactionFavoritesControllerProvider.notifier).search(v);
+        switch (_currentTab) {
+          case _FavoritesTab.structure:
+            ref.read(favoritesControllerProvider.notifier).search(v);
+          case _FavoritesTab.reaction:
+            ref.read(reactionFavoritesControllerProvider.notifier).search(v);
+          case _FavoritesTab.errorBook:
+            ref.read(errorBookControllerProvider.notifier).search(v);
         }
         setState(() {});
       },
@@ -213,8 +236,6 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
       itemBuilder: (context, index) {
         final item = items[index];
         final r = item.structureResult;
-        final displayName =
-            _displayName(r.resolvedName, r.englishName, r.chineseName);
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
           child: GestureDetector(
@@ -464,6 +485,372 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
     );
   }
 
+  // ── 错题本栏 ──
+
+  Widget _buildErrorBookTab(bool isDark) {
+    final state = ref.watch(errorBookControllerProvider);
+    final items = state.filteredItems;
+
+    if (items.isEmpty) {
+      return _buildEmptyState(isDark, state.searchQuery != null);
+    }
+
+    return ListView.builder(
+      itemCount: items.length,
+      itemBuilder: (context, index) {
+        final item = items[index];
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: GestureDetector(
+            onTap: () => _showErrorBookDetail(item),
+            onLongPress: () => _confirmDeleteErrorBook(context, ref, item.id),
+            child: GlassPanel(
+              radius: 16,
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              item.reviewed
+                                  ? Icons.check_circle
+                                  : Icons.bookmark_border,
+                              size: 16,
+                              color: item.reviewed
+                                  ? (isDark
+                                      ? AppColors.lime
+                                      : const Color(0xFF3D8E3D))
+                                  : (isDark
+                                      ? AppColors.amber
+                                      : const Color(0xFFE07B00)),
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                item.title,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyLarge
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: isDark
+                                          ? AppColors.textPrimary
+                                          : AppColors.dayTextPrimary,
+                                    ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (item.compoundName.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            '化合物: ${item.compoundName}',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(
+                                  color: isDark
+                                      ? AppColors.aqua
+                                      : AppColors.dayBluePrimary,
+                                  fontSize: 12,
+                                ),
+                          ),
+                        ],
+                        if (item.preview.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            item.preview,
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(
+                                  color: isDark
+                                      ? AppColors.textSecondary
+                                      : AppColors.dayTextSecondary,
+                                  fontSize: 12,
+                                  height: 1.5,
+                                ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                        if (item.knowledgePointIds.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Wrap(
+                            spacing: 4,
+                            runSpacing: 2,
+                            children: [
+                              for (final kp in item.knowledgePointIds.take(3))
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 6, vertical: 1),
+                                  decoration: BoxDecoration(
+                                    color: (isDark
+                                            ? AppColors.amber
+                                            : const Color(0xFFE07B00))
+                                        .withValues(alpha: 0.10),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    kp,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(
+                                          fontSize: 10,
+                                          color: isDark
+                                              ? AppColors.amber
+                                              : const Color(0xFFE07B00),
+                                        ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
+                        const SizedBox(height: 4),
+                        Text(
+                          _formatTime(item.createdAt),
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(
+                                color: isDark
+                                    ? AppColors.textMuted
+                                    : AppColors.dayTextMuted,
+                                fontSize: 11,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // 标记已复习
+                  IconButton(
+                    icon: Icon(
+                      item.reviewed
+                          ? Icons.check_circle
+                          : Icons.radio_button_unchecked,
+                      size: 18,
+                      color: item.reviewed
+                          ? (isDark
+                              ? AppColors.lime
+                              : const Color(0xFF3D8E3D))
+                          : (isDark
+                              ? AppColors.textMuted
+                              : AppColors.dayTextMuted),
+                    ),
+                    onPressed: () => ref
+                        .read(errorBookControllerProvider.notifier)
+                        .toggleReviewed(item.id),
+                    tooltip: item.reviewed ? '标记未复习' : '标记已复习',
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showErrorBookDetail(ErrorBookItem item) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        return Container(
+          height: MediaQuery.of(context).size.height * 0.85,
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.navy : Colors.white,
+            borderRadius:
+                const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(top: 12, bottom: 8),
+                decoration: BoxDecoration(
+                  color: isDark ? Colors.white24 : Colors.black12,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 12, 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        item.title,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                          color: isDark
+                              ? AppColors.textPrimary
+                              : AppColors.dayTextPrimary,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 20),
+                      onPressed: () => Navigator.pop(context),
+                      color: isDark
+                          ? AppColors.textMuted
+                          : AppColors.dayTextMuted,
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                  children: [
+                    if (item.compoundName.isNotEmpty)
+                      Text(
+                        '化合物: ${item.compoundName}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isDark
+                              ? AppColors.aqua
+                              : AppColors.dayBluePrimary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    if (item.smiles.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        'SMILES: ${item.smiles}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark
+                              ? AppColors.textMuted
+                              : AppColors.dayTextMuted,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    GlassPanel(
+                      padding: const EdgeInsets.all(12),
+                      radius: 12,
+                      child: Text(
+                        item.content,
+                        style: TextStyle(
+                          fontSize: 14,
+                          height: 1.7,
+                          color: isDark
+                              ? AppColors.textSecondary
+                              : AppColors.dayTextSecondary,
+                        ),
+                      ),
+                    ),
+                    if (item.note.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Text(
+                        '备注: ${item.note}',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: isDark
+                              ? AppColors.textSecondary
+                              : AppColors.dayTextSecondary,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextButton.icon(
+                            onPressed: () {
+                              ref
+                                  .read(errorBookControllerProvider.notifier)
+                                  .toggleReviewed(item.id);
+                              Navigator.pop(context);
+                            },
+                            icon: Icon(
+                              item.reviewed
+                                  ? Icons.check_circle
+                                  : Icons.radio_button_unchecked,
+                              size: 18,
+                              color: isDark
+                                  ? AppColors.lime
+                                  : const Color(0xFF3D8E3D),
+                            ),
+                            label: Text(
+                              item.reviewed ? '已复习' : '标记已复习',
+                              style: TextStyle(
+                                color: isDark
+                                    ? AppColors.lime
+                                    : const Color(0xFF3D8E3D),
+                              ),
+                            ),
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            _confirmDeleteErrorBook(context, ref, item.id);
+                          },
+                          icon: const Icon(Icons.delete_outline,
+                              size: 18, color: Colors.redAccent),
+                          label: const Text('删除',
+                              style: TextStyle(color: Colors.redAccent)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _confirmDeleteErrorBook(
+      BuildContext context, WidgetRef ref, String id) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('删除错题'),
+        content: const Text('确定要删除这条错题吗？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () {
+              ref.read(errorBookControllerProvider.notifier).delete(id);
+              Navigator.of(ctx).pop();
+            },
+            child: const Text('删除',
+                style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatTime(DateTime dt) {
+    final now = DateTime.now();
+    final diff = now.difference(dt);
+    if (diff.inMinutes < 1) return '刚刚';
+    if (diff.inHours < 1) return '${diff.inMinutes}分钟前';
+    if (diff.inDays < 1) return '${diff.inHours}小时前';
+    if (diff.inDays < 7) return '${diff.inDays}天前';
+    return '${dt.month}/${dt.day}';
+  }
+
   Widget _buildEmptyState(bool isDark, bool hasSearch) {
     return Center(
       child: Column(
@@ -482,15 +869,6 @@ class _FavoritesPageState extends ConsumerState<FavoritesPage> {
         ],
       ),
     );
-  }
-
-  String _displayName(String? resolved, String? en, String? zh) {
-    if (en != null && en.isNotEmpty && zh != null && zh.isNotEmpty) {
-      return '$en（$zh）';
-    }
-    if (en != null && en.isNotEmpty) return en;
-    if (zh != null && zh.isNotEmpty) return zh;
-    return resolved ?? '';
   }
 
   void _confirmDeleteStructure(

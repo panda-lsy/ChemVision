@@ -4,6 +4,7 @@ import '../models/learning_profile.dart';
 import '../models/learning_record.dart';
 import '../services/chemical_knowledge_base.dart';
 import '../services/learning_record_service.dart';
+import '../services/user_service.dart';
 
 /// 学习记录服务 Provider(由 main.dart override 注入实例)
 final learningRecordServiceProvider = Provider<LearningRecordService>((ref) {
@@ -41,12 +42,13 @@ class LearningProfileState {
 /// - 掌握度范围 [0.0, 1.0]
 class LearningProfileController
     extends StateNotifier<LearningProfileState> {
-  LearningProfileController(this._service)
+  LearningProfileController(this._service, this._userService)
       : super(const LearningProfileState()) {
     _rebuild();
   }
 
   final LearningRecordService _service;
+  final UserService _userService;
 
   /// 重新计算学情画像
   void _rebuild() {
@@ -107,8 +109,8 @@ class LearningProfileController
         : DateTime.now();
 
     return LearningProfile(
-      userId: 'local',
-      stage: 'highschool',
+      userId: _userService.currentUserId,
+      stage: _userService.currentUser?.stage ?? 'highschool',
       knowledgeMastery: clamped,
       totalScans: totalScans,
       totalQueries: totalQueries,
@@ -200,5 +202,6 @@ class LearningProfileController
 final learningProfileControllerProvider = StateNotifierProvider<
     LearningProfileController, LearningProfileState>((ref) {
   final service = ref.watch(learningRecordServiceProvider);
-  return LearningProfileController(service);
-}, dependencies: [learningRecordServiceProvider]);
+  final userService = ref.watch(userServiceProvider);
+  return LearningProfileController(service, userService);
+}, dependencies: [learningRecordServiceProvider, userServiceProvider]);

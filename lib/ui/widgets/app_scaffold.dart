@@ -9,12 +9,16 @@ class AppScaffold extends StatelessWidget {
     this.padding = const EdgeInsets.all(20),
     this.scroll = false,
     this.scrollPhysics,
+    this.drawer,
+    this.scaffoldKey,
   });
 
   final Widget child;
   final EdgeInsetsGeometry padding;
   final bool scroll;
   final ScrollPhysics? scrollPhysics;
+  final Widget? drawer;
+  final GlobalKey<ScaffoldState>? scaffoldKey;
 
   @override
   Widget build(BuildContext context) {
@@ -39,7 +43,9 @@ class AppScaffold extends StatelessWidget {
     );
 
     return Scaffold(
+      key: scaffoldKey,
       backgroundColor: isDark ? AppColors.navyDeep : AppColors.dayBackground,
+      drawer: drawer,
       body: Stack(
         children: [
           Positioned.fill(

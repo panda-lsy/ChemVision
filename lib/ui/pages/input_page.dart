@@ -370,7 +370,7 @@ String _encodeBytes(Uint8List bytes) {
         children: [
           Row(
             children: [
-              Text('ChemVISION', style: Theme.of(context).textTheme.labelLarge),
+              Text('ChemEdu', style: Theme.of(context).textTheme.labelLarge),
               const Spacer(),
               IconButton(
                 onPressed: () => ref.read(themeModeProvider.notifier).toggle(),

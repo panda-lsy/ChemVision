@@ -1,16 +1,16 @@
 <div align="center">
 
-# ChemVISION
+# ChemEdu
 
 ### 化学结构式智能生成、编辑与学习助手 · ChemEdu Agent
 
 ![Version](https://img.shields.io/badge/version-v3.0-38d5c1?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-Flutter%20Android-4FC3F7?style=flat-square)
-![AI](https://img.shields.io/badge/AI-BlueLM-7C4DFF?style=flat-square)
+![AI](https://img.shields.io/badge/AI-AI-7C4DFF?style=flat-square)
 ![Agent](https://img.shields.io/badge/Agent-ChemEdu-FF7043?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
 
-**通用大模型「能说化学，却不能画化学」——ChemVISION 补齐这条裂缝。**
+**通用大模型「能说化学，却不能画化学」——ChemEdu 补齐这条裂缝。**
 **ChemEdu Agent 让大模型「能教化学」——作业辅导 → 学情诊断 → 学习规划完整闭环。**
 
 </div>
@@ -21,7 +21,7 @@
 
 现有大语言模型在化学领域呈现典型的「能说不能画」缺陷：无法将自然语言描述映射为规范的键线式结构图，SMILES 输出错误率高，且完全缺失中文 IUPAC 命名的专项支持。生成后若存在错误，用户必须切换到 ChemDraw 等专业 PC 端软件才能修正。
 
-**ChemVISION 让大模型「能画化学」，更让用户「能改化学」。**
+**ChemEdu 让大模型「能画化学」，更让用户「能改化学」。**
 
 ## 核心功能
 
@@ -51,7 +51,7 @@
 以「苯甲酸」为例：
 
 1. **输入** — 键入「苯甲酸」、语音输入或拍照识别
-2. **结构推理** — 云端 BlueLM API 输出 SMILES: `c1ccc(cc1)C(=O)O`
+2. **结构推理** — 云端 AI API 输出 SMILES: `c1ccc(cc1)C(=O)O`
 3. **规则校验** — 本地 SMILES 语法校验（括号平衡、环闭合、价态合理性）
 4. **渲染输出** — SVG 键线式图 + 分子式 C₇H₆O₂ + 分子量 122.12
 5. **命名解析** — SMILES → IUPAC 名称 / 中文名（PubChem + OPSIN + LLM 回退）
@@ -71,7 +71,7 @@
 │  SharedPreferences │ 结构缓存 │ 收藏夹 │ 知识库 │ 搜索历史 │
 ├─────────────────────────────────────────────────────────┤
 │                    云端 API                               │
-│  BlueLM Chat/多模态/Embedding │ PubChem REST │ OPSIN     │
+│  AI Chat/多模态/Embedding │ PubChem REST │ OPSIN     │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -80,7 +80,7 @@
 | 层级 | 技术 |
 | ---- | ---- |
 | 框架 | Flutter 3.41+ (Dart)，Riverpod 状态管理 |
-| AI 底座 | vivo 蓝心大模型（BlueLM）文本/多模态/Embedding |
+| AI 底座 | vivo AI 大模型文本/多模态/Embedding |
 | 中间表示 | SMILES（解耦 LLM 推理与渲染） |
 | 规则校验 | 纯 Dart SMILES 语法校验（括号平衡、环闭合、价态、连通性） |
 | 结构渲染 | JSME 编辑器（GWT）+ SmilesDrawer（SVG 键线式图） |
@@ -107,7 +107,7 @@ lib/
 │   ├── theme_mode_provider.dart
 │   └── ...
 ├── services/                # 业务服务
-│   ├── vivo_aigc_client.dart         # BlueLM API 客户端
+│   ├── vivo_aigc_client.dart         # AI API 客户端
 │   ├── real_structure_service.dart   # PubChem + OPSIN + LLM 结构服务
 │   ├── reaction_completion_service.dart  # 反应方程式补全
 │   ├── image_structure_service.dart  # 图像结构识别
@@ -158,7 +158,7 @@ assets/
 
 - Flutter 3.41+ (Dart SDK)
 - Android SDK (API 24+)
-- vivo BlueLM API Key（在设置页配置）
+- AI API Key（在设置页配置）
 
 ### 编译运行
 
@@ -305,7 +305,7 @@ JSME 是成熟的开源化学结构编辑器（Java→GWT→JavaScript），提�
 | ---- | ---- |
 | 竞赛 | 第三届（2026）中国高校计算机大赛 AIGC 创新赛 |
 | 赛道 | 应用赛道 |
-| 技术底座 | vivo 蓝心大模型（BlueLM） |
+| 技术底座 | vivo AI 大模型 |
 | 承办单位 | 南开大学 × vivo |
 | 作品形态 | Flutter APP（Android 原生运行） |
 
@@ -338,7 +338,7 @@ Web 构建产物自动部署到 GitHub Pages,无需手动操作。构建流程�
 
 生产环境的 LLM API 通过 Cloudflare Worker 代理转发,避免暴露 API Key 并解决跨域问题:
 
-- **生产地址**: `https://api.chemvision.qzz.io`(在设置页配置)
+- **生产地址**: `https://api.chemedu.qzz.io`(在设置页配置)
 - **本地开发**: 可在设置页切换为 `http://localhost:8787`
 - 所有云端请求必须使用 **HTTPS**,避免微信内置浏览器的 Mixed Content 错误
 
@@ -369,7 +369,7 @@ flutter logs
 
 # ADB 过滤应用日志
 adb logcat -s flutter
-adb logcat --pid=$(adb shell pidof -s com.chemvision.chemvision)
+adb logcat --pid=$(adb shell pidof -s com.chemedu.chemedu)
 ```
 
 ### DevTools
@@ -392,7 +392,7 @@ flutter pub global run devtools
 
 ### 进行中 🚧
 
-- **端侧模型集成** — BlueLM 端侧推理,离线可用(已在设置页支持切换)
+- **端侧模型集成** — AI 端侧推理,离线可用(已在设置页支持切换)
 - **Web 端适配** — GitHub Pages 部署 + 微信兼容性优化
 
 ### 规划中 📋

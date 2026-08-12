@@ -7,6 +7,8 @@
 /// - LlmTool: 提示词 → 文本生成(讲解/诊断/规划)
 ///
 /// 对应赛题"能力调用"环节,工具结果经编排器汇总后交付给用户。
+library;
+
 import 'dart:convert';
 
 import 'package:flutter/services.dart' show rootBundle;
@@ -208,13 +210,18 @@ class LlmTool extends AgentTool {
   Future<ToolResult> invoke(Map<String, dynamic> params) async {
     var prompt = params['prompt']?.toString() ?? '';
     final templateAsset = params['templateAsset']?.toString() ?? '';
+    final contextText = params['context']?.toString() ?? '';
 
     // 将除控制字段外的所有参数转为模板变量(编排器已通过 @slot.field 注入数据)
+    // context / isFollowUp / taskType 为追问控制字段,不作为模板变量
     final variables = <String, String>{};
     for (final entry in params.entries) {
       if (entry.key == 'templateAsset' ||
           entry.key == 'maxTokens' ||
-          entry.key == 'prompt') {
+          entry.key == 'prompt' ||
+          entry.key == 'context' ||
+          entry.key == 'isFollowUp' ||
+          entry.key == 'taskType') {
         continue;
       }
       variables[entry.key] = _stringify(entry.value);
@@ -229,6 +236,12 @@ class LlmTool extends AgentTool {
       } catch (e) {
         return ToolResult.failure('加载提示词模板失败: $templateAsset ($e)');
       }
+    }
+
+    // 追问场景:把对话历史/工具结果/学段等上下文注入到 prompt 前
+    // 让 LLM 知道之前的对话内容,避免"刚刚开启对话"的回答
+    if (contextText.isNotEmpty) {
+      prompt = '$contextText\n\n# 学生本次追问\n$prompt';
     }
 
     if (prompt.trim().isEmpty) {

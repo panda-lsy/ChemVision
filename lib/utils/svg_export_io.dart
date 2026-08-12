@@ -9,7 +9,7 @@ Future<void> downloadSvg(String svgString, String filename) async {
   final dir = await getTemporaryDirectory();
   final file = File('${dir.path}/$filename');
   await file.writeAsString(svgString);
-  await Share.shareXFiles([XFile(file.path)], text: 'ChemVISION 结构式 SVG');
+  await Share.shareXFiles([XFile(file.path)], text: 'ChemEdu 结构式 SVG');
 }
 
 /// 移动端/桌面端 data URL 下载（用于 PNG 等 base64 数据）
@@ -20,5 +20,5 @@ Future<void> downloadDataUrl(String dataUrl, String filename) async {
   final dir = await getTemporaryDirectory();
   final file = File('${dir.path}/$filename');
   await file.writeAsBytes(bytes);
-  await Share.shareXFiles([XFile(file.path)], text: 'ChemVISION 反应方程式');
+  await Share.shareXFiles([XFile(file.path)], text: 'ChemEdu 反应方程式');
 }

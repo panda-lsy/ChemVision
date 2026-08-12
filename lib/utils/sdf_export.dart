@@ -11,7 +11,7 @@ class SdfExportUtil {
 
     final buf = StringBuffer();
     buf.writeln(name);
-    buf.writeln('ChemVISION  $dateStr');
+    buf.writeln('ChemEdu  $dateStr');
     buf.writeln('');
     buf.writeln('  0  0  0  0  0  0  0  0  0  0999 V2000');
     buf.writeln('> <SMILES>');
