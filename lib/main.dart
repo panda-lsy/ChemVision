@@ -31,6 +31,8 @@ import 'services/scan_history_service.dart';
 import 'services/search_history_service.dart';
 import 'services/app_version_service.dart';
 import 'services/user_service.dart';
+import 'theme/app_theme.dart';
+import 'ui/pages/onboarding_page.dart';
 
 // 导出 provider 供其他文件使用
 export 'providers/favorites_provider.dart';
@@ -120,6 +122,7 @@ class _InitializationWrapperState extends State<_InitializationWrapper> {
   AgentSessionStore? _agentSessionStore;
   ErrorBookService? _errorBookService;
   bool _initialized = false;
+  bool _needsOnboarding = false;
 
   @override
   void initState() {
@@ -128,30 +131,34 @@ class _InitializationWrapperState extends State<_InitializationWrapper> {
   }
 
   /// 用指定 userId 初始化所有数据 Service
+  /// 单个 Service 失败不影响其他 Service
   Future<void> _initServicesForUser(String userId) async {
-    _favoritesService ??= FavoritesService();
-    await _favoritesService!.init(userId: userId);
+    await Future.wait([
+      _initService(_favoritesService, () => FavoritesService(), (s) async => await s.init(userId: userId), (s) => _favoritesService = s),
+      _initService(_reactionFavoritesService, () => ReactionFavoritesService(), (s) async => await s.init(userId: userId), (s) => _reactionFavoritesService = s),
+      _initService(_editHistoryService, () => EditHistoryService(), (s) async => await s.init(userId: userId), (s) => _editHistoryService = s),
+      _initService(_searchHistoryService, () => SearchHistoryService(), (s) async => await s.init(userId: userId), (s) => _searchHistoryService = s),
+      _initService(_scanHistoryService, () => ScanHistoryService(), (s) async => await s.init(userId: userId), (s) => _scanHistoryService = s),
+      _initService(_learningRecordService, () => LearningRecordService(), (s) async => await s.init(userId: userId), (s) => _learningRecordService = s),
+      _initService(_agentSessionStore, () => AgentSessionStore(), (s) async => await s.init(userId: userId), (s) => _agentSessionStore = s),
+      _initService(_errorBookService, () => ErrorBookService(), (s) async => await s.init(userId: userId), (s) => _errorBookService = s),
+    ]);
+  }
 
-    _reactionFavoritesService ??= ReactionFavoritesService();
-    await _reactionFavoritesService!.init(userId: userId);
-
-    _editHistoryService ??= EditHistoryService();
-    await _editHistoryService!.init(userId: userId);
-
-    _searchHistoryService ??= SearchHistoryService();
-    await _searchHistoryService!.init(userId: userId);
-
-    _scanHistoryService ??= ScanHistoryService();
-    await _scanHistoryService!.init(userId: userId);
-
-    _learningRecordService ??= LearningRecordService();
-    await _learningRecordService!.init(userId: userId);
-
-    _agentSessionStore ??= AgentSessionStore();
-    await _agentSessionStore!.init(userId: userId);
-
-    _errorBookService ??= ErrorBookService();
-    await _errorBookService!.init(userId: userId);
+  /// 安全初始化单个 Service — 失败时创建实例但不让异常冒泡
+  Future<void> _initService<T>(
+    T? existing,
+    T Function() create,
+    Future<void> Function(T) init,
+    void Function(T) assign,
+  ) async {
+    final service = existing ?? create();
+    assign(service);
+    try {
+      await init(service);
+    } catch (e) {
+      debugPrint('Service 初始化失败($T): $e');
+    }
   }
 
   Future<void> _initializeAsync() async {
@@ -197,6 +204,9 @@ class _InitializationWrapperState extends State<_InitializationWrapper> {
 
         // 初始化版本服务
         await AppVersionService().init();
+
+        // 检查是否需要 onboarding(初次启动引导)
+        _needsOnboarding = !await isOnboardingCompleted();
       } catch (e) {
         debugPrint('初始化失败：$e');
       }
@@ -234,7 +244,18 @@ class _InitializationWrapperState extends State<_InitializationWrapper> {
         agentSessionStoreProvider.overrideWithValue(_agentSessionStore!),
         errorBookServiceProvider.overrideWithValue(_errorBookService!),
       ],
-      child: const ChemEduApp(),
+      child: _needsOnboarding
+          ? MaterialApp(
+              debugShowCheckedModeBanner: false,
+              theme: AppTheme.light(),
+              darkTheme: AppTheme.dark(),
+              home: OnboardingPage(
+                onCompleted: () {
+                  setState(() => _needsOnboarding = false);
+                },
+              ),
+            )
+          : const ChemEduApp(),
     );
   }
 }

@@ -3,6 +3,11 @@ doc/*
 !doc/GOAI/
 .venv/
 
+# 备份文件与临时脚本
+*.bak.pptx
+*.bak.ppt
+tools/_*.py
+
 # 根目录临时图片/设计素材(不影响 assets/ 下的资源)
 /*.png
 /*.psd
