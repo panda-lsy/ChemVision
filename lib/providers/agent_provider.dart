@@ -156,10 +156,18 @@ class AgentController extends StateNotifier<AgentControllerState> {
     required String stage,
     required dynamic profile,
   }) async {
+    // 立即把用户输入显示到对话区(AI 回答加载前先看到自己的提问)
+    final userPreviewMsg = AgentMessage(
+      role: 'user',
+      content: userInput,
+      timestamp: DateTime.now(),
+    );
+
     state = state.copyWith(
       isRunning: true,
       currentTask: null,
       clearError: true,
+      messages: [...state.messages, userPreviewMsg],
     );
 
     try {
@@ -178,7 +186,7 @@ class AgentController extends StateNotifier<AgentControllerState> {
       // 加入内存历史
       final newHistory = [task, ...state.history].take(50).toList();
 
-      // 从任务中提取对话消息(用于多轮对话)
+      // 从任务中提取对话消息(用于多轮对话,覆盖预览消息)
       final messages = _orchestrator.getSessionMessages(task.id);
 
       state = state.copyWith(
@@ -212,9 +220,17 @@ class AgentController extends StateNotifier<AgentControllerState> {
     required String stage,
     required dynamic profile,
   }) async {
+    // 立即把追问输入显示到对话区
+    final userPreviewMsg = AgentMessage(
+      role: 'user',
+      content: userInput,
+      timestamp: DateTime.now(),
+    );
+
     state = state.copyWith(
       isRunning: true,
       clearError: true,
+      messages: [...state.messages, userPreviewMsg],
     );
 
     try {
@@ -230,7 +246,7 @@ class AgentController extends StateNotifier<AgentControllerState> {
         },
       );
 
-      // 更新对话历史
+      // 更新对话历史(覆盖预览消息)
       final messages = _orchestrator.getSessionMessages(state.activeSessionId!);
 
       final newHistory = [task, ...state.history].take(50).toList();
@@ -241,8 +257,11 @@ class AgentController extends StateNotifier<AgentControllerState> {
         messages: messages,
       );
 
-      // 持久化
-      await _sessionStore.save(task);
+      // 持久化:追问合并到已有会话记录(同一条历史)
+      await _sessionStore.saveFollowUp(
+        sessionId: state.activeSessionId!,
+        followUpTask: task,
+      );
       _loadSessions();
 
       _profileController.refresh();
@@ -301,21 +320,59 @@ class AgentController extends StateNotifier<AgentControllerState> {
       _sessionStore.getById(id);
 
   /// 加载历史会话继续对话(恢复活跃会话)
+  ///
+  /// 完整还原对话内容:
+  /// - 用户原始输入(含追问,以 [追问] 标记分隔)
+  /// - 助手回复(优先用 sections 拼接完整内容,缺省时回退到 resultSummary)
   void resumeSession(AgentSessionRecord session) {
-    // 从持久化记录恢复对话消息
-    final messages = <AgentMessage>[
-      AgentMessage(
+    final messages = <AgentMessage>[];
+
+    // 拆分 userInput 中的原问与追问
+    // (saveFollowUp 将 userInput 存为 "原问题\n\n[追问] 问题2\n\n[追问] 问题3")
+    final userInputParts = session.userInput
+        .split(RegExp(r'\n\n\[追问\]\s*'))
+        .where((s) => s.trim().isNotEmpty)
+        .toList();
+
+    // 1. 用户原问消息
+    if (userInputParts.isNotEmpty) {
+      messages.add(AgentMessage(
         role: 'user',
-        content: session.userInput,
+        content: userInputParts.first.trim(),
         timestamp: session.createdAt,
-      ),
-      if (session.resultSummary != null)
-        AgentMessage(
-          role: 'assistant',
-          content: session.resultSummary!,
-          timestamp: session.createdAt,
-        ),
-    ];
+      ));
+    }
+
+    // 2. 助手原始回复(由 sections 拼接完整 Markdown,保证历史对话原样显示)
+    final assistantContent = _buildAssistantContentFromSession(session);
+    if (assistantContent.isNotEmpty) {
+      messages.add(AgentMessage(
+        role: 'assistant',
+        content: assistantContent,
+        timestamp: session.createdAt,
+      ));
+    }
+
+    // 3. 追问的成对消息(用 sections 的"追问:"标题匹配)
+    // sections 顺序:原始 sections + 追问 sections(标题以"追问: "开头)
+    final followUpSections = session.sections
+        .where((s) => s.title.startsWith('追问:'))
+        .toList();
+    for (var i = 0; i < followUpSections.length; i++) {
+      // 对应 userInputParts[i+1] 为该追问的输入
+      if (i + 1 < userInputParts.length) {
+        messages.add(AgentMessage(
+          role: 'user',
+          content: userInputParts[i + 1].trim(),
+          timestamp: session.createdAt.add(Duration(seconds: i + 1)),
+        ));
+      }
+      messages.add(AgentMessage(
+        role: 'assistant',
+        content: followUpSections[i].content,
+        timestamp: session.createdAt.add(Duration(seconds: i + 1)),
+      ));
+    }
 
     state = state.copyWith(
       activeSessionId: session.id,
@@ -323,6 +380,22 @@ class AgentController extends StateNotifier<AgentControllerState> {
       currentTask: null,
       clearError: true,
     );
+  }
+
+  /// 从 session 构造助手回复 Markdown 文本
+  ///
+  /// 优先用 sections 拼接(包含 ### 标题和正文),回退到 resultSummary。
+  /// 跳过"追问:" 标题的 section(那些作为独立追问消息渲染)。
+  String _buildAssistantContentFromSession(AgentSessionRecord session) {
+    final originalSections = session.sections
+        .where((s) => !s.title.startsWith('追问:'))
+        .toList();
+    if (originalSections.isNotEmpty) {
+      return originalSections
+          .map((s) => '### ${s.title}\n${s.content}')
+          .join('\n\n');
+    }
+    return session.resultSummary ?? '';
   }
 }
 

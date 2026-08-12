@@ -45,7 +45,7 @@ class AgentSessionRecordAdapter extends TypeAdapter<AgentSessionRecord> {
   @override
   void write(BinaryWriter writer, AgentSessionRecord obj) {
     writer
-      ..writeByte(12)
+      ..writeByte(11)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
