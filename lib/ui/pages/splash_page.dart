@@ -22,6 +22,7 @@ class _SplashPageState extends ConsumerState<SplashPage>
   late AnimationController _fadeInController;
   late Animation<double> _pulseAnimation;
   late Animation<double> _fadeInAnimation;
+  bool _navigated = false;
 
   @override
   void initState() {
@@ -67,23 +68,34 @@ class _SplashPageState extends ConsumerState<SplashPage>
 
   void _navigateToHome() {
     _pulseController.stop();
-    _fadeInController.reverse().then((_) {
+
+    // 安全导航:reverse 动画完成后跳转,或 1 秒超时后直接跳转
+    final navigation = _fadeInController.reverse().then((_) {
       if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        PageRouteBuilder(
-          transitionDuration: const Duration(milliseconds: 500),
-          pageBuilder: (_, __, ___) => const BottomNavShell(),
-          transitionsBuilder: (_, animation, __, child) {
-            return FadeTransition(opacity: animation, child: child);
-          },
-        ),
-      );
+      _doNavigate();
     });
+
+    // 超时兜底:防止动画 controller 异常导致永久卡住
+    Future.delayed(const Duration(seconds: 1), () {
+      if (mounted) _doNavigate();
+    });
+
+    // 忽略 navigation 的后续回调(已由 _doNavigate 的 mounted 检查处理)
+    navigation.catchError((_) {});
   }
 
-  void _checkQuickBoot() {
-    // If already authenticated/set up, skip the delay
-    // For now, keep the delay but allow immediate skip on tap
+  void _doNavigate() {
+    if (_navigated || !mounted) return;
+    _navigated = true;
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder(
+        transitionDuration: const Duration(milliseconds: 500),
+        pageBuilder: (_, __, ___) => const BottomNavShell(),
+        transitionsBuilder: (_, animation, __, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+      ),
+    );
   }
 
   @override

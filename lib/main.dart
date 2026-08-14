@@ -31,6 +31,7 @@ import 'services/scan_history_service.dart';
 import 'services/search_history_service.dart';
 import 'services/app_version_service.dart';
 import 'services/user_service.dart';
+import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
 import 'ui/pages/onboarding_page.dart';
 
@@ -162,55 +163,53 @@ class _InitializationWrapperState extends State<_InitializationWrapper> {
   }
 
   Future<void> _initializeAsync() async {
-    // 在后台线程初始化
-    await Future.microtask(() async {
-      try {
-        // 请求权限（非阻塞）
-        if (!kIsWeb) {
-          await _requestPermissions();
-        }
+    // 初始化核心数据(Hive + Service),不阻塞在权限请求上
+    try {
+      // 初始化 Hive
+      await Hive.initFlutter();
 
-        // 初始化 Hive
-        await Hive.initFlutter();
+      // 注册适配器
+      Hive.registerAdapter(StructureResultAdapter());
+      Hive.registerAdapter(StructureCandidateAdapter());
+      Hive.registerAdapter(FavoriteItemAdapter());
+      Hive.registerAdapter(ReactionMoleculeAdapter());
+      Hive.registerAdapter(ArrowTypeAdapter());
+      Hive.registerAdapter(ReactionEquationAdapter());
+      Hive.registerAdapter(EditHistoryItemAdapter());
+      Hive.registerAdapter(ReactionFavoriteItemAdapter());
+      Hive.registerAdapter(ScanHistoryItemAdapter());
+      Hive.registerAdapter(LearningRecordAdapter());
+      Hive.registerAdapter(AgentSessionRecordAdapter());
+      Hive.registerAdapter(AgentSessionSectionAdapter());
+      Hive.registerAdapter(ErrorBookItemAdapter());
+      Hive.registerAdapter(AppUserAdapter());
 
-        // 注册适配器
-        Hive.registerAdapter(StructureResultAdapter());
-        Hive.registerAdapter(StructureCandidateAdapter());
-        Hive.registerAdapter(FavoriteItemAdapter());
-        Hive.registerAdapter(ReactionMoleculeAdapter());
-        Hive.registerAdapter(ArrowTypeAdapter());
-        Hive.registerAdapter(ReactionEquationAdapter());
-        Hive.registerAdapter(EditHistoryItemAdapter());
-        Hive.registerAdapter(ReactionFavoriteItemAdapter());
-        Hive.registerAdapter(ScanHistoryItemAdapter());
-        Hive.registerAdapter(LearningRecordAdapter());
-        Hive.registerAdapter(AgentSessionRecordAdapter());
-        Hive.registerAdapter(AgentSessionSectionAdapter());
-        Hive.registerAdapter(ErrorBookItemAdapter());
-        Hive.registerAdapter(AppUserAdapter());
+      // 先初始化 UserService(管理多用户)
+      _userService = UserService();
+      await _userService!.init();
 
-        // 先初始化 UserService(管理多用户)
-        _userService = UserService();
-        await _userService!.init();
+      // 用当前用户的 userId 初始化所有数据 Service
+      final userId = _userService!.currentUserId;
+      await _initServicesForUser(userId);
 
-        // 用当前用户的 userId 初始化所有数据 Service
-        final userId = _userService!.currentUserId;
-        await _initServicesForUser(userId);
+      // 注册切换用户时的重新初始化回调
+      _userService!.registerReinitCallback((newUserId) async {
+        await _initServicesForUser(newUserId);
+      });
 
-        // 注册切换用户时的重新初始化回调
-        _userService!.registerReinitCallback((newUserId) async {
-          await _initServicesForUser(newUserId);
-        });
+      // 初始化版本服务
+      await AppVersionService().init();
 
-        // 初始化版本服务
-        await AppVersionService().init();
+      // 检查是否需要 onboarding(初次启动引导)
+      _needsOnboarding = !await isOnboardingCompleted();
+    } catch (e) {
+      debugPrint('初始化失败：$e');
+    }
 
-        // 检查是否需要 onboarding(初次启动引导)
-        _needsOnboarding = !await isOnboardingCompleted();
-      } catch (e) {
-        debugPrint('初始化失败：$e');
-      }
-    });
+    // 权限请求放在初始化之后,不阻塞 UI 渲染
+    if (!kIsWeb) {
+      _requestPermissions(); // fire-and-forget
+    }
 
     if (mounted) {
       setState(() {
@@ -222,11 +221,16 @@ class _InitializationWrapperState extends State<_InitializationWrapper> {
   @override
   Widget build(BuildContext context) {
     if (!_initialized) {
-      // 显示简单的加载指示器
-      return const MaterialApp(
+      // 显示带主题的加载指示器
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light(),
+        darkTheme: AppTheme.dark(),
         home: Scaffold(
           body: Center(
-            child: CircularProgressIndicator(),
+            child: CircularProgressIndicator(
+              color: AppColors.aqua,
+            ),
           ),
         ),
       );
