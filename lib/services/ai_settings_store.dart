@@ -172,6 +172,12 @@ class AiSettingsStore {
     if (value.contains('api.chemvision.qzz.io') && value.contains('decimer')) {
       return AppConfig.decimerBaseUrl;
     }
+    // 非 Web 平台:本地开发用的 localhost 端点在真机上不可达,迁移回默认地址
+    if (!kIsWeb &&
+        (value.startsWith('http://localhost:8787') ||
+            value.startsWith('http://10.0.2.2:8787'))) {
+      return AppConfig.decimerBaseUrl;
+    }
     return value;
   }
 

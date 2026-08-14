@@ -92,7 +92,10 @@ class DecimerClient {
     }
 
     if (response == null) {
-      final message = lastError?.message ?? '连接失败';
+      // DioException.message 可能为 null,真实原因通常在 error/type 中
+      final message = lastError?.error?.toString() ??
+          lastError?.message ??
+          (lastError != null ? lastError.type.name : '连接失败');
       if (kIsWeb) {
         throw DecimerException('OCSR 服务请求失败：请确认已部署 Cloudflare Worker 代理。$message');
       }
