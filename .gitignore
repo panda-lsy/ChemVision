@@ -1,6 +1,5 @@
 node_modules/
 doc/*
-!doc/GOAI/
 .venv/
 
 # 备份文件与临时脚本
