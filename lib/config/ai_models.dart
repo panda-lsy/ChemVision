@@ -12,7 +12,9 @@ class AiModelOption {
   });
 }
 
-const String defaultAigcBaseUrl = AppConfig.vivoTextGenerationUrl;
+/// 默认 BaseURL:全平台统一走 Cloudflare Worker 代理
+/// (vivo 直连要求 app_id 请求头,由 Worker 统一注入)
+const String defaultAigcBaseUrl = AppConfig.webProxyBaseUrl;
 
 const List<AiModelOption> textGenerationModels = [
   AiModelOption(

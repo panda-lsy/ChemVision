@@ -129,32 +129,22 @@ class AiSettingsStore {
             trimmed.contains('.workers.dev'))) {
       return trimmed;
     }
-    // On Web, if stored value is a direct external URL, force proxy.
-    if (kIsWeb && trimmed.startsWith('https://api-ai.vivo.com.cn')) {
+    // vivo 直连要求 app_id 请求头(由 Worker 统一注入),统一迁移到 Worker 代理;
+    // 本地开发代理 localhost:8787 在真机上不可达,同样迁移
+    if (trimmed.startsWith('http://localhost:8787') ||
+        trimmed.startsWith('http://10.0.2.2:8787') ||
+        trimmed.startsWith('https://api-ai.vivo.com.cn') ||
+        trimmed.contains('/api/v1')) {
       return AppConfig.webProxyBaseUrl;
-    }
-    // On non-Web, migrate away from localhost:8787 to the direct URL.
-    if (!kIsWeb &&
-        (trimmed.startsWith('http://localhost:8787') ||
-            trimmed.startsWith('http://10.0.2.2:8787'))) {
-      return AppConfig.vivoTextGenerationUrl;
-    }
-    if (trimmed.contains('/api/v1')) {
-      return AppConfig.vivoTextGenerationUrl;
-    }
-    if (trimmed == 'https://api-ai.vivo.com.cn') {
-      return AppConfig.vivoTextGenerationUrl;
     }
     return trimmed;
   }
 
-  /// On Web, always use the local proxy to avoid CORS.
-  /// On Android, use the direct Vivo URL.
+  /// 全平台统一走 Cloudflare Worker 代理:
+  /// - Web 需要代理解决 CORS
+  /// - APP 直连 vivo 缺少 app_id 请求头会被拒(HTTP 401),由 Worker 统一注入
   String _defaultAigcBaseUrl() {
-    if (kIsWeb) {
-      return AppConfig.webProxyBaseUrl;
-    }
-    return defaultAigcBaseUrl;
+    return AppConfig.webProxyBaseUrl;
   }
 
   /// OCSR 默认端点：Web 端走 CF Worker 代理，其他平台走本地代理或直连
