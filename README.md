@@ -152,42 +152,6 @@ assets/
 └── icon.png                 # 应用图标
 ```
 
-## 快速开始
-
-### 环境要求
-
-- Flutter 3.41+ (Dart SDK)
-- Android SDK (API 24+)
-- AI API Key（在设置页配置）
-
-### 编译运行
-
-```bash
-# 获取依赖
-flutter pub get
-
-# 调试模式运行
-flutter run
-
-# 编译发布版 APK
-flutter build apk --release
-
-# 编译拆分 ABI 版本（推荐）
-flutter build apk --split-per-abi
-```
-
-**输出位置**：`build/app/outputs/flutter-apk/`
-
-### 安装到手机
-
-```bash
-# USB 调试
-flutter run
-
-# ADB 安装
-adb install build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
-```
-
 ## 核心设计决策
 
 ### 为什么用 SMILES 作为中间表示？
@@ -198,17 +162,9 @@ SMILES 是化学结构的文本表示，解耦了 LLM 推理与图形渲染：
 - 规则校验层可对 SMILES 进行语法校验（纯 Dart 实现，无需 RDKit）
 - 渲染层可独立优化，支持 JSME 编辑器和 SmilesDrawer 双渲染
 
-### 为什么用 JSME 而非自研编辑器？
-
-JSME 是成熟的开源化学结构编辑器（Java→GWT→JavaScript），提供完整的化学编辑能力（键型、原子、环、基团、消除笔），通过 InAppWebView 嵌入 Flutter 应用，配合自定义 SVG 皮肤重映射实现深色主题适配。
-
 ### 多路回退策略
 
 化学名称解析采用三路回退：PubChem 精确查询 → OPSIN IUPAC 解析 → LLM 推理，确保覆盖面最大化。SMILES 命名解析同样采用 PubChem 属性查询 → OPSIN 转换 → LLM 推断的回退链。
-
-## ChemEdu Agent — 化学教育智能体
-
-面向 GOAI 世界人工智能开源大赛「AI+教育」赛道,在原有结构式能力之上构建的教育 Agent 闭环。
 
 ### Agent 能力闭环
 
@@ -298,16 +254,6 @@ JSME 是成熟的开源化学结构编辑器（Java→GWT→JavaScript），提�
 | 高校化学/化工/药学本科生 | 课程学习、作业预习、命名→结构还原 |
 | 有机化学研究生 | 文献阅读、反应路径规划 |
 | 高中化学竞赛学生 | 竞赛备考、有机结构式入门 |
-
-## 赛事信息
-
-| 项目 | 内容 |
-| ---- | ---- |
-| 竞赛 | 第三届（2026）中国高校计算机大赛 AIGC 创新赛 |
-| 赛道 | 应用赛道 |
-| 技术底座 | vivo AI 大模型 |
-| 承办单位 | 南开大学 × vivo |
-| 作品形态 | Flutter APP（Android 原生运行） |
 
 ---
 
