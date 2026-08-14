@@ -1,5 +1,5 @@
 node_modules/
-doc/*
+doc/
 .venv/
 
 # 备份文件与临时脚本
