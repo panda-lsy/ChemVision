@@ -1,20 +1,10 @@
-import 'dart:convert';
-import 'package:flutter/foundation.dart';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../main.dart';
 import '../../providers/structure_controller.dart';
 import '../../providers/theme_mode_provider.dart';
-import '../../config/ai_models.dart';
-import '../../config/app_config.dart';
-import '../../services/ai_settings_store.dart';
-import '../../services/model_router.dart';
-import '../../services/ocr_service.dart';
-import '../../services/vivo_aigc_client.dart';
 import '../../theme/app_colors.dart';
 import '../widgets/accent_pill.dart';
 import '../widgets/app_scaffold.dart';
@@ -38,34 +28,6 @@ class _InputPageState extends ConsumerState<InputPage> {
   final TextEditingController _controller = TextEditingController();
   ResolveMode _mode = ResolveMode.exact;
 
-  // 多模态附件状态
-  String? _attachedImageBase64; // data URI
-  String? _attachedImageName;
-  bool _isMultimodalModel = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkMultimodal();
-  }
-
-  Future<void> _checkMultimodal() async {
-    final settings = await AiSettingsStore().load();
-    final model = textGenerationModels
-        .where((m) => m.name == settings.textModel)
-        .firstOrNull;
-    if (mounted) {
-      setState(() => _isMultimodalModel = model?.multimodal == true);
-    }
-  }
-
-  void _clearAttachment() {
-    setState(() {
-      _attachedImageBase64 = null;
-      _attachedImageName = null;
-    });
-  }
-
   @override
   void dispose() {
     _controller.dispose();
@@ -74,16 +36,10 @@ class _InputPageState extends ConsumerState<InputPage> {
 
   void _submit() {
     final query = _controller.text.trim();
-    if (query.isEmpty && _attachedImageBase64 == null) {
+    if (query.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('请输入化学名称')),
       );
-      return;
-    }
-
-    // 多模态附带图片：直接发送图片 + 文本
-    if (_attachedImageBase64 != null && _isMultimodalModel) {
-      _submitMultimodal(query);
       return;
     }
 
@@ -99,60 +55,6 @@ class _InputPageState extends ConsumerState<InputPage> {
         ),
       ),
     );
-  }
-
-  Future<void> _submitMultimodal(String query) async {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('正在识别图片...')),
-      );
-    }
-
-    final settings = await AiSettingsStore().load();
-    final router = ModelRouter();
-
-    // 组合 prompt：如果用户有文字描述，结合图片一起发
-    final prompt = query.isNotEmpty
-        ? '请根据图片和以下描述识别化学物质：$query。只返回化学名称。'
-        : '请识别图片中的化学物质，只返回化学名称（中文名或英文名），不要其他内容。如果无法识别，返回空。';
-
-    try {
-      final result = await router.generateMultimodal(
-        apiKey: settings.apiKey,
-        model: settings.textModel,
-        prompt: prompt,
-        imageBase64: _attachedImageBase64!,
-        baseUrl: settings.baseUrl.isEmpty
-            ? AppConfig.vivoAigcBaseUrl
-            : settings.baseUrl,
-      );
-
-      _clearAttachment();
-
-      if (mounted && result.trim().isNotEmpty) {
-        ref.read(searchHistoryListProvider.notifier).add(result.trim());
-        ref.read(structureControllerProvider.notifier).reset();
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => LoadingPage(
-              query: result.trim(),
-              mode: 'exact',
-            ),
-          ),
-        );
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('未识别到化学物质')),
-        );
-      }
-    } catch (e) {
-      _clearAttachment();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('识别失败: $e')),
-        );
-      }
-    }
   }
 
   void _removeHistory(String query) async {
@@ -185,157 +87,136 @@ class _InputPageState extends ConsumerState<InputPage> {
     }
   }
 
+  /// 相机按钮：选择图片来源后进入印刷体结构识别(OCSR)页面
   Future<void> _pickImageAndRecognize() async {
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        decoration: const BoxDecoration(
-          color: AppColors.navy,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('选择图片来源',
-                    style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 16),
-                ListTile(
-                  leading: const Icon(Icons.camera_alt,
-                      color: AppColors.aqua),
-                  title: const Text('拍照'),
-                  onTap: () => Navigator.pop(context, ImageSource.camera),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.photo_library,
-                      color: AppColors.aqua),
-                  title: const Text('从相册选择'),
-                  onTap: () => Navigator.pop(context, ImageSource.gallery),
-                ),
-              ],
+      builder: (context) {
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final accent = isDark ? AppColors.aqua : AppColors.dayBluePrimary;
+        final textPrimary =
+            isDark ? AppColors.textPrimary : AppColors.dayTextPrimary;
+        final textMuted = isDark ? AppColors.textMuted : AppColors.dayTextMuted;
+        return Container(
+          decoration: BoxDecoration(
+            color: isDark ? AppColors.navy : AppColors.dayBackground,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            border: Border(
+              top: BorderSide(
+                color: accent.withValues(alpha: 0.2),
+                width: 1,
+              ),
             ),
           ),
-        ),
-      ),
+          child: SafeArea(
+            top: false,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 顶部拖动指示条
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: textMuted.withValues(alpha: 0.3),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '选择图片来源',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ListTile(
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 4),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    leading: Icon(
+                      Icons.camera_alt,
+                      color: accent,
+                      size: 22,
+                    ),
+                    title: Text(
+                      '拍照',
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: textPrimary,
+                      ),
+                    ),
+                    trailing: Icon(
+                      Icons.chevron_right,
+                      color: textMuted,
+                      size: 20,
+                    ),
+                    onTap: () => Navigator.pop(context, ImageSource.camera),
+                  ),
+                  ListTile(
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 4),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    leading: Icon(
+                      Icons.photo_library,
+                      color: accent,
+                      size: 22,
+                    ),
+                    title: Text(
+                      '从相册选择',
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: textPrimary,
+                      ),
+                    ),
+                    trailing: Icon(
+                      Icons.chevron_right,
+                      color: textMuted,
+                      size: 20,
+                    ),
+                    onTap: () => Navigator.pop(context, ImageSource.gallery),
+                  ),
+                  const SizedBox(height: 4),
+                  SizedBox(
+                    width: double.infinity,
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: Text(
+                        '取消',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: textMuted,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
 
-    if (source == null) return;
-
-    try {
-      final picker = ImagePicker();
-      final image = await picker.pickImage(
-        source: source,
-        maxWidth: 1024,
-        maxHeight: 1024,
-        imageQuality: 85,
-      );
-      if (image == null) return;
-
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('正在识别...')),
-      );
-
-      final bytes = await image.readAsBytes();
-      final base64Image = await compute(_encodeBytes, bytes);
-      final mimeType = _detectMimeType(bytes);
-      final dataUri = 'data:$mimeType;base64,$base64Image';
-
-      // 刷新多模态状态
-      await _checkMultimodal();
-
-      if (_isMultimodalModel) {
-        // 多模态模型：作为附件预览，提交时一起发送
-        setState(() {
-          _attachedImageBase64 = dataUri;
-          _attachedImageName = image.name;
-        });
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('图片已添加为附件')),
-          );
-        }
-        return;
-      }
-
-      // 非多模态：OCR 识别
-      final settings = await AiSettingsStore().load();
-      if (!kIsWeb && settings.apiKey.isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('请先在设置中配置 API Key')),
-          );
-        }
-        return;
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('正在识别...')),
-        );
-      }
-
-      final ocrService = OcrService();
-      final ocrResult = await ocrService.recognize(
-        imageBase64: base64Image,
-        pos: 0, // 只需要文字
-        apiKey: settings.apiKey,
-      );
-
-      if (!ocrResult.success) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('OCR 识别失败：${ocrResult.error}')),
-          );
-        }
-        return;
-      }
-
-      // 如果 OCR 识别到文本，直接使用
-      if (ocrResult.allText.isNotEmpty) {
-        if (mounted) {
-          setState(() {
-            _controller.text = ocrResult.allText.trim();
-          });
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('识别完成')),
-          );
-        }
-        return;
-      }
-
-      // OCR 无结果
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('未识别到化学物质，请重试')),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('识别失败: $e')),
-        );
-      }
-    }
+    if (source == null || !mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => StructureRecognitionPage(initialSource: source),
+      ),
+    );
   }
-
-  String _detectMimeType(List<int> bytes) {
-    if (bytes.length >= 4) {
-      if (bytes[0] == 0x89 && bytes[1] == 0x50) return 'image/png';
-      if (bytes[0] == 0xFF && bytes[1] == 0xD8) return 'image/jpeg';
-      if (bytes[0] == 0x52 && bytes[1] == 0x49) return 'image/webp';
-    }
-    return 'image/jpeg';
-  }
-
-// compute helper for base64 encoding
-String _encodeBytes(Uint8List bytes) {
-  return base64Encode(bytes);
-}
 
   @override
   Widget build(BuildContext context) {
@@ -437,37 +318,6 @@ String _encodeBytes(Uint8List bytes) {
               ],
             ),
           ),
-          // 附件预览
-          if (_attachedImageBase64 != null) ...[
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: isDark ? AppColors.glass : AppColors.dayGlassStrong,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.attach_file,
-                      size: 16,
-                      color: isDark ? AppColors.aqua : AppColors.dayBluePrimary),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _attachedImageName ?? '图片附件',
-                      style: Theme.of(context).textTheme.bodySmall,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: _clearAttachment,
-                    child: Icon(Icons.close, size: 16,
-                        color: isDark ? AppColors.textMuted : AppColors.dayTextMuted),
-                  ),
-                ],
-              ),
-            ),
-          ],
           const SizedBox(height: 16),
           PrimaryButton(label: '生成结构', onPressed: _submit),
           const SizedBox(height: 10),
