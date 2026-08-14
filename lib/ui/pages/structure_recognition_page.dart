@@ -20,17 +20,10 @@ import '../widgets/primary_button.dart';
 import 'result_page.dart';
 
 class StructureRecognitionPage extends ConsumerStatefulWidget {
-  const StructureRecognitionPage({
-    super.key,
-    this.viewItem,
-    this.initialSource,
-  });
+  const StructureRecognitionPage({super.key, this.viewItem});
 
   /// 从扫描历史进入时的只读视图项(非空时进入 view-only 模式)
   final ScanHistoryItem? viewItem;
-
-  /// 进入页面时直接使用的图片来源(跳过页内来源选择弹窗)
-  final ImageSource? initialSource;
 
   /// 从扫描历史项构造 view-only 实例
   factory StructureRecognitionPage.fromScanHistory(
@@ -59,11 +52,6 @@ class _StructureRecognitionPageState
       _isViewOnly = true;
       _viewItem = widget.viewItem;
       _imageBytes = widget.viewItem!.imageBytes;
-    } else if (widget.initialSource != null) {
-      // 从主页相机按钮进入:直接拉起拍照/相册并自动识别
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _pickImage(widget.initialSource!);
-      });
     }
   }
 

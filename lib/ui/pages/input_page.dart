@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../../main.dart';
 import '../../providers/structure_controller.dart';
@@ -87,133 +86,11 @@ class _InputPageState extends ConsumerState<InputPage> {
     }
   }
 
-  /// 相机按钮：选择图片来源后进入印刷体结构识别(OCSR)页面
-  Future<void> _pickImageAndRecognize() async {
-    final source = await showModalBottomSheet<ImageSource>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        final accent = isDark ? AppColors.aqua : AppColors.dayBluePrimary;
-        final textPrimary =
-            isDark ? AppColors.textPrimary : AppColors.dayTextPrimary;
-        final textMuted = isDark ? AppColors.textMuted : AppColors.dayTextMuted;
-        return Container(
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.navy : AppColors.dayBackground,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-            border: Border(
-              top: BorderSide(
-                color: accent.withValues(alpha: 0.2),
-                width: 1,
-              ),
-            ),
-          ),
-          child: SafeArea(
-            top: false,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // 顶部拖动指示条
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      margin: const EdgeInsets.only(bottom: 16),
-                      decoration: BoxDecoration(
-                        color: textMuted.withValues(alpha: 0.3),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  Text(
-                    '选择图片来源',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  ListTile(
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 4),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    leading: Icon(
-                      Icons.camera_alt,
-                      color: accent,
-                      size: 22,
-                    ),
-                    title: Text(
-                      '拍照',
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: textPrimary,
-                      ),
-                    ),
-                    trailing: Icon(
-                      Icons.chevron_right,
-                      color: textMuted,
-                      size: 20,
-                    ),
-                    onTap: () => Navigator.pop(context, ImageSource.camera),
-                  ),
-                  ListTile(
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 4),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    leading: Icon(
-                      Icons.photo_library,
-                      color: accent,
-                      size: 22,
-                    ),
-                    title: Text(
-                      '从相册选择',
-                      style: TextStyle(
-                        fontSize: 15,
-                        color: textPrimary,
-                      ),
-                    ),
-                    trailing: Icon(
-                      Icons.chevron_right,
-                      color: textMuted,
-                      size: 20,
-                    ),
-                    onTap: () => Navigator.pop(context, ImageSource.gallery),
-                  ),
-                  const SizedBox(height: 4),
-                  SizedBox(
-                    width: double.infinity,
-                    child: TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: Text(
-                        '取消',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: textMuted,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-
-    if (source == null || !mounted) return;
+  /// 相机按钮：直接进入印刷体结构识别(OCSR)页面
+  void _openStructureRecognition() {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => StructureRecognitionPage(initialSource: source),
+        builder: (_) => const StructureRecognitionPage(),
       ),
     );
   }
@@ -311,7 +188,7 @@ class _InputPageState extends ConsumerState<InputPage> {
                     suffixIcon: IconButton(
                       icon: const Icon(Icons.photo_camera_outlined),
                       color: isDark ? AppColors.textSecondary : AppColors.dayTextSecondary,
-                      onPressed: _pickImageAndRecognize,
+                      onPressed: _openStructureRecognition,
                     ),
                   ),
                 ),
