@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.chemvision" "\0"
-            VALUE "FileDescription", "chemvision" "\0"
+            VALUE "FileDescription", "ChemEdu" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
-            VALUE "InternalName", "chemvision" "\0"
+            VALUE "InternalName", "ChemEdu" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.chemvision. All rights reserved." "\0"
-            VALUE "OriginalFilename", "chemvision.exe" "\0"
-            VALUE "ProductName", "chemvision" "\0"
+            VALUE "OriginalFilename", "ChemEdu.exe" "\0"
+            VALUE "ProductName", "ChemEdu" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

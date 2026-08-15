@@ -1,11 +1,11 @@
 {
-    "name": "chemvision",
-    "short_name": "chemvision",
+    "name": "ChemEdu",
+    "short_name": "ChemEdu",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "化学结构式智能生成、编辑与学习助手",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

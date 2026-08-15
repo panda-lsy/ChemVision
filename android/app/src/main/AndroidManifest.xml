@@ -11,7 +11,7 @@
     <uses-permission android:name="mediatek.permission.ACCESS_APU_SYS" />
     <uses-permission android:name="vivo.aiservice.permission.AISERVICE_ACCESS" />
     <application
-        android:label="chemvision"
+        android:label="ChemEdu"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <uses-native-library android:name="libdmabufheap.so" android:required="false" />
