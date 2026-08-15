@@ -79,15 +79,11 @@ class NameToStructureService implements StructureService {
     final apiKey = settings.apiKey.trim();
     final model = settings.textModel.trim();
 
-    // 端侧模型启用时跳过云端 API Key 校验
+    // 端侧模型启用时跳过云端校验
+    // API Key 由 Cloudflare Worker 代理统一注入,客户端不再强制要求
     final useLocal = await _isLocalModelEnabled();
-    if (!useLocal) {
-      if (!kIsWeb && (apiKey.isEmpty || model.isEmpty)) {
-        return StructureResult.invalid(message: '请先在设置中配置 API Key 与模型');
-      }
-      if (kIsWeb && model.isEmpty) {
-        return StructureResult.invalid(message: '请先在设置中配置模型');
-      }
+    if (!useLocal && model.isEmpty) {
+      return StructureResult.invalid(message: '请先在设置中配置模型');
     }
 
     final cacheMode = useInfer ? 'infer' : 'exact';

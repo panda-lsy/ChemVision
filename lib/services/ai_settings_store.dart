@@ -105,7 +105,10 @@ class AiSettingsStore {
 
   String _migrateTextModel(String value) {
     final trimmed = value.trim();
-    if (trimmed.isEmpty || trimmed == 'Doubao-Seedream-4.5') {
+    // 空值/历史遗留值/旧默认豆包 pro 统一迁移到当前默认模型
+    if (trimmed.isEmpty ||
+        trimmed == 'Doubao-Seedream-4.5' ||
+        trimmed == 'Doubao-Seed-2.0-pro') {
       return textGenerationModels.isNotEmpty
           ? textGenerationModels.first.name
           : trimmed;

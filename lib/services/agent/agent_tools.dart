@@ -253,8 +253,8 @@ class LlmTool extends AgentTool {
     final model = settings.textModel.trim();
     final baseUrl = settings.baseUrl;
 
-    // 端侧模型可无 Key,ModelRouter 内部处理
-    if (apiKey.isEmpty && model.isEmpty) {
+    // API Key 由 Cloudflare Worker 代理统一注入,客户端只需校验模型
+    if (model.isEmpty) {
       return ToolResult.failure('请先在设置中配置 AI 模型');
     }
 

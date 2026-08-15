@@ -18,14 +18,14 @@ const String defaultAigcBaseUrl = AppConfig.webProxyBaseUrl;
 
 const List<AiModelOption> textGenerationModels = [
   AiModelOption(
-    name: 'Doubao-Seed-2.0-pro',
-    description: '高质量回答（多模态）',
-    multimodal: true,
-  ),
-  AiModelOption(
     name: 'Volc-DeepSeek-V3.2',
     description: '深度推理',
     multimodal: false,
+  ),
+  AiModelOption(
+    name: 'Doubao-Seed-2.0-pro',
+    description: '高质量回答（多模态）',
+    multimodal: true,
   ),
   AiModelOption(
     name: 'Doubao-Seed-2.0-mini',

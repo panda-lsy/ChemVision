@@ -209,12 +209,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
     final apiKey = _apiKeyController.text.trim();
     final textModel = _resolveTextModel();
-    if (apiKey.isEmpty) {
-      setState(() {
-        _testResult = ConnectionTestResult.failure('API Key 不能为空');
-      });
-      return;
-    }
+    // API Key 由 Worker 代理统一注入,可为空;仅校验模型
     if (textModel.isEmpty) {
       setState(() {
         _testResult = ConnectionTestResult.failure('请选择或输入模型名称');
