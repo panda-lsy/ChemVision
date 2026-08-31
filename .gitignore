@@ -1,4 +1,4 @@
-﻿node_modules/
+node_modules/
 doc/
 .venv/
 
@@ -92,6 +92,19 @@ assets/web/deferredjs/
 
 # Skill
 chemvision-skill/
+
+# 小程序 web-render 中的原版 Ketcher（体积大，部署前用 tools/prepare_web_render.py 生成）
+miniprogram/web-render/ketcher/
+
+# MPFlutter 本地克隆（框架与构建工具，由 miniprogram_mpflutter 以 path 依赖引用，非项目源码）
+tools/mpflutter_src/
+tools/mpflutter_build_tools/
+
+# 微信开发者工具私有配置
+**/project.private.config.json
+
+# miniprogram_mpflutter 为独立 Git 仓库，主仓库不跟踪
+/miniprogram_mpflutter/
 
 # Cloudflare Workers
 .wrangler/
