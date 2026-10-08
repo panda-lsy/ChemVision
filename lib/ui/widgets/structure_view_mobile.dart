@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
@@ -270,7 +268,8 @@ class _StructureViewState extends State<StructureView> {
       onLoadStop: (controller, url) {
         _pageReady = true;
         controller.evaluateJavascript(
-          source: 'window.setCompactMode && window.setCompactMode(${widget.compact ? 'true' : 'false'});',
+          source:
+              'window.setCompactMode && window.setCompactMode(${widget.compact ? 'true' : 'false'});',
         );
         if (widget.readOnly) {
           controller.evaluateJavascript(
@@ -279,7 +278,8 @@ class _StructureViewState extends State<StructureView> {
         }
         if (!widget.interactive) {
           controller.evaluateJavascript(
-            source: 'window.setNonInteractive && window.setNonInteractive(true);',
+            source:
+                'window.setNonInteractive && window.setNonInteractive(true);',
           );
         }
         _sendSmiles(widget.smiles);

@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:html' as html;
-import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -13,7 +12,7 @@ Future<void> exportFavorites(String json, BuildContext context) async {
     final bytes = utf8.encode(json);
     final blob = html.Blob([bytes], 'application/json');
     final url = html.Url.createObjectUrlFromBlob(blob);
-    final anchor = html.AnchorElement(href: url)
+    html.AnchorElement(href: url)
       ..setAttribute('download',
           'chemvision_favorites_${DateTime.now().millisecondsSinceEpoch}.json')
       ..click();

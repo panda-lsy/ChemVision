@@ -406,7 +406,7 @@ class _ResultPageState extends ConsumerState<ResultPage> {
             children: [
               Expanded(
                 child: Text(
-                  'ChemEdu',
+                  'ChemVision',
                   style: Theme.of(context).textTheme.labelLarge,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -744,17 +744,16 @@ class _ResultPageState extends ConsumerState<ResultPage> {
                             await ref
                                 .read(favoritesControllerProvider.notifier)
                                 .add(_buildCurrentResult(), _pageTitle);
+                            if (!context.mounted) return;
                             setState(() {
                               _isFavorited = true;
                             });
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('已添加到收藏'),
-                                  backgroundColor: AppColors.aqua,
-                                ),
-                              );
-                            }
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('已添加到收藏'),
+                                backgroundColor: AppColors.aqua,
+                              ),
+                            );
                           },
                     child: Container(
                       width: double.infinity,

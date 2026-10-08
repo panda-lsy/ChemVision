@@ -21,9 +21,13 @@ license: mit
 ### `POST /process_image`
 - Content-Type: `multipart/form-data`
 - 字段：`image`（图片字节）
+- 上传文件上限：7 MiB；图片像素上限：20,000,000
 - 响应：`text/plain`
   - 成功：单行 SMILES 字符串
   - 失败：空字符串 或 `INVALID`
+  - 超出文件或像素上限：HTTP 413；推理队列等待超过 30 秒：HTTP 503
+
+服务单次只执行一个模型推理任务，额外请求会排队最多 30 秒，以避免并发调用占满内存。
 
 示例（curl）：
 ```bash

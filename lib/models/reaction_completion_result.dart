@@ -13,6 +13,7 @@ class ReactionKnowledgeEntry {
     this.conditionRationale = '',
     this.sourceChapter = '',
     this.embedding,
+    this.embeddingModel,
   });
 
   final String id;
@@ -39,6 +40,7 @@ class ReactionKnowledgeEntry {
   final String sourceChapter;
 
   final List<double>? embedding;
+  final String? embeddingModel;
 
   Map<String, dynamic> toJson() {
     return {
@@ -52,13 +54,17 @@ class ReactionKnowledgeEntry {
       if (reactants.isNotEmpty) 'reactants': reactants,
       if (products.isNotEmpty) 'products': products,
       if (reactionType.isNotEmpty) 'reactionType': reactionType,
-      if (conditionRationale.isNotEmpty) 'conditionRationale': conditionRationale,
+      if (conditionRationale.isNotEmpty)
+        'conditionRationale': conditionRationale,
       if (sourceChapter.isNotEmpty) 'sourceChapter': sourceChapter,
       'embedding': embedding,
+      if (embeddingModel != null && embeddingModel!.isNotEmpty)
+        'embeddingModel': embeddingModel,
     };
   }
 
   factory ReactionKnowledgeEntry.fromJson(Map<String, dynamic> json) {
+    final embedding = _toDoubleList(json['embedding']);
     return ReactionKnowledgeEntry(
       id: json['id']?.toString() ?? '',
       title: json['title']?.toString() ?? '',
@@ -72,7 +78,10 @@ class ReactionKnowledgeEntry {
       reactionType: json['reactionType']?.toString() ?? '',
       conditionRationale: json['conditionRationale']?.toString() ?? '',
       sourceChapter: json['sourceChapter']?.toString() ?? '',
-      embedding: _toDoubleList(json['embedding']),
+      embedding: embedding,
+      // Older entries were embedded by ReactionCompletionService's fixed model.
+      embeddingModel: json['embeddingModel']?.toString() ??
+          (embedding == null ? null : 'bge-base-zh-v1.5'),
     );
   }
 
@@ -100,7 +109,9 @@ class ReactionKnowledgeEntry {
   static List<double>? _toDoubleList(dynamic value) {
     if (value is! List) return null;
     final result = value
-        .map((item) => item is num ? item.toDouble() : double.tryParse(item?.toString() ?? ''))
+        .map((item) => item is num
+            ? item.toDouble()
+            : double.tryParse(item?.toString() ?? ''))
         .whereType<double>()
         .toList();
     return result.isEmpty ? null : result;

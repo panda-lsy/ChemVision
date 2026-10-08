@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
-
 import '../models/structure_recognition_result.dart';
 import '../models/structure_result.dart';
 import '../utils/smiles_validator.dart';
@@ -39,13 +37,8 @@ class ImageStructureService {
     } on DecimerException catch (e) {
       return StructureRecognitionResult.invalid(message: e.message);
     } catch (e) {
-      if (kIsWeb) {
-        return StructureRecognitionResult.invalid(
-          message: '图像识别请求失败：请确认已部署 Cloudflare Worker 代理。$e',
-        );
-      }
       return StructureRecognitionResult.invalid(
-        message: '图像识别请求失败: $e',
+        message: '图像识别请求失败，请检查 DECIMER 服务地址、网络和 CORS 配置：$e',
       );
     }
 
@@ -60,7 +53,7 @@ class ImageStructureService {
 
     // Step 3: Similarity search if score is above threshold
     List<StructureCandidate> candidates = const [];
-    if (report.completeness > 0.3) {
+    if (report.isValid) {
       try {
         candidates = await _pubchem.querySimilar(smiles);
       } catch (_) {

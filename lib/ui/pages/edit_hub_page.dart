@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../models/edit_history_item.dart';
 import '../../models/reaction_equation.dart';
 import '../../providers/edit_history_provider.dart';
-import '../../providers/favorites_provider.dart';
 import '../../providers/reaction_favorites_provider.dart';
 import '../../providers/structure_service_provider.dart';
 import '../../theme/app_colors.dart';
@@ -12,7 +10,6 @@ import '../widgets/accent_pill.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/glass_panel.dart';
 import 'structure_editor_page.dart';
-import 'reaction_editor_page.dart';
 import 'reaction_page.dart';
 
 /// 编辑入口页
@@ -88,7 +85,7 @@ class EditHubPage extends ConsumerWidget {
         children: [
           Row(
             children: [
-              Text('ChemEdu',
+              Text('ChemVision',
                   style: Theme.of(context).textTheme.labelLarge),
               const Spacer(),
               const AccentPill(label: '编辑'),

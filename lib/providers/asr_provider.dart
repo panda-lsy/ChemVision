@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -62,7 +61,7 @@ class AsrController extends StateNotifier<AsrState> {
       debugPrint('[ASR] Web 平台：跳过权限检查');
       return true;
     }
-    
+
     try {
       final status = await Permission.microphone.status;
       if (status.isGranted) return true;
@@ -127,11 +126,11 @@ class AsrController extends StateNotifier<AsrState> {
     // Connect ASR service
     try {
       final settings = await AiSettingsStore().load();
-      final apiKey = settings.apiKey;
+      final apiKey = settings.asrApiKey;
       if (apiKey.isEmpty) {
         state = state.copyWith(
           status: AsrStatus.error,
-          error: '请先配置 API Key',
+          error: '请先配置语音识别 API Key',
         );
         return;
       }
@@ -216,12 +215,12 @@ class AsrController extends StateNotifier<AsrState> {
       debugPrint('[ASR] ASR 服务已关闭');
 
       // 确保状态更新为 done
-      final text = state.partialText.isNotEmpty 
-          ? state.partialText 
+      final text = state.partialText.isNotEmpty
+          ? state.partialText
           : (state.finalText ?? '');
-      
+
       debugPrint('[ASR] 最终识别结果：" $text"');
-      
+
       state = state.copyWith(
         status: AsrStatus.done, // 即使出错也设置为 done，避免黑屏
         finalText: text,

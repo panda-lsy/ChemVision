@@ -77,10 +77,13 @@ class PubChemTool extends AgentTool {
   @override
   Future<ToolResult> invoke(Map<String, dynamic> params) async {
     final smiles = params['smiles']?.toString() ?? '';
-    if (smiles.isEmpty) {
-      return ToolResult.failure('缺少 SMILES 参数');
+    final name = params['name']?.toString().trim() ?? '';
+    if (smiles.trim().isEmpty && name.isEmpty) {
+      return ToolResult.failure('缺少 SMILES 或化合物名称');
     }
-    final result = await _service.reverseResolveName(smiles);
+    final result = name.isNotEmpty
+        ? await _service.generateStructure(name)
+        : await _service.reverseResolveName(smiles);
     if (!result.isValid) {
       return ToolResult.failure(result.message ?? 'PubChem 查询失败');
     }
@@ -253,7 +256,7 @@ class LlmTool extends AgentTool {
     final model = settings.textModel.trim();
     final baseUrl = settings.baseUrl;
 
-    // API Key 由 Cloudflare Worker 代理统一注入,客户端只需校验模型
+    // Some local OpenAI-compatible servers do not require an API key.
     if (model.isEmpty) {
       return ToolResult.failure('请先在设置中配置 AI 模型');
     }

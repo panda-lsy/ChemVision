@@ -19,6 +19,7 @@ import '../../providers/reaction_favorites_provider.dart';
 import '../../providers/scan_history_provider.dart';
 import '../../providers/error_book_provider.dart';
 import '../../services/user_service.dart';
+import 'account_page.dart';
 import '../../theme/app_colors.dart';
 import '../widgets/glass_panel.dart';
 import 'learning_profile_page.dart';
@@ -61,6 +62,15 @@ class ProfilePage extends ConsumerWidget {
             isDark: isDark,
             items: [
               _MenuItem(
+                icon: Icons.account_circle_outlined,
+                iconColor: isDark ? AppColors.aqua : AppColors.dayBluePrimary,
+                title: '账号与管理',
+                subtitle: 'GitHub / 邮箱登录注册与管理员入口',
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const AccountPage()),
+                ),
+              ),
+              _MenuItem(
                 icon: Icons.radar,
                 iconColor: isDark ? AppColors.aqua : AppColors.dayBluePrimary,
                 title: '学情画像',
@@ -98,7 +108,7 @@ class ProfilePage extends ConsumerWidget {
               _MenuItem(
                 icon: Icons.info_outline,
                 iconColor: isDark ? AppColors.textSecondary : AppColors.dayTextSecondary,
-                title: '关于 ChemEdu',
+                title: '关于 ChemVision',
                 subtitle: '版本与说明',
                 onTap: () => _showAbout(context),
               ),
@@ -126,9 +136,9 @@ class ProfilePage extends ConsumerWidget {
         backgroundColor: Theme.of(context).brightness == Brightness.dark
             ? AppColors.navy
             : Colors.white,
-        title: const Text('关于 ChemEdu'),
+        title: const Text('关于 ChemVision'),
         content: const Text(
-          'ChemEdu — 面向化学的个性化学习 Agent\n'
+          'ChemVision — 面向化学的个性化学习 Agent\n'
           '支持结构识别、性质编辑、学情诊断、作业辅导等能力。\n'
           '学情数据仅本地存储,不上传。',
         ),

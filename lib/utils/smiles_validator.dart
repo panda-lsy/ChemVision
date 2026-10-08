@@ -4,19 +4,135 @@ class SmilesValidator {
   SmilesValidator._();
 
   static const _validAtoms = {
-    'H', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'F', 'Ne',
-    'Na', 'Mg', 'Al', 'Si', 'P', 'S', 'Cl', 'Ar', 'K', 'Ca',
-    'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn', 'Ga',
-    'Ge', 'As', 'Se', 'Br', 'Kr', 'Rb', 'Sr', 'Pd', 'Ag', 'Sn',
-    'I', 'Xe', 'Ba', 'Pt', 'Au', 'Hg', 'Pb', 'Bi',
+    'H',
+    'He',
+    'Li',
+    'Be',
+    'B',
+    'C',
+    'N',
+    'O',
+    'F',
+    'Ne',
+    'Na',
+    'Mg',
+    'Al',
+    'Si',
+    'P',
+    'S',
+    'Cl',
+    'Ar',
+    'K',
+    'Ca',
+    'Sc',
+    'Ti',
+    'V',
+    'Cr',
+    'Mn',
+    'Fe',
+    'Co',
+    'Ni',
+    'Cu',
+    'Zn',
+    'Ga',
+    'Ge',
+    'As',
+    'Se',
+    'Br',
+    'Kr',
+    'Rb',
+    'Sr',
+    'Y',
+    'Zr',
+    'Nb',
+    'Mo',
+    'Tc',
+    'Ru',
+    'Rh',
+    'Pd',
+    'Ag',
+    'Cd',
+    'In',
+    'Sn',
+    'Sb',
+    'Te',
+    'I',
+    'Xe',
+    'Cs',
+    'Ba',
+    'La',
+    'Ce',
+    'Pr',
+    'Nd',
+    'Pm',
+    'Sm',
+    'Eu',
+    'Gd',
+    'Tb',
+    'Dy',
+    'Ho',
+    'Er',
+    'Tm',
+    'Yb',
+    'Lu',
+    'Hf',
+    'Ta',
+    'W',
+    'Re',
+    'Os',
+    'Ir',
+    'Pt',
+    'Au',
+    'Hg',
+    'Tl',
+    'Pb',
+    'Bi',
+    'Po',
+    'At',
+    'Rn',
+    'Fr',
+    'Ra',
+    'Ac',
+    'Th',
+    'Pa',
+    'U',
+    'Np',
+    'Pu',
+    'Am',
+    'Cm',
+    'Bk',
+    'Cf',
+    'Es',
+    'Fm',
+    'Md',
+    'No',
+    'Lr',
+    'Rf',
+    'Db',
+    'Sg',
+    'Bh',
+    'Hs',
+    'Mt',
+    'Ds',
+    'Rg',
+    'Cn',
+    'Nh',
+    'Fl',
+    'Mc',
+    'Lv',
+    'Ts',
+    'Og',
   };
 
   static SmilesValidationReport validate(String smiles) {
     final raw = smiles.trim();
     if (raw.isEmpty) {
       return const SmilesValidationReport(
-        isValid: false, completeness: 0, atomCount: 0,
-        hasRingClosures: false, hasDisconnectedFragments: false,
+        isValid: false,
+        completeness: 0,
+        atomCount: 0,
+        hasRingClosures: false,
+        hasDisconnectedFragments: false,
         issues: ['empty input'],
       );
     }
@@ -52,12 +168,12 @@ class SmilesValidator {
       issues.add('unmatched ring closures');
     }
 
-    // 4. Valence plausibility (weight 0.20)
-    final valenceOk = _checkValence(raw, atoms);
-    if (valenceOk) {
+    // 4. Token syntax (weight 0.20)
+    final syntaxOk = _checkSyntax(raw);
+    if (syntaxOk) {
       score += 0.20;
     } else {
-      issues.add('suspicious valence detected');
+      issues.add('invalid SMILES token');
     }
 
     // 5. Connectivity (weight 0.15)
@@ -69,10 +185,11 @@ class SmilesValidator {
     }
 
     return SmilesValidationReport(
-      isValid: score >= 0.65,
+      isValid:
+          syntaxOk && parenOk && ringOk && atomCount > 0 && atomCount <= 200,
       completeness: score.clamp(0.0, 1.0),
       atomCount: atomCount,
-      hasRingClosures: raw.contains(RegExp(r'[0-9%]')),
+      hasRingClosures: _containsRingClosure(raw),
       hasDisconnectedFragments: disconnected,
       issues: issues,
     );
@@ -86,6 +203,12 @@ class SmilesValidator {
     var depth = 0;
     for (var i = 0; i < s.length; i++) {
       final c = s[i];
+      if (c == '[') {
+        final end = s.indexOf(']', i + 1);
+        if (end < 0) return false;
+        i = end;
+        continue;
+      }
       if (c == '(') {
         depth++;
       } else if (c == ')') {
@@ -97,35 +220,92 @@ class SmilesValidator {
   }
 
   static bool _checkRingClosures(String s) {
-    final open = <int, int>{};
+    final openAtoms = <int, int>{};
+    final openComponents = <int, int>{};
+    final branchParents = <int?>[];
+    var atomIndex = 0;
+    var componentIndex = 0;
+    int? currentAtom;
+
+    void recordAtom() {
+      currentAtom = atomIndex++;
+    }
+
     var i = 0;
     while (i < s.length) {
       final c = s.codeUnitAt(i);
-      if (c >= 0x30 && c <= 0x39) {
-        // digit 0-9
-        final digit = c - 0x30;
-        if (open.containsKey(digit)) {
-          open.remove(digit);
-        } else {
-          open[digit] = i;
+      if (c == 0x5b) {
+        final end = s.indexOf(']', i + 1);
+        if (end < 0) return false;
+        if (_parseBracketAtom(s.substring(i + 1, end)) == null) return false;
+        recordAtom();
+        i = end + 1;
+        continue;
+      }
+      if (i + 1 < s.length) {
+        final pair = s.substring(i, i + 2);
+        if (pair == 'Cl' || pair == 'Br' || pair == 'se' || pair == 'as') {
+          recordAtom();
+          i += 2;
+          continue;
         }
-      } else if (c == 0x25 && i + 2 < s.length) {
-        // %NN ring closure
+      }
+      if ('BCNOPSFIbcnops*'.contains(String.fromCharCode(c))) {
+        recordAtom();
+        i++;
+        continue;
+      }
+      if (c >= 0x30 && c <= 0x39) {
+        final digit = c - 0x30;
+        if (currentAtom == null) return false;
+        if (openAtoms.containsKey(digit)) {
+          if (openAtoms[digit] == currentAtom ||
+              openComponents[digit] != componentIndex) {
+            return false;
+          }
+          openAtoms.remove(digit);
+          openComponents.remove(digit);
+        } else {
+          openAtoms[digit] = currentAtom!;
+          openComponents[digit] = componentIndex;
+        }
+      } else if (c == 0x25) {
+        if (i + 2 >= s.length) return false;
         final d1 = s.codeUnitAt(i + 1);
         final d2 = s.codeUnitAt(i + 2);
-        if (d1 >= 0x30 && d1 <= 0x39 && d2 >= 0x30 && d2 <= 0x39) {
-          final digit = (d1 - 0x30) * 10 + (d2 - 0x30);
-          if (open.containsKey(digit)) {
-            open.remove(digit);
-          } else {
-            open[digit] = i;
-          }
-          i += 2;
+        if (d1 < 0x30 ||
+            d1 > 0x39 ||
+            d2 < 0x30 ||
+            d2 > 0x39 ||
+            currentAtom == null) {
+          return false;
         }
+        final digit = (d1 - 0x30) * 10 + (d2 - 0x30);
+        if (openAtoms.containsKey(digit)) {
+          if (openAtoms[digit] == currentAtom ||
+              openComponents[digit] != componentIndex) {
+            return false;
+          }
+          openAtoms.remove(digit);
+          openComponents.remove(digit);
+        } else {
+          openAtoms[digit] = currentAtom!;
+          openComponents[digit] = componentIndex;
+        }
+        i += 2;
+      } else if (c == 0x28) {
+        if (currentAtom == null) return false;
+        branchParents.add(currentAtom);
+      } else if (c == 0x29) {
+        if (branchParents.isEmpty) return false;
+        currentAtom = branchParents.removeLast();
+      } else if (c == 0x2e) {
+        currentAtom = null;
+        componentIndex++;
       }
       i++;
     }
-    return open.isEmpty;
+    return openAtoms.isEmpty && branchParents.isEmpty;
   }
 
   static bool _hasDisconnectedFragments(String s) {
@@ -160,22 +340,31 @@ class SmilesValidator {
           continue;
         }
       }
-      if (c == '(' || c == ')' || c == '.' || c == '-' || c == '=' ||
-          c == '#' || c == ':' || c == '/' || c == '\\' || c == '+' ||
-          c == '@' || c == '%' || (c.codeUnitAt(0) >= 0x30 && c.codeUnitAt(0) <= 0x39)) {
+      if ('()-=#\$:/\\.%'.contains(c) || _isDigit(c.codeUnitAt(0))) {
+        if (c == '%' && i + 2 < s.length) i += 2;
         i++;
         continue;
       }
-      // Organic subset atoms
-      if (i + 1 < s.length && _isLower(s[i + 1])) {
-        final two = s.substring(i, i + 2);
-        if (_validAtoms.contains(two)) {
-          atoms.add(two);
-          i += 2;
-          continue;
-        }
+      if (i + 1 < s.length &&
+          (s.substring(i, i + 2) == 'Cl' || s.substring(i, i + 2) == 'Br')) {
+        atoms.add(s.substring(i, i + 2));
+        i += 2;
+        continue;
       }
-      if (_validAtoms.contains(c)) {
+      if ('BCNOPSFI'.contains(c)) {
+        atoms.add(c);
+        i++;
+        continue;
+      }
+      if (i + 1 < s.length &&
+          (s.substring(i, i + 2) == 'se' || s.substring(i, i + 2) == 'as')) {
+        atoms.add(s.substring(i, i + 2).toUpperCase());
+        i += 2;
+        continue;
+      }
+      if ('bcnops'.contains(c)) {
+        atoms.add(c.toUpperCase());
+      } else if (c == '*') {
         atoms.add(c);
       }
       i++;
@@ -184,35 +373,144 @@ class SmilesValidator {
   }
 
   static String? _parseBracketAtom(String bracket) {
-    // Extract atom symbol from bracket like NH2, Fe, Cl
-    final match = RegExp(r'^([A-Z][a-z]?)').firstMatch(bracket);
-    if (match != null) {
-      final symbol = match.group(1)!;
-      if (_validAtoms.contains(symbol)) return symbol;
+    final match = RegExp(
+      r'^\d*([A-Z][a-z]?|[bcnops]|se|as|\*)(?:@{1,2}|@(?:TH|AL|SP|TB|OH)\d?)?(?:H\d*)?(?:[+-]{1,2}|[+-]\d+)?(?::\d+)?$',
+    ).firstMatch(bracket);
+    if (match == null) return null;
+
+    final symbol = match.group(1)!;
+    if (symbol == '*') return symbol;
+    if ('bcnops'.contains(symbol) || symbol == 'se' || symbol == 'as') {
+      return symbol.toUpperCase();
     }
-    return null;
+    return _validAtoms.contains(symbol) ? symbol : null;
   }
 
-  static bool _isLower(String c) {
-    final code = c.codeUnitAt(0);
-    return code >= 0x61 && code <= 0x7a;
+  static bool _checkSyntax(String s) {
+    var atomCount = 0;
+    var hasCurrentAtom = false;
+    var hasPendingBond = false;
+    final branchHasAtom = <bool>[];
+    var i = 0;
+    while (i < s.length) {
+      final c = s[i];
+      if (c == '[') {
+        final end = s.indexOf(']', i + 1);
+        if (end < 0 ||
+            s.indexOf('[', i + 1) >= 0 && s.indexOf('[', i + 1) < end ||
+            _parseBracketAtom(s.substring(i + 1, end)) == null) {
+          return false;
+        }
+        atomCount++;
+        hasCurrentAtom = true;
+        hasPendingBond = false;
+        for (var branch = 0; branch < branchHasAtom.length; branch++) {
+          branchHasAtom[branch] = true;
+        }
+        i = end + 1;
+        continue;
+      }
+      if (c == ']' || c.trim().isEmpty) return false;
+      if (_isDigit(c.codeUnitAt(0))) {
+        if (!hasCurrentAtom) return false;
+        hasPendingBond = false;
+        i++;
+        continue;
+      }
+      if (c == '%') {
+        if (i + 2 >= s.length ||
+            !_isDigit(s.codeUnitAt(i + 1)) ||
+            !_isDigit(s.codeUnitAt(i + 2)) ||
+            !hasCurrentAtom) {
+          return false;
+        }
+        hasPendingBond = false;
+        i += 3;
+        continue;
+      }
+      if (i + 1 < s.length &&
+          (s.substring(i, i + 2) == 'Cl' || s.substring(i, i + 2) == 'Br')) {
+        atomCount++;
+        hasCurrentAtom = true;
+        hasPendingBond = false;
+        for (var branch = 0; branch < branchHasAtom.length; branch++) {
+          branchHasAtom[branch] = true;
+        }
+        i += 2;
+        continue;
+      }
+      if (i + 1 < s.length &&
+          (s.substring(i, i + 2) == 'se' || s.substring(i, i + 2) == 'as')) {
+        atomCount++;
+        hasCurrentAtom = true;
+        hasPendingBond = false;
+        for (var branch = 0; branch < branchHasAtom.length; branch++) {
+          branchHasAtom[branch] = true;
+        }
+        i += 2;
+        continue;
+      }
+      if ('BCNOPSFI'.contains(c) || 'bcnops'.contains(c) || c == '*') {
+        atomCount++;
+        hasCurrentAtom = true;
+        hasPendingBond = false;
+        for (var branch = 0; branch < branchHasAtom.length; branch++) {
+          branchHasAtom[branch] = true;
+        }
+        i++;
+        continue;
+      }
+      if (c == '(') {
+        if (!hasCurrentAtom || hasPendingBond) return false;
+        branchHasAtom.add(false);
+        i++;
+        continue;
+      }
+      if (c == ')') {
+        if (branchHasAtom.isEmpty ||
+            !branchHasAtom.removeLast() ||
+            hasPendingBond) {
+          return false;
+        }
+        hasCurrentAtom = true;
+        i++;
+        continue;
+      }
+      if (c == '.') {
+        if (!hasCurrentAtom || hasPendingBond || branchHasAtom.isNotEmpty) {
+          return false;
+        }
+        hasCurrentAtom = false;
+        i++;
+        continue;
+      }
+      if ('-=#\$:/\\~'.contains(c)) {
+        if (!hasCurrentAtom || hasPendingBond) return false;
+        hasPendingBond = true;
+        i++;
+        continue;
+      }
+      return false;
+    }
+    return atomCount > 0 &&
+        hasCurrentAtom &&
+        !hasPendingBond &&
+        branchHasAtom.isEmpty;
   }
 
-  static bool _checkValence(String s, List<String> atoms) {
-    // Simplified: just check that we don't see obviously broken patterns
-    // like CCCCCCCCC with no bonds (implausible connectivity)
-    if (atoms.isEmpty) return true;
-    // Check for consecutive organic atoms without any bond indicators
-    // This is valid in SMILES (implicit single bonds), so we can't really
-    // reject it. Instead, just verify no atom appears more than 50 times.
-    final counts = <String, int>{};
-    for (final a in atoms) {
-      counts[a] = (counts[a] ?? 0) + 1;
+  static bool _isDigit(int code) => code >= 0x30 && code <= 0x39;
+
+  static bool _containsRingClosure(String s) {
+    for (var i = 0; i < s.length; i++) {
+      if (s[i] == '[') {
+        final end = s.indexOf(']', i + 1);
+        if (end < 0) return false;
+        i = end;
+      } else if (_isDigit(s.codeUnitAt(i)) || s[i] == '%') {
+        return true;
+      }
     }
-    for (final entry in counts.entries) {
-      if (entry.value > 50) return false;
-    }
-    return true;
+    return false;
   }
 }
 

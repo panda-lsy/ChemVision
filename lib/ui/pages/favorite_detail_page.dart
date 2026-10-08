@@ -9,7 +9,6 @@ import '../widgets/app_scaffold.dart';
 import '../widgets/glass_panel.dart';
 import '../widgets/primary_button.dart';
 import '../widgets/structure_view.dart';
-import '../widgets/structure_view_controller.dart';
 
 class FavoriteDetailPage extends ConsumerStatefulWidget {
   const FavoriteDetailPage({super.key, required this.item});
@@ -22,7 +21,6 @@ class FavoriteDetailPage extends ConsumerStatefulWidget {
 }
 
 class _FavoriteDetailPageState extends ConsumerState<FavoriteDetailPage> {
-  StructureViewController? _controller;
   late TextEditingController _notesController;
   late TextEditingController _categoryController;
   late TextEditingController _tagInputController;
@@ -107,7 +105,7 @@ class _FavoriteDetailPageState extends ConsumerState<FavoriteDetailPage> {
         children: [
           Row(
             children: [
-              Text('ChemEdu',
+              Text('ChemVision',
                   style: Theme.of(context).textTheme.labelLarge),
               const Spacer(),
               const AccentPill(label: '收藏详情'),
@@ -140,7 +138,6 @@ class _FavoriteDetailPageState extends ConsumerState<FavoriteDetailPage> {
                       smiles: r.smiles,
                       readOnly: true,
                       interactive: false,
-                      onControllerReady: (c) => _controller = c,
                     ),
                   );
                 },

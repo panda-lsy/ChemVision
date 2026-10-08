@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../theme/app_colors.dart';
-
 /// 带有回弹动画的按钮包装器
 class BouncyButton extends StatefulWidget {
   const BouncyButton({

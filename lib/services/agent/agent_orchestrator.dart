@@ -46,6 +46,7 @@ class AgentOrchestrator {
   /// 活跃会话的上下文映射(key: taskId/sessionId, value: AgentContext)
   /// 用于多轮对话:后续追问时复用之前的工具结果和对话历史
   final Map<String, AgentContext> _sessions = {};
+  final Set<String> _cancelledTaskIds = {};
 
   /// 执行一个完整任务
   ///
@@ -108,7 +109,11 @@ class AgentOrchestrator {
 
     // 4. 顺序执行步骤
     for (var i = 0; i < task.steps.length; i++) {
-      if (task.status == AgentTaskStatus.cancelled) break;
+      if (task.status == AgentTaskStatus.cancelled ||
+          _cancelledTaskIds.remove(taskId)) {
+        task = task.copyWith(status: AgentTaskStatus.cancelled);
+        break;
+      }
 
       final step = task.steps[i];
       final executingStep = step.copyWith(
@@ -120,10 +125,40 @@ class AgentOrchestrator {
 
       // 解析 @slot.field 引用并调用工具
       final resolvedInput = _resolveReferences(step.toolInput, context);
-      final result = await _registry.invoke(
-        step.toolName ?? 'llm',
-        resolvedInput,
-      );
+      ToolResult result;
+      try {
+        result = await _registry.invoke(
+          step.toolName ?? 'llm',
+          resolvedInput,
+        );
+      } catch (_) {
+        if (_cancelledTaskIds.remove(taskId)) {
+          final cancelledStep = executingStep.copyWith(
+            status: AgentStepStatus.skipped,
+            result: '已取消',
+            completedAt: DateTime.now(),
+          );
+          task = _replaceStep(task, i, cancelledStep).copyWith(
+            status: AgentTaskStatus.cancelled,
+          );
+          onProgress?.call(task);
+          return task;
+        }
+        rethrow;
+      }
+
+      if (_cancelledTaskIds.remove(taskId)) {
+        final cancelledStep = executingStep.copyWith(
+          status: AgentStepStatus.skipped,
+          result: '已取消',
+          completedAt: DateTime.now(),
+        );
+        task = _replaceStep(task, i, cancelledStep).copyWith(
+          status: AgentTaskStatus.cancelled,
+        );
+        onProgress?.call(task);
+        return task;
+      }
 
       // 更新步骤
       final completedStep = executingStep.copyWith(
@@ -168,6 +203,8 @@ class AgentOrchestrator {
 
       // 6. 写入学习记录(反馈到学情画像,形成闭环)
       await _recordLearning(task, context);
+      // A late cancellation cannot undo completion, but should not retain IDs.
+      _cancelledTaskIds.remove(taskId);
     }
 
     onProgress?.call(task);
@@ -306,6 +343,9 @@ class AgentOrchestrator {
 
   /// 取消任务(供 UI 取消按钮调用)
   AgentTask cancel(AgentTask task) {
+    if (task.status == AgentTaskStatus.executing) {
+      _cancelledTaskIds.add(task.id);
+    }
     return task.copyWith(status: AgentTaskStatus.cancelled);
   }
 
@@ -383,7 +423,37 @@ class AgentOrchestrator {
     onProgress?.call(task);
 
     final resolvedInput = _resolveReferences(step.toolInput, context);
-    final result = await _registry.invoke('llm', resolvedInput);
+    ToolResult result;
+    try {
+      result = await _registry.invoke('llm', resolvedInput);
+    } catch (_) {
+      if (_cancelledTaskIds.remove(followUpId)) {
+        final cancelledStep = executingStep.copyWith(
+          status: AgentStepStatus.skipped,
+          result: '已取消',
+          completedAt: DateTime.now(),
+        );
+        task = _replaceStep(task, 0, cancelledStep).copyWith(
+          status: AgentTaskStatus.cancelled,
+        );
+        onProgress?.call(task);
+        return task;
+      }
+      rethrow;
+    }
+
+    if (_cancelledTaskIds.remove(followUpId)) {
+      final cancelledStep = executingStep.copyWith(
+        status: AgentStepStatus.skipped,
+        result: '已取消',
+        completedAt: DateTime.now(),
+      );
+      task = _replaceStep(task, 0, cancelledStep).copyWith(
+        status: AgentTaskStatus.cancelled,
+      );
+      onProgress?.call(task);
+      return task;
+    }
 
     final completedStep = executingStep.copyWith(
       status: result.ok ? AgentStepStatus.completed : AgentStepStatus.failed,

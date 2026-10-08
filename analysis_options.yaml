@@ -9,6 +9,14 @@
 # packages, and plugins designed to encourage good coding practices.
 include: package:flutter_lints/flutter.yaml
 
+analyzer:
+  exclude:
+    # These directories are local MPFlutter framework/build-tool clones,
+    # intentionally excluded from the ChemVision application source.
+    - tools/mpflutter_src/**
+    - tools/mpflutter_build_tools/**
+    - miniprogram_mpflutter/**
+
 linter:
   # The lint rules applied to this project can be customized in the
   # section below to disable rules from the `package:flutter_lints/flutter.yaml`

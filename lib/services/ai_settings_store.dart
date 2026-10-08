@@ -6,9 +6,9 @@ import '../config/app_config.dart';
 
 class AiSettings {
   final String apiKey;
+  final String asrApiKey;
   final String textModel;
   final String? embeddingModel;
-  final String? rerankModel;
   final String baseUrl;
   final String ocsrEndpoint;
 
@@ -17,60 +17,97 @@ class AiSettings {
     required this.textModel,
     required this.baseUrl,
     required this.ocsrEndpoint,
+    this.asrApiKey = '',
     this.embeddingModel,
-    this.rerankModel,
   });
 
   AiSettings copyWith({
     String? apiKey,
+    String? asrApiKey,
     String? textModel,
     String? baseUrl,
     String? ocsrEndpoint,
     String? embeddingModel,
-    String? rerankModel,
   }) {
     return AiSettings(
       apiKey: apiKey ?? this.apiKey,
+      asrApiKey: asrApiKey ?? this.asrApiKey,
       textModel: textModel ?? this.textModel,
       baseUrl: baseUrl ?? this.baseUrl,
       ocsrEndpoint: ocsrEndpoint ?? this.ocsrEndpoint,
       embeddingModel: embeddingModel ?? this.embeddingModel,
-      rerankModel: rerankModel ?? this.rerankModel,
     );
   }
 }
 
 class AiSettingsStore {
-  static const String _apiKeyKey = 'vivo_api_key';
-  static const String _textModelKey = 'vivo_text_model';
-  static const String _embeddingModelKey = 'vivo_embedding_model';
-  static const String _rerankModelKey = 'vivo_rerank_model';
-  static const String _baseUrlKey = 'vivo_base_url';
+  static const String _apiKeyKey = 'ai_api_key';
+  static const String _asrApiKeyKey = 'asr_api_key';
+  static const String _textModelKey = 'ai_text_model';
+  static const String _embeddingModelKey = 'ai_embedding_model';
+  static const String _baseUrlKey = 'ai_base_url';
+
+  // Read old preferences once for migration. The old API key is kept separate
+  // because it was also used by the independent speech-recognition service.
+  static const String _legacyApiKeyKey = 'vivo_api_key';
+  static const String _legacyTextModelKey = 'vivo_text_model';
+  static const String _legacyEmbeddingModelKey = 'vivo_embedding_model';
+  static const String _legacyBaseUrlKey = 'vivo_base_url';
   static const String _ocsrEndpointKey = 'ocsr_endpoint';
 
   Future<AiSettings> load() async {
     final prefs = await SharedPreferences.getInstance();
-    final apiKey = prefs.getString(_apiKeyKey) ?? '';
-    final rawTextModel = prefs.getString(_textModelKey) ?? '';
-    final embeddingModel = prefs.getString(_embeddingModelKey);
-    final rerankModel = prefs.getString(_rerankModelKey);
-    final hasBaseUrl = prefs.containsKey(_baseUrlKey);
-    final rawBaseUrl = prefs.getString(_baseUrlKey) ?? defaultAigcBaseUrl;
+    final rawLegacyApiKey = prefs.getString(_legacyApiKeyKey) ?? '';
+    final rawLegacyBaseUrl = prefs.getString(_legacyBaseUrlKey);
+    final hasCurrentBaseUrl = prefs.containsKey(_baseUrlKey);
+    final legacyBaseUrlIsMissing = rawLegacyBaseUrl?.trim().isNotEmpty != true;
+    final migratingLegacyVivoConfig = !hasCurrentBaseUrl &&
+        (legacyBaseUrlIsMissing || _isLegacyVivoBaseUrl(rawLegacyBaseUrl));
+    final apiKey = prefs.getString(_apiKeyKey) ??
+        (migratingLegacyVivoConfig ? '' : rawLegacyApiKey);
+    final asrApiKey = prefs.getString(_asrApiKeyKey) ??
+        (migratingLegacyVivoConfig ? rawLegacyApiKey : '');
+    final rawBaseUrl = prefs.getString(_baseUrlKey) ??
+        (migratingLegacyVivoConfig
+            ? defaultOpenAiCompatibleBaseUrl
+            : rawLegacyBaseUrl ?? defaultOpenAiCompatibleBaseUrl);
+    final rawTextModel = prefs.getString(_textModelKey) ??
+        prefs.getString(_legacyTextModelKey) ??
+        '';
+    final rawEmbeddingModel = prefs.getString(_embeddingModelKey) ??
+        prefs.getString(_legacyEmbeddingModelKey);
     final rawOcsrEndpoint = prefs.getString(_ocsrEndpointKey) ?? '';
 
-    final textModel = _migrateTextModel(rawTextModel);
-    final baseUrl = hasBaseUrl
-      ? _migrateBaseUrl(rawBaseUrl)
-      : _defaultAigcBaseUrl();
+    final textModel =
+        migratingLegacyVivoConfig && _isLegacyCatalogModel(rawTextModel.trim())
+            ? ''
+            : rawTextModel.trim();
+    final embeddingModel = migratingLegacyVivoConfig
+        ? null
+        : _normalizeOptional(rawEmbeddingModel);
+    final baseUrl = _normalizeBaseUrl(rawBaseUrl);
     final ocsrEndpoint = rawOcsrEndpoint.trim().isEmpty
         ? _defaultOcsrEndpoint()
         : _migrateOcsrEndpoint(rawOcsrEndpoint.trim());
 
-    if (textModel != rawTextModel) {
+    if (!prefs.containsKey(_textModelKey) || textModel != rawTextModel) {
       await prefs.setString(_textModelKey, textModel);
     }
-    if (baseUrl != rawBaseUrl) {
+    if (!prefs.containsKey(_baseUrlKey) || baseUrl != rawBaseUrl) {
       await prefs.setString(_baseUrlKey, baseUrl);
+    }
+    if (!prefs.containsKey(_apiKeyKey)) {
+      await prefs.setString(_apiKeyKey, apiKey);
+    }
+    if (!prefs.containsKey(_asrApiKeyKey)) {
+      await prefs.setString(_asrApiKeyKey, asrApiKey);
+    }
+    if (!prefs.containsKey(_embeddingModelKey)) {
+      if (embeddingModel != null) {
+        await prefs.setString(_embeddingModelKey, embeddingModel);
+      } else if (migratingLegacyVivoConfig) {
+        await prefs.setString(_embeddingModelKey, '');
+      }
     }
     if (ocsrEndpoint != rawOcsrEndpoint.trim()) {
       await prefs.setString(_ocsrEndpointKey, ocsrEndpoint);
@@ -78,9 +115,9 @@ class AiSettingsStore {
 
     return AiSettings(
       apiKey: apiKey,
+      asrApiKey: asrApiKey,
       textModel: textModel,
-      embeddingModel: _normalizeOptional(embeddingModel),
-      rerankModel: _normalizeOptional(rerankModel),
+      embeddingModel: embeddingModel,
       baseUrl: baseUrl,
       ocsrEndpoint: ocsrEndpoint,
     );
@@ -89,9 +126,9 @@ class AiSettingsStore {
   Future<void> save(AiSettings settings) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_apiKeyKey, settings.apiKey);
+    await prefs.setString(_asrApiKeyKey, settings.asrApiKey);
     await prefs.setString(_textModelKey, settings.textModel);
     await _setOptional(prefs, _embeddingModelKey, settings.embeddingModel);
-    await _setOptional(prefs, _rerankModelKey, settings.rerankModel);
     await prefs.setString(_baseUrlKey, settings.baseUrl);
     await prefs.setString(_ocsrEndpointKey, settings.ocsrEndpoint);
   }
@@ -100,54 +137,37 @@ class AiSettingsStore {
     if (value == null || value.trim().isEmpty) {
       return null;
     }
-    return value;
+    return value.trim();
   }
 
-  String _migrateTextModel(String value) {
+  String _normalizeBaseUrl(String value) {
     final trimmed = value.trim();
-    // 空值/历史遗留值/旧默认豆包 pro 统一迁移到当前默认模型
-    if (trimmed.isEmpty ||
-        trimmed == 'Doubao-Seedream-4.5' ||
-        trimmed == 'Doubao-Seed-2.0-pro') {
-      return textGenerationModels.isNotEmpty
-          ? textGenerationModels.first.name
-          : trimmed;
-    }
-    return trimmed;
-  }
-
-  String _migrateBaseUrl(String value) {
-    var trimmed = value.trim();
-    if (trimmed.isEmpty) {
-      return _defaultAigcBaseUrl();
-    }
+    if (trimmed.isEmpty) return defaultOpenAiCompatibleBaseUrl;
     if (!trimmed.contains('://') &&
         (trimmed.startsWith('localhost') || trimmed.startsWith('10.0.2.2'))) {
-      trimmed = 'http://$trimmed';
-    }
-    // On Web, keep localhost:8787 or worker URL — the proxy is required for CORS.
-    if (kIsWeb &&
-        (trimmed.startsWith('http://localhost:8787') ||
-            trimmed.startsWith('http://10.0.2.2:8787') ||
-            trimmed.contains('.workers.dev'))) {
-      return trimmed;
-    }
-    // vivo 直连要求 app_id 请求头(由 Worker 统一注入),统一迁移到 Worker 代理;
-    // 本地开发代理 localhost:8787 在真机上不可达,同样迁移
-    if (trimmed.startsWith('http://localhost:8787') ||
-        trimmed.startsWith('http://10.0.2.2:8787') ||
-        trimmed.startsWith('https://api-ai.vivo.com.cn') ||
-        trimmed.contains('/api/v1')) {
-      return AppConfig.webProxyBaseUrl;
+      return 'http://$trimmed';
     }
     return trimmed;
   }
 
-  /// 全平台统一走 Cloudflare Worker 代理:
-  /// - Web 需要代理解决 CORS
-  /// - APP 直连 vivo 缺少 app_id 请求头会被拒(HTTP 401),由 Worker 统一注入
-  String _defaultAigcBaseUrl() {
-    return AppConfig.webProxyBaseUrl;
+  bool _isLegacyVivoBaseUrl(String? value) {
+    final trimmed = value?.trim() ?? '';
+    return trimmed.startsWith('https://api-ai.vivo.com.cn') ||
+        trimmed.startsWith(AppConfig.cloudflareWorkerUrl) ||
+        trimmed.startsWith('http://localhost:8787') ||
+        trimmed.startsWith('http://127.0.0.1:8787') ||
+        trimmed.startsWith('http://10.0.2.2:8787');
+  }
+
+  bool _isLegacyCatalogModel(String value) {
+    return const {
+      'Volc-DeepSeek-V3.2',
+      'Doubao-Seed-2.0-pro',
+      'Doubao-Seed-2.0-mini',
+      'Doubao-Seed-2.0-lite',
+      'qwen3.5-plus',
+      'Doubao-Seedream-4.5',
+    }.contains(value);
   }
 
   /// OCSR 默认端点：Web 端走 CF Worker 代理，其他平台走本地代理或直连
@@ -181,7 +201,8 @@ class AiSettingsStore {
   ) async {
     final normalized = _normalizeOptional(value);
     if (normalized == null) {
-      await prefs.remove(key);
+      // Keep an empty value so a legacy preference cannot be re-imported.
+      await prefs.setString(key, '');
       return;
     }
     await prefs.setString(key, normalized);

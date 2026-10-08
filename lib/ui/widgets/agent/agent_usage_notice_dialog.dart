@@ -63,7 +63,7 @@ class _AgentUsageNoticeDialogState extends State<AgentUsageNoticeDialog> {
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'ChemEdu Agent 使用须知',
+              'ChemVision Agent 使用须知',
               style: theme.textTheme.titleMedium?.copyWith(
                 fontWeight: FontWeight.w700,
               ),

@@ -163,7 +163,7 @@ class TaskPlanner {
           name: '按名称查询化合物',
           description: '从 PubChem 解析名称为 SMILES',
           toolName: 'pubchem',
-          toolInput: {'smiles': input.name ?? ''},
+          toolInput: {'name': input.name ?? ''},
         ),
       AgentStep(
         id: 'pubchem',

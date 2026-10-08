@@ -128,7 +128,7 @@ class _InputPageState extends ConsumerState<InputPage> {
         children: [
           Row(
             children: [
-              Text('ChemEdu', style: Theme.of(context).textTheme.labelLarge),
+              Text('ChemVision', style: Theme.of(context).textTheme.labelLarge),
               const Spacer(),
               IconButton(
                 onPressed: () => ref.read(themeModeProvider.notifier).toggle(),

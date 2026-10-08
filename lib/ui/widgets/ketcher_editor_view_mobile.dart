@@ -1,11 +1,9 @@
 import 'dart:convert';
-import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 
 import '../../config/app_config.dart';
-import '../../utils/ketcher_asset_helper.dart';
 import 'ketcher_editor_controller.dart';
 
 class KetcherEditorView extends StatefulWidget {
@@ -34,7 +32,6 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
   InAppWebViewController? _webViewController;
   KetcherEditorController? _controller;
   bool _ready = false;
-  bool _desktopAssetsReady = false;
 
   /// ketcher 最近一次通过 onSmilesUpdated 回报的 SMILES。
   /// 用于在 didUpdateWidget 中阻断规范化回音循环。
@@ -43,16 +40,6 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
   @override
   void initState() {
     super.initState();
-    _initDesktop();
-  }
-
-  Future<void> _initDesktop() async {
-    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-      await KetcherAssetHelper.prepare();
-      if (mounted) setState(() => _desktopAssetsReady = true);
-    } else {
-      _desktopAssetsReady = true;
-    }
   }
 
   @override
@@ -118,7 +105,8 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
       exportSvg: ({String? data}) async {
         try {
           final result = await _webViewController?.evaluateJavascript(
-            source: "window.ketcher?.generateImageAsDataUrl?.('', { outputFormat: 'svg' }) ?? ''",
+            source:
+                "window.ketcher?.generateImageAsDataUrl?.('', { outputFormat: 'svg' }) ?? ''",
           );
           return result?.toString();
         } catch (_) {
@@ -128,8 +116,10 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
       exportPng: ({String? data}) async {
         try {
           final bgColor = data ?? 'transparent';
+          final bgColorLiteral = jsonEncode(bgColor);
           final result = await _webViewController?.evaluateJavascript(
-            source: "window.ketcher?.generateImageAsDataUrl?.('', { outputFormat: 'png', backgroundColor: '" + bgColor + "' }) ?? ''",
+            source:
+                "window.ketcher?.generateImageAsDataUrl?.('', { outputFormat: 'png', backgroundColor: $bgColorLiteral }) ?? ''",
           );
           return result?.toString();
         } catch (_) {
@@ -208,7 +198,8 @@ class _KetcherEditorViewState extends State<KetcherEditorView> {
             // sync initial theme (override ketcher auto-detection)
             if (widget.themeMode != ThemeMode.dark) {
               controller.evaluateJavascript(
-                source: "document.documentElement.removeAttribute('data-theme');",
+                source:
+                    "document.documentElement.removeAttribute('data-theme');",
               );
             }
             if (widget.initialSmiles.isNotEmpty) {

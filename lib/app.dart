@@ -7,14 +7,14 @@ import 'ui/pages/splash_page.dart';
 import 'providers/asr_provider.dart';
 import 'providers/theme_mode_provider.dart';
 
-class ChemEduApp extends ConsumerStatefulWidget {
-  const ChemEduApp({super.key});
+class ChemVisionApp extends ConsumerStatefulWidget {
+  const ChemVisionApp({super.key});
 
   @override
-  ConsumerState<ChemEduApp> createState() => _ChemEduAppState();
+  ConsumerState<ChemVisionApp> createState() => _ChemVisionAppState();
 }
 
-class _ChemEduAppState extends ConsumerState<ChemEduApp>
+class _ChemVisionAppState extends ConsumerState<ChemVisionApp>
     with WidgetsBindingObserver {
   @override
   void initState() {
@@ -42,7 +42,7 @@ class _ChemEduAppState extends ConsumerState<ChemEduApp>
   Widget build(BuildContext context) {
     final themeMode = ref.watch(themeModeProvider);
     return MaterialApp(
-      title: 'ChemEdu',
+      title: 'ChemVision',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),

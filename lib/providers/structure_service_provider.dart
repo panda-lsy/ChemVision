@@ -7,14 +7,14 @@ import '../services/image_structure_service.dart';
 import '../services/mock_structure_service.dart';
 import '../services/real_structure_service.dart';
 import '../services/structure_service.dart';
-import '../services/vivo_aigc_client.dart';
+import '../services/openai_compatible_client.dart';
 
 final aiSettingsStoreProvider = Provider<AiSettingsStore>((ref) {
   return AiSettingsStore();
 });
 
-final vivoAigcClientProvider = Provider<VivoAigcClient>((ref) {
-  return VivoAigcClient();
+final openAiCompatibleClientProvider = Provider<OpenAiCompatibleClient>((ref) {
+  return OpenAiCompatibleClient();
 });
 
 final decimerClientProvider = Provider<DecimerClient>((ref) {
@@ -27,7 +27,7 @@ final structureServiceProvider = Provider<StructureService>((ref) {
   }
   return NameToStructureService(
     settingsStore: ref.read(aiSettingsStoreProvider),
-    client: ref.read(vivoAigcClientProvider),
+    client: ref.read(openAiCompatibleClientProvider),
   );
 });
 

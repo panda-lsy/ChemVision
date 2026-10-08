@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/edit_history_item.dart';
+import '../../models/reaction_equation.dart';
 import '../../models/structure_result.dart';
 import '../../providers/edit_history_provider.dart';
+import '../../providers/favorites_provider.dart';
+import '../../providers/reaction_favorites_provider.dart';
 import '../../providers/structure_service_provider.dart';
 import '../../theme/app_colors.dart';
 import '../widgets/app_scaffold.dart';
@@ -12,11 +15,6 @@ import '../widgets/ketcher_editor_view.dart';
 import '../widgets/primary_button.dart';
 import '../widgets/structure_view.dart';
 import 'save_confirm_page.dart';
-import '../widgets/export_image_dialog.dart';
-import '../../providers/favorites_provider.dart';
-import '../../providers/reaction_favorites_provider.dart';
-import '../../models/structure_result.dart';
-import '../../models/reaction_equation.dart';
 
 class StructureEditorPage extends ConsumerStatefulWidget {
   const StructureEditorPage({
@@ -149,6 +147,7 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
             );
             await ref.read(favoritesControllerProvider.notifier).add(sResult, finalName);
           } catch (_) {}
+          if (!mounted) return;
           Navigator.of(context).pop({'smiles': finalSmiles, 'name': finalName});
         }
       } else {
@@ -157,16 +156,6 @@ class _StructureEditorPageState extends ConsumerState<StructureEditorPage> {
     } finally {
       if (mounted) setState(() => _isSaving = false);
     }
-  }
-
-  void _showExportDialog(BuildContext context, bool isDark) {
-    showDialog(
-      context: context,
-      builder: (_) => ExportImageDialog(
-        exportSvg: () => _controller?.exportSvg() ?? Future.value(null),
-        exportPng: (bg) => _controller?.exportPng(data: bg) ?? Future.value(null),
-      ),
-    );
   }
 
   Future<void> _cancel() async {

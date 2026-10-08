@@ -131,7 +131,8 @@ class ReactionKnowledgeBaseStore {
         case ImportDuplicateStrategy.skip:
           continue;
         case ImportDuplicateStrategy.overwrite:
-          final existing = existsById ? byId[entry.id] : bySemanticKey[semanticKey];
+          final existing =
+              existsById ? byId[entry.id] : bySemanticKey[semanticKey];
           if (existing != null) {
             byId.remove(existing.id);
             bySemanticKey.remove(_semanticKey(existing));
@@ -141,7 +142,8 @@ class ReactionKnowledgeBaseStore {
           importedCount++;
           break;
         case ImportDuplicateStrategy.merge:
-          final existing = existsById ? byId[entry.id] : bySemanticKey[semanticKey];
+          final existing =
+              existsById ? byId[entry.id] : bySemanticKey[semanticKey];
           if (existing == null) {
             byId[entry.id] = entry;
             bySemanticKey[semanticKey] = entry;
@@ -195,7 +197,8 @@ class ReactionKnowledgeBaseStore {
       id: base.id,
       title: pickText(base.title, incoming.title),
       keywords: keywordSet.toList(),
-      completedEquation: pickText(base.completedEquation, incoming.completedEquation),
+      completedEquation:
+          pickText(base.completedEquation, incoming.completedEquation),
       conditionFields: {
         'temperature': mergeConditionField('temperature'),
         'catalyst': mergeConditionField('catalyst'),
@@ -207,9 +210,13 @@ class ReactionKnowledgeBaseStore {
       reactants: mergeLists(base.reactants, incoming.reactants),
       products: mergeLists(base.products, incoming.products),
       reactionType: pickText(base.reactionType, incoming.reactionType),
-      conditionRationale: pickText(base.conditionRationale, incoming.conditionRationale),
+      conditionRationale:
+          pickText(base.conditionRationale, incoming.conditionRationale),
       sourceChapter: pickText(base.sourceChapter, incoming.sourceChapter),
       embedding: incoming.embedding ?? base.embedding,
+      embeddingModel: incoming.embedding != null
+          ? incoming.embeddingModel
+          : base.embeddingModel,
     );
   }
 

@@ -206,7 +206,12 @@ class AgentController extends StateNotifier<AgentControllerState> {
 
       return task;
     } catch (e) {
+      final failedTask = state.currentTask?.copyWith(
+        status: AgentTaskStatus.failed,
+        error: '任务执行失败: $e',
+      );
       state = state.copyWith(
+        currentTask: failedTask,
         isRunning: false,
         error: '任务执行失败: $e',
       );
@@ -268,7 +273,12 @@ class AgentController extends StateNotifier<AgentControllerState> {
 
       return task;
     } catch (e) {
+      final failedTask = state.currentTask?.copyWith(
+        status: AgentTaskStatus.failed,
+        error: '追问失败: $e',
+      );
       state = state.copyWith(
+        currentTask: failedTask,
         isRunning: false,
         error: '追问失败: $e',
       );
@@ -278,12 +288,12 @@ class AgentController extends StateNotifier<AgentControllerState> {
 
   /// 取消当前任务
   void cancelTask() {
+    if (!state.isRunning) return;
     final current = state.currentTask;
     if (current == null) return;
     final cancelled = _orchestrator.cancel(current);
     state = state.copyWith(
       currentTask: cancelled,
-      isRunning: false,
     );
     _sessionStore.save(cancelled).then((_) => _loadSessions());
   }

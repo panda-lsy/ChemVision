@@ -12,7 +12,7 @@ import 'ai_settings_store.dart';
 import 'model_router.dart';
 import 'structure_cache_store.dart';
 import 'structure_service.dart';
-import 'vivo_aigc_client.dart';
+import 'openai_compatible_client.dart';
 
 class NameToStructureService implements StructureService {
   @override
@@ -22,20 +22,19 @@ class NameToStructureService implements StructureService {
 
   NameToStructureService({
     AiSettingsStore? settingsStore,
-    VivoAigcClient? client,
+    OpenAiCompatibleClient? client,
     ModelRouter? router,
     PubChemClient? pubchemClient,
     OpsinClient? opsinClient,
     StructureCacheStore? cacheStore,
   })  : _settingsStore = settingsStore ?? AiSettingsStore(),
-        _client = client ?? VivoAigcClient(),
-        _router = router ?? ModelRouter(),
+        _router = router ??
+            ModelRouter(apiClient: client ?? OpenAiCompatibleClient()),
         _pubchem = pubchemClient ?? PubChemClient(),
         _opsin = opsinClient ?? OpsinClient(),
         _cacheStore = cacheStore ?? StructureCacheStore();
 
   final AiSettingsStore _settingsStore;
-  final VivoAigcClient _client;
   final ModelRouter _router;
   final PubChemClient _pubchem;
   final OpsinClient _opsin;
@@ -43,8 +42,7 @@ class NameToStructureService implements StructureService {
 
   static const String _normalizationPromptPath =
       'assets/prompts/name_normalization.txt';
-  static const String _inferPromptPath =
-      'assets/prompts/infer_candidates.txt';
+  static const String _inferPromptPath = 'assets/prompts/infer_candidates.txt';
   static const String _smilesToNamePromptPath =
       'assets/prompts/smiles_to_name.txt';
   static Future<String>? _normalizationPromptCache;
@@ -61,7 +59,8 @@ class NameToStructureService implements StructureService {
   ];
 
   @override
-  Future<StructureResult> generateStructure(String query, {String? mode}) async {
+  Future<StructureResult> generateStructure(String query,
+      {String? mode}) async {
     final trimmed = query.trim();
     if (trimmed.isEmpty) {
       return StructureResult.invalid(message: '请输入化学名称');
@@ -80,7 +79,7 @@ class NameToStructureService implements StructureService {
     final model = settings.textModel.trim();
 
     // 端侧模型启用时跳过云端校验
-    // API Key 由 Cloudflare Worker 代理统一注入,客户端不再强制要求
+    // Some local OpenAI-compatible servers do not require an API key.
     final useLocal = await _isLocalModelEnabled();
     if (!useLocal && model.isEmpty) {
       return StructureResult.invalid(message: '请先在设置中配置模型');
@@ -113,7 +112,8 @@ class NameToStructureService implements StructureService {
           final chineseName = parsed['chinese'];
           // Use the English name (or the full candidate if no parsing was successful)
           final nameToResolve = englishName ?? candidate;
-          final outcome = await _resolveExact(nameToResolve, originalName: null);
+          final outcome =
+              await _resolveExact(nameToResolve, originalName: null);
           if (outcome.result != null) {
             // Add English and Chinese name info to resolution result
             final resultWithNames = _ResolutionResult(
@@ -133,9 +133,8 @@ class NameToStructureService implements StructureService {
 
         if (resolvedResults.isEmpty) {
           return StructureResult.invalid(
-            message: lastError == null
-                ? '推测未命中，请尝试更明确的用途描述'
-                : '推测未命中：$lastError',
+            message:
+                lastError == null ? '推测未命中，请尝试更明确的用途描述' : '推测未命中：$lastError',
           );
         }
 
@@ -163,7 +162,8 @@ class NameToStructureService implements StructureService {
       String? chineseName;
       var normalizedName = trimmed;
       if (_looksChinese(trimmed)) {
-        final pair = await _normalizeNameWithChinese(trimmed, apiKey, model, settings.baseUrl);
+        final pair = await _normalizeNameWithChinese(
+            trimmed, apiKey, model, settings.baseUrl);
         englishName = pair['english'] ?? trimmed;
         chineseName = pair['chinese'];
         if (chineseName == null || chineseName.isEmpty) {
@@ -172,7 +172,8 @@ class NameToStructureService implements StructureService {
         normalizedName = pair['english'] ?? trimmed;
       }
       if (kDebugMode) {
-        debugPrint('[Resolver] Normalized name: $normalizedName, English: $englishName, Chinese: $chineseName');
+        debugPrint(
+            '[Resolver] Normalized name: $normalizedName, English: $englishName, Chinese: $chineseName');
       }
       final iupacName = _sanitizeName(normalizedName);
       if (_isInvalidExactOutput(iupacName) || _looksChinese(iupacName)) {
@@ -236,7 +237,7 @@ class NameToStructureService implements StructureService {
       String? englishName = pubchem.name;
       String? chineseName;
       final aiCandidates = <Map<String, String?>>[];
-      if (settings.apiKey.trim().isNotEmpty && settings.textModel.trim().isNotEmpty) {
+      if (settings.textModel.trim().isNotEmpty) {
         aiCandidates.addAll(
           await _inferNamesFromSmilesWithAi(
             normalized,
@@ -247,14 +248,14 @@ class NameToStructureService implements StructureService {
         );
       }
 
-      if ((englishName == null || englishName.isEmpty) && aiCandidates.isNotEmpty) {
+      if ((englishName == null || englishName.isEmpty) &&
+          aiCandidates.isNotEmpty) {
         englishName = aiCandidates.first['english'];
       }
       if (aiCandidates.isNotEmpty) {
         chineseName = aiCandidates.first['chinese'];
       } else if (englishName != null &&
           englishName.isNotEmpty &&
-          settings.apiKey.trim().isNotEmpty &&
           settings.textModel.trim().isNotEmpty) {
         chineseName = await _translateEnglishNameToChinese(
           englishName,
@@ -342,39 +343,36 @@ class NameToStructureService implements StructureService {
     return _parseNormalizedNamePair(text, query);
   }
 
-  Map<String, String?> _parseNormalizedNamePair(String text, String originalQuery) {
+  Map<String, String?> _parseNormalizedNamePair(
+      String text, String originalQuery) {
     var cleaned = text.trim();
     if (cleaned.isEmpty) {
       return {'english': originalQuery, 'chinese': originalQuery};
     }
     cleaned = cleaned.replaceAll('```', '').replaceAll('"', '');
-    final lines = cleaned.split(RegExp(r'\r?\n')).map((l) => l.trim()).where((l) => l.isNotEmpty).toList();
-    
+    final lines = cleaned
+        .split(RegExp(r'\r?\n'))
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty)
+        .toList();
+
     if (lines.isEmpty) {
       return {'english': originalQuery, 'chinese': originalQuery};
     }
-    
+
     String englishName = originalQuery;
     String chineseName = originalQuery;
-    
-    if (lines.length >= 1) {
-      englishName = lines[0].startsWith('-') ? lines[0].substring(1).trim() : lines[0];
+
+    if (lines.isNotEmpty) {
+      englishName =
+          lines[0].startsWith('-') ? lines[0].substring(1).trim() : lines[0];
     }
     if (lines.length >= 2) {
-      chineseName = lines[1].startsWith('-') ? lines[1].substring(1).trim() : lines[1];
+      chineseName =
+          lines[1].startsWith('-') ? lines[1].substring(1).trim() : lines[1];
     }
-    
-    return {'english': englishName, 'chinese': chineseName};
-  }
 
-  Future<String> _normalizeName(
-    String query,
-    String apiKey,
-    String model,
-    String baseUrl,
-  ) async {
-    final result = await _normalizeNameWithChinese(query, apiKey, model, baseUrl);
-    return result['english'] ?? query;
+    return {'english': englishName, 'chinese': chineseName};
   }
 
   Future<String?> _translateEnglishNameToChinese(
@@ -602,7 +600,8 @@ English name: $englishName
 
     // Run PubChem first; if it succeeds, skip OPSIN entirely.
     final pubchemResult = await _pubchem.queryAny(candidates);
-    if (pubchemResult.smiles != null && pubchemResult.smiles!.trim().isNotEmpty) {
+    if (pubchemResult.smiles != null &&
+        pubchemResult.smiles!.trim().isNotEmpty) {
       final resolvedName = pubchemResult.name ?? query;
       return _ResolveOutcome(
         result: _ResolutionResult(
@@ -902,8 +901,7 @@ class PubChemClient {
     }
 
     final encoded = Uri.encodeComponent(trimmed);
-    final url =
-        '$_baseUrl/$encoded/property/CanonicalSMILES,IsomericSMILES,'
+    final url = '$_baseUrl/$encoded/property/CanonicalSMILES,IsomericSMILES,'
         'MolecularFormula,MolecularWeight,IUPACName/JSON';
 
     try {
@@ -954,7 +952,8 @@ class PubChemClient {
               _asString(fault['Details']) ??
               _asString(fault['Description']);
           final code = _asString(fault['Code']) ?? '';
-          final combined = '${code.toLowerCase()} ${message?.toLowerCase() ?? ''}';
+          final combined =
+              '${code.toLowerCase()} ${message?.toLowerCase() ?? ''}';
           if (combined.contains('notfound')) {
             return const _SourceResult(
               smiles: null,
@@ -988,7 +987,8 @@ class PubChemClient {
             final formula = _asString(first['MolecularFormula']);
             final weight = _asDouble(first['MolecularWeight']);
             final name = _asString(first['IUPACName']);
-            final smiles = canonical ?? isomeric ?? smilesFallback ?? connectivity;
+            final smiles =
+                canonical ?? isomeric ?? smilesFallback ?? connectivity;
             if (smiles != null) {
               return _SourceResult(
                 smiles: smiles,
@@ -1005,7 +1005,8 @@ class PubChemClient {
           debugPrint('[PubChem] Missing properties in response');
           debugPrint('[PubChem] Keys: ${data.keys.toList()}');
           if (properties != null) {
-            debugPrint('[PubChem] PropertyTable keys: ${properties.keys.toList()}');
+            debugPrint(
+                '[PubChem] PropertyTable keys: ${properties.keys.toList()}');
             debugPrint('[PubChem] Properties type: ${rawList.runtimeType}');
           }
         }
@@ -1300,8 +1301,7 @@ class PubChemClient {
         final weight = _asDouble(item['MolecularWeight']) ?? 0;
         final name = _asString(item['IUPACName']);
         // Confidence degrades by rank position
-        final confidence =
-            (0.5 + (threshold / 200.0)) * (1.0 - i * 0.04);
+        final confidence = (0.5 + (threshold / 200.0)) * (1.0 - i * 0.04);
         results.add(StructureCandidate(
           smiles: canonical,
           resolvedName: name,
@@ -1527,7 +1527,7 @@ class RealStructureService extends NameToStructureService {
 
   RealStructureService({
     AiSettingsStore? settingsStore,
-    VivoAigcClient? client,
+    OpenAiCompatibleClient? client,
     PubChemClient? pubchemClient,
     OpsinClient? opsinClient,
   }) : super(

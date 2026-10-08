@@ -176,7 +176,7 @@ class _SplashPageState extends ConsumerState<SplashPage>
                 child: Column(
                   children: [
                     Text(
-                      'ChemEdu',
+                      'ChemVision',
                       style: Theme.of(context)
                           .textTheme
                           .headlineLarge

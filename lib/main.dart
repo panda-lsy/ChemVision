@@ -30,6 +30,7 @@ import 'services/reaction_favorites_service.dart';
 import 'services/scan_history_service.dart';
 import 'services/search_history_service.dart';
 import 'services/app_version_service.dart';
+import 'services/supabase_auth_service.dart';
 import 'services/user_service.dart';
 import 'theme/app_colors.dart';
 import 'theme/app_theme.dart';
@@ -97,7 +98,7 @@ final bottomNavIndexProvider = StateProvider<int>((ref) => 0);
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // 立即启动应用，减少首帧渲染时间
   runApp(const ProviderScope(
     child: _InitializationWrapper(),
@@ -124,6 +125,7 @@ class _InitializationWrapperState extends State<_InitializationWrapper> {
   ErrorBookService? _errorBookService;
   bool _initialized = false;
   bool _needsOnboarding = false;
+  String? _initializationError;
 
   @override
   void initState() {
@@ -135,15 +137,53 @@ class _InitializationWrapperState extends State<_InitializationWrapper> {
   /// 单个 Service 失败不影响其他 Service
   Future<void> _initServicesForUser(String userId) async {
     await Future.wait([
-      _initService(_favoritesService, () => FavoritesService(), (s) async => await s.init(userId: userId), (s) => _favoritesService = s),
-      _initService(_reactionFavoritesService, () => ReactionFavoritesService(), (s) async => await s.init(userId: userId), (s) => _reactionFavoritesService = s),
-      _initService(_editHistoryService, () => EditHistoryService(), (s) async => await s.init(userId: userId), (s) => _editHistoryService = s),
-      _initService(_searchHistoryService, () => SearchHistoryService(), (s) async => await s.init(userId: userId), (s) => _searchHistoryService = s),
-      _initService(_scanHistoryService, () => ScanHistoryService(), (s) async => await s.init(userId: userId), (s) => _scanHistoryService = s),
-      _initService(_learningRecordService, () => LearningRecordService(), (s) async => await s.init(userId: userId), (s) => _learningRecordService = s),
-      _initService(_agentSessionStore, () => AgentSessionStore(), (s) async => await s.init(userId: userId), (s) => _agentSessionStore = s),
-      _initService(_errorBookService, () => ErrorBookService(), (s) async => await s.init(userId: userId), (s) => _errorBookService = s),
+      _initService(
+          _favoritesService,
+          () => FavoritesService(),
+          (s) async => await s.init(userId: userId),
+          (s) => _favoritesService = s),
+      _initService(
+          _reactionFavoritesService,
+          () => ReactionFavoritesService(),
+          (s) async => await s.init(userId: userId),
+          (s) => _reactionFavoritesService = s),
+      _initService(
+          _editHistoryService,
+          () => EditHistoryService(),
+          (s) async => await s.init(userId: userId),
+          (s) => _editHistoryService = s),
+      _initService(
+          _searchHistoryService,
+          () => SearchHistoryService(),
+          (s) async => await s.init(userId: userId),
+          (s) => _searchHistoryService = s),
+      _initService(
+          _scanHistoryService,
+          () => ScanHistoryService(),
+          (s) async => await s.init(userId: userId),
+          (s) => _scanHistoryService = s),
+      _initService(
+          _learningRecordService,
+          () => LearningRecordService(),
+          (s) async => await s.init(userId: userId),
+          (s) => _learningRecordService = s),
+      _initService(
+          _agentSessionStore,
+          () => AgentSessionStore(),
+          (s) async => await s.init(userId: userId),
+          (s) => _agentSessionStore = s),
+      _initService(
+          _errorBookService,
+          () => ErrorBookService(),
+          (s) async => await s.init(userId: userId),
+          (s) => _errorBookService = s),
     ]);
+  }
+
+  void _registerAdapter<T>(TypeAdapter<T> adapter) {
+    if (!Hive.isAdapterRegistered(adapter.typeId)) {
+      Hive.registerAdapter(adapter);
+    }
   }
 
   /// 安全初始化单个 Service — 失败时创建实例但不让异常冒泡
@@ -163,26 +203,29 @@ class _InitializationWrapperState extends State<_InitializationWrapper> {
   }
 
   Future<void> _initializeAsync() async {
+    // Supabase 配置缺失或服务不可用时，保留本地访客模式。
+    await SupabaseAuthService.initialize();
+
     // 初始化核心数据(Hive + Service),不阻塞在权限请求上
     try {
       // 初始化 Hive
       await Hive.initFlutter();
 
       // 注册适配器
-      Hive.registerAdapter(StructureResultAdapter());
-      Hive.registerAdapter(StructureCandidateAdapter());
-      Hive.registerAdapter(FavoriteItemAdapter());
-      Hive.registerAdapter(ReactionMoleculeAdapter());
-      Hive.registerAdapter(ArrowTypeAdapter());
-      Hive.registerAdapter(ReactionEquationAdapter());
-      Hive.registerAdapter(EditHistoryItemAdapter());
-      Hive.registerAdapter(ReactionFavoriteItemAdapter());
-      Hive.registerAdapter(ScanHistoryItemAdapter());
-      Hive.registerAdapter(LearningRecordAdapter());
-      Hive.registerAdapter(AgentSessionRecordAdapter());
-      Hive.registerAdapter(AgentSessionSectionAdapter());
-      Hive.registerAdapter(ErrorBookItemAdapter());
-      Hive.registerAdapter(AppUserAdapter());
+      _registerAdapter(StructureResultAdapter());
+      _registerAdapter(StructureCandidateAdapter());
+      _registerAdapter(FavoriteItemAdapter());
+      _registerAdapter(ReactionMoleculeAdapter());
+      _registerAdapter(ArrowTypeAdapter());
+      _registerAdapter(ReactionEquationAdapter());
+      _registerAdapter(EditHistoryItemAdapter());
+      _registerAdapter(ReactionFavoriteItemAdapter());
+      _registerAdapter(ScanHistoryItemAdapter());
+      _registerAdapter(LearningRecordAdapter());
+      _registerAdapter(AgentSessionRecordAdapter());
+      _registerAdapter(AgentSessionSectionAdapter());
+      _registerAdapter(ErrorBookItemAdapter());
+      _registerAdapter(AppUserAdapter());
 
       // 先初始化 UserService(管理多用户)
       _userService = UserService();
@@ -203,11 +246,12 @@ class _InitializationWrapperState extends State<_InitializationWrapper> {
       // 检查是否需要 onboarding(初次启动引导)
       _needsOnboarding = !await isOnboardingCompleted();
     } catch (e) {
+      _initializationError = '应用初始化失败：$e';
       debugPrint('初始化失败：$e');
     }
 
     // 权限请求放在初始化之后,不阻塞 UI 渲染
-    if (!kIsWeb) {
+    if (!kIsWeb && _initializationError == null) {
       _requestPermissions(); // fire-and-forget
     }
 
@@ -226,10 +270,42 @@ class _InitializationWrapperState extends State<_InitializationWrapper> {
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light(),
         darkTheme: AppTheme.dark(),
+        home: const Scaffold(
+          body: Center(
+            child: CircularProgressIndicator(color: AppColors.aqua),
+          ),
+        ),
+      );
+    }
+
+    if (_initializationError != null) {
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light(),
+        darkTheme: AppTheme.dark(),
         home: Scaffold(
           body: Center(
-            child: CircularProgressIndicator(
-              color: AppColors.aqua,
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('启动失败，请检查存储状态后重试。'),
+                  const SizedBox(height: 12),
+                  Text(_initializationError!, textAlign: TextAlign.center),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        _initialized = false;
+                        _initializationError = null;
+                      });
+                      _initializeAsync();
+                    },
+                    child: const Text('重试'),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -241,10 +317,12 @@ class _InitializationWrapperState extends State<_InitializationWrapper> {
         userServiceProvider.overrideWithValue(_userService!),
         favoritesServiceProvider.overrideWithValue(_favoritesService!),
         editHistoryServiceProvider.overrideWithValue(_editHistoryService!),
-        reactionFavoritesServiceProvider.overrideWithValue(_reactionFavoritesService!),
+        reactionFavoritesServiceProvider
+            .overrideWithValue(_reactionFavoritesService!),
         searchHistoryServiceProvider.overrideWithValue(_searchHistoryService!),
         scanHistoryServiceProvider.overrideWithValue(_scanHistoryService!),
-        learningRecordServiceProvider.overrideWithValue(_learningRecordService!),
+        learningRecordServiceProvider
+            .overrideWithValue(_learningRecordService!),
         agentSessionStoreProvider.overrideWithValue(_agentSessionStore!),
         errorBookServiceProvider.overrideWithValue(_errorBookService!),
       ],
@@ -259,7 +337,7 @@ class _InitializationWrapperState extends State<_InitializationWrapper> {
                 },
               ),
             )
-          : const ChemEduApp(),
+          : const ChemVisionApp(),
     );
   }
 }
@@ -271,20 +349,20 @@ Future<void> _requestPermissions() async {
     debugPrint('Web 平台：跳过权限请求');
     return;
   }
-  
+
   try {
     // 请求麦克风权限（用于语音识别）
     final micStatus = await Permission.microphone.status;
     if (micStatus.isDenied) {
       await Permission.microphone.request();
     }
-    
+
     // 请求相机权限（用于图像识别）
     final cameraStatus = await Permission.camera.status;
     if (cameraStatus.isDenied) {
       await Permission.camera.request();
     }
-    
+
     // 注意：storage 权限在 Android 10+ 已废弃，Web 平台不支持
     // 如果需要文件访问，使用 image_picker 或 file_picker
   } catch (e) {

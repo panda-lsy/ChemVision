@@ -2,7 +2,7 @@
 
 主要操作:
 1. 全局替换项目名: "万化构象 ChemVISION" / "万化构象" / "ChemVISION"
-   → 统一改为 "ChemEdu Agent"(代码 package:chemedu 已对齐)
+   → 统一改为 "ChemVision"(代码 package:chemvision 已对齐)
 2. 在 THANKS 页之前插入 3 张新幻灯片,补充近期迭代的新内容:
    - Agent 能力闭环强化(多轮对话 / 任务进度可视化 / 追问合并历史)
    - 个性化学习闭环(学情画像→诊断→规划→错题本 / "我的"页面)
@@ -26,15 +26,15 @@ from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 
 PPT_DIR = Path(__file__).resolve().parent.parent / "doc" / "GOAI"
 SRC_PPT = PPT_DIR / "万化构象——化学结构式可视化学习工具最新.pptx"
-DST_PPT = PPT_DIR / "ChemEdu_Agent_赛道演示.pptx"
+DST_PPT = PPT_DIR / "ChemVision_赛道演示.pptx"
 BACKUP = PPT_DIR / "万化构象——化学结构式可视化学习工具最新.bak.pptx"
 
 # 名字替换映射(顺序敏感: 先替换长串,再替换短串,避免误伤)
 NAME_REPLACEMENTS = [
-    ("万化构象 ChemVISION", "ChemEdu Agent"),
-    ("万化构象", "ChemEdu Agent"),
-    ("ChemVISION", "ChemEdu Agent"),
-    ("chemvision.qzz.io", "chemedu.qzz.io"),
+    ("万化构象 ChemVISION", "ChemVision"),
+    ("万化构象", "ChemVision"),
+    ("ChemVISION", "ChemVision"),
+    ("chemedu.qzz.io", "chemvision.qzz.io"),
 ]
 
 # 主题色(从原 PPT 推断的蓝绿配色,贴近赛道视觉)

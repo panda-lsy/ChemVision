@@ -129,7 +129,7 @@ class _LoadingPageState extends ConsumerState<LoadingPage> {
         children: [
           Row(
             children: [
-              Text('ChemEdu',
+              Text('ChemVision',
                   style: Theme.of(context).textTheme.labelLarge),
               const Spacer(),
               AccentPill(label: stage.pillText),

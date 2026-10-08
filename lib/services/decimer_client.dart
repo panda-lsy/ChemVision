@@ -97,7 +97,7 @@ class DecimerClient {
           lastError?.message ??
           (lastError != null ? lastError.type.name : '连接失败');
       if (kIsWeb) {
-        throw DecimerException('OCSR 服务请求失败：请确认已部署 Cloudflare Worker 代理。$message');
+        throw DecimerException('OCSR 服务请求失败：请检查服务地址是否可访问并允许当前站点 CORS。$message');
       }
       throw DecimerException('OCSR 服务请求失败: $message');
     }
@@ -105,7 +105,8 @@ class DecimerClient {
     final status = response.statusCode ?? 0;
     if (status != 200) {
       final body = response.data?.toString() ?? '';
-      throw DecimerException('OCSR 服务返回 HTTP $status: ${body.isEmpty ? "(无响应体)" : body}');
+      throw DecimerException(
+          'OCSR 服务返回 HTTP $status: ${body.isEmpty ? "(无响应体)" : body}');
     }
 
     final raw = response.data?.toString() ?? '';

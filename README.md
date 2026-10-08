@@ -1,17 +1,17 @@
 <div align="center">
 
-# ChemEdu
+# ChemVision
 
-### 化学结构式智能生成、编辑与学习助手 · ChemEdu Agent
+### 化学结构式智能生成、编辑与学习助手 · ChemVision Agent
 
 ![Version](https://img.shields.io/badge/version-v3.0-38d5c1?style=flat-square)
 ![Platform](https://img.shields.io/badge/platform-Flutter%20Android-4FC3F7?style=flat-square)
 ![AI](https://img.shields.io/badge/AI-AI-7C4DFF?style=flat-square)
-![Agent](https://img.shields.io/badge/Agent-ChemEdu-FF7043?style=flat-square)
+![Agent](https://img.shields.io/badge/Agent-ChemVision-FF7043?style=flat-square)
 ![License](https://img.shields.io/badge/license-MIT-green?style=flat-square)
 
-**通用大模型「能说化学，却不能画化学」——ChemEdu 补齐这条裂缝。**
-**ChemEdu Agent 让大模型「能教化学」——作业辅导 → 学情诊断 → 学习规划完整闭环。**
+**通用大模型「能说化学，却不能画化学」——ChemVision 补齐这条裂缝。**
+**ChemVision Agent 让大模型「能教化学」——作业辅导 → 学情诊断 → 学习规划完整闭环。**
 
 </div>
 
@@ -21,7 +21,7 @@
 
 现有大语言模型在化学领域呈现典型的「能说不能画」缺陷：无法将自然语言描述映射为规范的键线式结构图，SMILES 输出错误率高，且完全缺失中文 IUPAC 命名的专项支持。生成后若存在错误，用户必须切换到 ChemDraw 等专业 PC 端软件才能修正。
 
-**ChemEdu 让大模型「能画化学」，更让用户「能改化学」。**
+**ChemVision 让大模型「能画化学」，更让用户「能改化学」。**
 
 ## 核心功能
 
@@ -31,13 +31,15 @@
 | **解析模式 / 推测模式** | 解析模式：精确翻译中文名→英文 IUPAC→SMILES；推测模式：根据用途描述生成候选名称 | 已实现 |
 | **化学规则校验** | 原子价态、键连接合法性、分子式反向比对，校验不通过自动重生成 | 已实现 |
 | **反应方程式语义补全** | 输入不完整反应信息，RAG + LLM 推断完整方程式、反应条件、机理来源 | 已实现 |
-| **课本印刷体结构识别** | 拍摄课本结构式，多模态 LLM 识别转换为 SMILES，完整度评分 + 候选补全 | 已实现 |
+| **课本印刷体结构识别** | 拍摄课本结构式，DECIMER OCSR 转换为 SMILES，完整度评分 + 候选补全 | 已实现 |
 | **交互式 JSME 编辑器** | 嵌入 JSME 分子编辑器，支持键型修改、原子编辑、消除笔、深色/浅色主题 | 已实现 |
 | **SMILES 命名解析** | SMILES → IUPAC 名称 / 中文名双向解析（OPSIN + PubChem + LLM 三路回退） | 已实现 |
 | **收藏与历史** | 结构卡片收藏夹、搜索历史管理、错题本 | 已实现 |
+| **账号登录注册** | Supabase Auth 支持邮箱密码与 GitHub OAuth；未配置后端时可继续访客使用 | 已接入，待配置后端 |
+| **Owner 管理页面** | Owner 可分页查看账号、注册时间、登录方式和最近登录时间 | 已接入，待部署 Edge Function |
 | **语音输入** | 语音识别输入化学名称（ASR 服务） | 已实现 |
-| **图片识别输入** | 拍照/相册选取图片，OCR + 多模态 LLM 识别化学名称 | 已实现 |
-| **ChemEdu Agent** | 作业辅导/学情诊断/学习规划/同类题训练/错因分析/自由对话 6 大教育任务 | 已实现 |
+| **图片识别输入** | 拍照/相册选取结构式图片，DECIMER OCSR 识别并生成候选 | 已实现 |
+| **ChemVision Agent** | 作业辅导/学情诊断/学习规划/同类题训练/错因分析/自由对话 6 大教育任务 | 已实现 |
 | **学情画像** | 知识点掌握度雷达图 + 统计 + 薄弱点列表(本地 Hive 持久化) | 已实现 |
 | **学习记录闭环** | 扫描/练习行为自动写入学习记录,反馈到画像与诊断 | 已实现 |
 
@@ -65,13 +67,13 @@
 │  Riverpod 状态管理 │ InAppWebView │ JSME 编辑器 │ SVG 渲染 │
 ├─────────────────────────────────────────────────────────┤
 │                    服务层                                 │
-│  VivoAigcClient │ PubChemClient │ OPSIN │ OcrService    │
+│ OpenAiCompatibleClient │ PubChemClient │ OPSIN │ DECIMER │
 ├─────────────────────────────────────────────────────────┤
 │                    数据层                                 │
-│  SharedPreferences │ 结构缓存 │ 收藏夹 │ 知识库 │ 搜索历史 │
+│  Hive/SharedPreferences │ 收藏/历史/学情(本地) │ Supabase Auth │
 ├─────────────────────────────────────────────────────────┤
 │                    云端 API                               │
-│  AI Chat/多模态/Embedding │ PubChem REST │ OPSIN     │
+│  AI Chat/多模态/Embedding │ PubChem │ OPSIN │ Supabase Edge Functions │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -80,7 +82,7 @@
 | 层级 | 技术 |
 | ---- | ---- |
 | 框架 | Flutter 3.41+ (Dart)，Riverpod 状态管理 |
-| AI 底座 | vivo AI 大模型文本/多模态/Embedding |
+| AI 底座 | OpenAI 兼容 API（文本/多模态/Embedding）；可选端侧 BlueLM |
 | 中间表示 | SMILES（解耦 LLM 推理与渲染） |
 | 规则校验 | 纯 Dart SMILES 语法校验（括号平衡、环闭合、价态、连通性） |
 | 结构渲染 | JSME 编辑器（GWT）+ SmilesDrawer（SVG 键线式图） |
@@ -88,7 +90,8 @@
 | 化学数据库 | PubChem（结构查询、相似性搜索、属性查询） |
 | 反应知识库 | 本地 SharedPreferences + RAG（Embedding 检索 + LLM 补全） |
 | 语音识别 | ASR 服务 |
-| 图片识别 | OCR 服务 + 多模态 LLM |
+| 图片识别 | DECIMER OCSR 服务 |
+| 账号与权限 | Supabase Auth + Postgres RLS + Edge Function |
 
 ## 项目结构
 
@@ -107,11 +110,11 @@ lib/
 │   ├── theme_mode_provider.dart
 │   └── ...
 ├── services/                # 业务服务
-│   ├── vivo_aigc_client.dart         # AI API 客户端
+│   ├── openai_compatible_client.dart # 通用 Chat Completions / Embeddings 客户端
 │   ├── real_structure_service.dart   # PubChem + OPSIN + LLM 结构服务
 │   ├── reaction_completion_service.dart  # 反应方程式补全
 │   ├── image_structure_service.dart  # 图像结构识别
-│   ├── ocr_service.dart              # OCR 服务
+│   ├── supabase_auth_service.dart     # 邮箱/GitHub 认证与 Owner API
 │   ├── favorites_service.dart        # 收藏夹
 │   ├── search_history_service.dart   # 搜索历史
 │   └── ai_settings_store.dart        # AI 设置持久化
@@ -129,6 +132,7 @@ lib/
 │   │   ├── smiles_name_resolve_page.dart   # SMILES 命名解析页
 │   │   ├── favorites_page.dart       # 收藏夹
 │   │   ├── settings_page.dart        # 设置页
+│   │   ├── account_page.dart         # 登录、注册与 Owner 用户目录
 │   │   └── splash_page.dart          # 启动页
 │   └── widgets/             # 可复用组件
 │       ├── jsme_editor_view_mobile.dart  # JSME 编辑器（移动端）
@@ -139,6 +143,10 @@ lib/
 └── utils/                   # 工具类
     ├── smiles_validator.dart   # SMILES 语法校验
     └── js_utils.dart           # JS 交互工具
+
+supabase/
+├── migrations/              # 账号资料 RLS 与 Owner 身份校验
+└── functions/admin-users/   # Owner 专用用户目录 API
 
 assets/
 ├── web/                     # Web 渲染资源
@@ -151,6 +159,8 @@ assets/
 ├── js/                      # 其他 JS 资源
 └── icon.png                 # 应用图标
 ```
+
+账号后端配置与部署步骤见 [docs/backend-auth.md](docs/backend-auth.md)。
 
 ## 核心设计决策
 
@@ -280,13 +290,11 @@ Web 构建产物自动部署到 GitHub Pages,无需手动操作。构建流程�
 
 > 首次更新后访问会自动 reload 一次以加载新版本,后续访问稳定。
 
-### 云端 API 代理(Cloudflare Worker)
+### 云端模型 API
 
-生产环境的 LLM API 通过 Cloudflare Worker 代理转发,避免暴露 API Key 并解决跨域问题:
+文本生成、多模态识别和 Embedding 使用 OpenAI 兼容的 Chat Completions 与 Embeddings 接口。请在设置页填写服务商提供的 Base URL、模型 ID 和 API Key。请求由应用直接发往该 Base URL；Web 环境下，服务商需要允许当前站点跨域访问（CORS）。API Key 保存在本机设置中，并随请求发送给配置的服务商。
 
-- **生产地址**: `https://api.chemedu.qzz.io`(在设置页配置)
-- **本地开发**: 可在设置页切换为 `http://localhost:8787`
-- 所有云端请求必须使用 **HTTPS**,避免微信内置浏览器的 Mixed Content 错误
+本地开发时可选用 `tools/openai_compatible_proxy.js` 作为 CORS 转发代理。它默认只监听 `127.0.0.1:8787`，并用 `AI_TARGET` 指定 OpenAI 兼容服务的 origin；`/opsin/*` 路由仍转发到 OPSIN。代理不会注入服务商密钥，调用时使用应用设置中的 API Key。
 
 ### Android 部署
 
@@ -315,7 +323,7 @@ flutter logs
 
 # ADB 过滤应用日志
 adb logcat -s flutter
-adb logcat --pid=$(adb shell pidof -s com.chemedu.chemedu)
+adb logcat --pid=$(adb shell pidof -s com.chemvision.chemvision)
 ```
 
 ### DevTools
@@ -333,7 +341,7 @@ flutter pub global run devtools
 
 - **v1.0** — 自然语言 → 结构式生成、规则校验、SVG 渲染
 - **v2.0** — 反应方程式补全、印刷体识别、JSME 编辑器、SMILES 命名解析
-- **v3.0** — ChemEdu Agent 闭环:作业辅导/学情诊断/学习规划/同类题训练/错因分析/自由对话
+- **v3.0** — ChemVision Agent 闭环:作业辅导/学情诊断/学习规划/同类题训练/错因分析/自由对话
 - **v3.1** — 学情画像雷达图、学习记录闭环、知识图谱、隐私合规面板
 
 ### 进行中 🚧

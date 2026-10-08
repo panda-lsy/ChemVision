@@ -1,6 +1,6 @@
 {
-    "name": "ChemEdu",
-    "short_name": "ChemEdu",
+    "name": "ChemVision",
+    "short_name": "ChemVision",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

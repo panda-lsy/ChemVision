@@ -110,6 +110,9 @@ tools/mpflutter_build_tools/
 .wrangler/
 cloudflare-worker/
 
+# Supabase CLI local state
+supabase/.temp/
+
 .dev.vars*
 !.dev.vars.example
 !.env.example

@@ -11,7 +11,7 @@ import '../../services/ai_settings_store.dart';
 import '../../services/app_version_service.dart';
 import '../../services/bluelm_service.dart';
 import '../../services/structure_cache_store.dart';
-import '../../services/vivo_aigc_client.dart';
+import '../../services/openai_compatible_client.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/favorites_export.dart';
 import '../widgets/accent_pill.dart';
@@ -20,8 +20,6 @@ import '../widgets/compliance/privacy_compliance_panel.dart';
 import '../widgets/glass_panel.dart';
 import '../widgets/primary_button.dart';
 import '../widgets/user_management_section.dart';
-
-const String _customModelValue = '__custom__';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -32,17 +30,18 @@ class SettingsPage extends ConsumerStatefulWidget {
 
 class _SettingsPageState extends ConsumerState<SettingsPage> {
   final TextEditingController _apiKeyController = TextEditingController();
-  final TextEditingController _customModelController = TextEditingController();
+  final TextEditingController _asrApiKeyController = TextEditingController();
+  final TextEditingController _textModelController = TextEditingController();
+  final TextEditingController _embeddingModelController =
+      TextEditingController();
   final TextEditingController _baseUrlController = TextEditingController();
   final TextEditingController _ocsrEndpointController = TextEditingController();
 
   final AiSettingsStore _settingsStore = AiSettingsStore();
-  final VivoAigcClient _client = VivoAigcClient();
+  final OpenAiCompatibleClient _client = OpenAiCompatibleClient();
 
-  String? _selectedTextModel;
-  String? _selectedEmbeddingModel;
-  String? _selectedRerankModel;
   bool _obscureKey = true;
+  bool _obscureAsrKey = true;
   bool _isTesting = false;
   bool _hasLoaded = false;
   bool _useLocalModel = false;
@@ -50,8 +49,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       TextEditingController(text: '/sdcard/1225/1.7.0.4_1225_mtk9500');
   Timer? _saveDebounce;
   ConnectionTestResult? _testResult;
-
-  bool get _isCustomModel => _selectedTextModel == _customModelValue;
 
   @override
   void initState() {
@@ -64,7 +61,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   void dispose() {
     _saveDebounce?.cancel();
     _apiKeyController.dispose();
-    _customModelController.dispose();
+    _asrApiKeyController.dispose();
+    _textModelController.dispose();
+    _embeddingModelController.dispose();
     _baseUrlController.dispose();
     _ocsrEndpointController.dispose();
     _modelPathController.dispose();
@@ -73,33 +72,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   Future<void> _loadSettings() async {
     final settings = await _settingsStore.load();
-    final textModel = settings.textModel;
-    final knownModel = textGenerationModels
-        .where((model) => model.name == textModel)
-        .map((model) => model.name)
-        .firstOrNull;
-
     _apiKeyController.text = settings.apiKey;
+    _asrApiKeyController.text = settings.asrApiKey;
+    _textModelController.text = settings.textModel;
+    _embeddingModelController.text = settings.embeddingModel ?? '';
     _baseUrlController.text = settings.baseUrl;
     _ocsrEndpointController.text = settings.ocsrEndpoint;
-    _selectedEmbeddingModel = settings.embeddingModel;
-    _selectedRerankModel = settings.rerankModel;
-
-    if (knownModel != null) {
-      _selectedTextModel = knownModel;
-    } else if (textModel.trim().isNotEmpty) {
-      _selectedTextModel = _customModelValue;
-      _customModelController.text = textModel;
-    } else if (textGenerationModels.isNotEmpty) {
-      _selectedTextModel = textGenerationModels.first.name;
-    } else {
-      _selectedTextModel = _customModelValue;
-    }
 
     if (_baseUrlController.text.trim().isEmpty) {
-      _baseUrlController.text = defaultAigcBaseUrl;
+      _baseUrlController.text = defaultOpenAiCompatibleBaseUrl;
     }
 
+    if (!mounted) return;
     setState(() {
       _hasLoaded = true;
       _testResult = null;
@@ -108,17 +92,19 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   Future<void> _loadBlueLmSettings() async {
     final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() {
       _useLocalModel = prefs.getBool('bluelm_use_local') ?? false;
-      _modelPathController.text =
-          prefs.getString('bluelm_model_path') ?? '/sdcard/1225/1.7.0.4_1225_mtk9500';
+      _modelPathController.text = prefs.getString('bluelm_model_path') ??
+          '/sdcard/1225/1.7.0.4_1225_mtk9500';
     });
   }
 
   Future<void> _saveBlueLmSettings() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('bluelm_use_local', _useLocalModel);
-    await prefs.setString('bluelm_model_path', _modelPathController.text.trim());
+    await prefs.setString(
+        'bluelm_model_path', _modelPathController.text.trim());
   }
 
   void _scheduleSave() {
@@ -133,6 +119,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   Future<void> _persistSettings() async {
     final apiKey = _apiKeyController.text.trim();
+    final asrApiKey = _asrApiKeyController.text.trim();
     final textModel = _resolveTextModel();
     final baseUrl = _resolveBaseUrl();
     final ocsrEndpoint = _resolveOcsrEndpoint();
@@ -140,26 +127,28 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     await _settingsStore.save(
       AiSettings(
         apiKey: apiKey,
+        asrApiKey: asrApiKey,
         textModel: textModel,
         baseUrl: baseUrl,
         ocsrEndpoint: ocsrEndpoint,
-        embeddingModel: _selectedEmbeddingModel,
-        rerankModel: _selectedRerankModel,
+        embeddingModel: _optionalModel(_embeddingModelController.text),
       ),
     );
     await _saveBlueLmSettings();
   }
 
   String _resolveTextModel() {
-    if (_isCustomModel) {
-      return _customModelController.text.trim();
-    }
-    return _selectedTextModel?.trim() ?? '';
+    return _textModelController.text.trim();
+  }
+
+  String? _optionalModel(String value) {
+    final normalized = value.trim();
+    return normalized.isEmpty ? null : normalized;
   }
 
   String _resolveBaseUrl() {
     final raw = _baseUrlController.text.trim();
-    return raw.isEmpty ? defaultAigcBaseUrl : raw;
+    return raw.isEmpty ? defaultOpenAiCompatibleBaseUrl : raw;
   }
 
   String _resolveOcsrEndpoint() {
@@ -186,8 +175,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           final response = await service.generate('测试');
           setState(() {
             _testResult = ConnectionTestResult.success(
-                responseText: '端侧模型连接成功: ${response.substring(0, response.length.clamp(0, 50))}...',
-                latencyMs: 0,
+              responseText:
+                  '端侧模型连接成功: ${response.substring(0, response.length.clamp(0, 50))}...',
+              latencyMs: 0,
             );
           });
           await service.release();
@@ -209,7 +199,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
     final apiKey = _apiKeyController.text.trim();
     final textModel = _resolveTextModel();
-    // API Key 由 Worker 代理统一注入,可为空;仅校验模型
+    // Key is optional for local OpenAI-compatible servers; validate the model.
     if (textModel.isEmpty) {
       setState(() {
         _testResult = ConnectionTestResult.failure('请选择或输入模型名称');
@@ -250,7 +240,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     final themeMode = ref.watch(themeModeProvider);
@@ -262,8 +251,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         children: [
           Row(
             children: [
-              Text('ChemEdu',
-                  style: Theme.of(context).textTheme.labelLarge),
+              Text('ChemVision', style: Theme.of(context).textTheme.labelLarge),
               const Spacer(),
               const AccentPill(label: '云端配置'),
             ],
@@ -274,7 +262,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               children: [
                 Icon(
                   isDark ? Icons.nightlight_round : Icons.wb_sunny_rounded,
-                  color: isDark ? AppColors.textSecondary : AppColors.dayBluePrimary,
+                  color: isDark
+                      ? AppColors.textSecondary
+                      : AppColors.dayBluePrimary,
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -319,16 +309,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 _buildModelTab(context, isDark,
                     label: '云端 API',
                     icon: Icons.cloud_outlined,
-                    selected: !_useLocalModel,
-                    onTap: () {
+                    selected: !_useLocalModel, onTap: () {
                   setState(() => _useLocalModel = false);
                   _scheduleSave();
                 }),
                 _buildModelTab(context, isDark,
                     label: '端侧模型',
                     icon: Icons.phone_android,
-                    selected: _useLocalModel,
-                    onTap: () {
+                    selected: _useLocalModel, onTap: () {
                   setState(() => _useLocalModel = true);
                   _scheduleSave();
                 }),
@@ -343,8 +331,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('模型路径',
-                      style: Theme.of(context).textTheme.titleSmall),
+                  Text('模型路径', style: Theme.of(context).textTheme.titleSmall),
                   const SizedBox(height: 8),
                   TextField(
                     controller: _modelPathController,
@@ -375,29 +362,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   Text('文本生成模型',
                       style: Theme.of(context).textTheme.titleMedium),
                   const SizedBox(height: 10),
-                  DropdownButtonFormField<String>(
-                    value: _selectedTextModel,
-                    isExpanded: true,
-                    dropdownColor:
-                        isDark ? AppColors.navy : AppColors.daySurface,
-                    items: _buildTextModelItems(),
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedTextModel = value;
-                      });
-                      _scheduleSave();
-                    },
-                  ),
-                  if (_isCustomModel) ...[
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _customModelController,
-                      onChanged: (_) => _scheduleSave(),
-                      decoration: const InputDecoration(
-                        hintText: '输入自定义模型名称',
-                      ),
+                  TextField(
+                    controller: _textModelController,
+                    onChanged: (_) => _scheduleSave(),
+                    decoration: const InputDecoration(
+                      hintText: '输入服务商提供的模型 ID',
                     ),
-                  ],
+                  ),
                   const SizedBox(height: 16),
                   Text('API Key',
                       style: Theme.of(context).textTheme.titleMedium),
@@ -410,9 +381,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                       hintText: '请输入 API Key',
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscureKey
-                              ? Icons.visibility_off
-                              : Icons.visibility,
+                          _obscureKey ? Icons.visibility_off : Icons.visibility,
                           color: AppColors.textMuted,
                         ),
                         onPressed: () {
@@ -425,7 +394,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Key 仅本地存储，不上传至服务器',
+                    'Key 保存在本机，并会随请求作为 Bearer Token 发往 Base URL。',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   const SizedBox(height: 16),
@@ -447,44 +416,57 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               iconColor: AppColors.aqua,
               tilePadding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              title: Text('高级设置',
-                  style: Theme.of(context).textTheme.titleMedium),
+              title:
+                  Text('高级设置', style: Theme.of(context).textTheme.titleMedium),
               childrenPadding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               children: [
-                Text('文本向量模型',
+                Text('语音识别 API Key',
                     style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 10),
-                DropdownButtonFormField<String>(
-                  value: _selectedEmbeddingModel ?? '',
-                  isExpanded: true,
-                  dropdownColor: isDark ? AppColors.navy : AppColors.daySurface,
-                  items: _buildOptionalItems(embeddingModels),
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedEmbeddingModel = _normalizeOptional(value);
-                    });
-                    _scheduleSave();
-                  },
+                TextField(
+                  controller: _asrApiKeyController,
+                  obscureText: _obscureAsrKey,
+                  onChanged: (_) => _scheduleSave(),
+                  decoration: InputDecoration(
+                    hintText: '语音识别服务使用的 Key',
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscureAsrKey
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                        color: AppColors.textMuted,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _obscureAsrKey = !_obscureAsrKey;
+                        });
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '独立用于语音识别，不会发送给文本模型 API。',
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 16),
-                Text('Rerank 模型',
-                    style: Theme.of(context).textTheme.titleMedium),
+                Text('文本向量模型', style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 10),
-                DropdownButtonFormField<String>(
-                  value: _selectedRerankModel ?? '',
-                  isExpanded: true,
-                  dropdownColor: isDark ? AppColors.navy : AppColors.daySurface,
-                  items: _buildOptionalItems(rerankModels),
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedRerankModel = _normalizeOptional(value);
-                    });
-                    _scheduleSave();
-                  },
+                TextField(
+                  controller: _embeddingModelController,
+                  onChanged: (_) => _scheduleSave(),
+                  decoration: const InputDecoration(
+                    hintText: '可选；输入服务商提供的 Embedding 模型 ID',
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '向量检索只比较用同一模型生成的知识条目；未配置时使用关键词检索。',
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 16),
-                Text('自定义 Base URL',
+                Text('OpenAI 兼容 API Base URL',
                     style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 10),
                 TextField(
@@ -492,8 +474,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   onChanged: (_) => _scheduleSave(),
                   keyboardType: TextInputType.url,
                   decoration: const InputDecoration(
-                    hintText: 'https://api-ai.vivo.com.cn',
+                    hintText: 'https://api.openai.com/v1',
                   ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '支持 /v1/chat/completions 与 /v1/embeddings。Web 端使用时，目标服务需要允许当前站点跨域访问（CORS）。',
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 16),
                 Text('OCSR 服务地址',
@@ -530,8 +517,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               iconColor: AppColors.aqua,
               tilePadding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              title: Text('数据管理',
-                  style: Theme.of(context).textTheme.titleMedium),
+              title:
+                  Text('数据管理', style: Theme.of(context).textTheme.titleMedium),
               childrenPadding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               children: [
@@ -625,11 +612,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             onConfirm: () async {
               final cache = StructureCacheStore();
               final count = await cache.clearAll();
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('已清除 $count 条缓存')),
-                );
-              }
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('已清除 $count 条缓存')),
+              );
             },
           ),
         ),
@@ -653,12 +639,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               await cache.clearAll();
               ref.invalidate(favoritesControllerProvider);
               ref.invalidate(searchHistoryListProvider);
-              if (mounted) {
-                setState(() {});
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('所有数据已清除')),
-                );
-              }
+              if (!context.mounted) return;
+              setState(() {});
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('所有数据已清除')),
+              );
             },
           ),
         ),
@@ -671,9 +656,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: isDark
-            ? AppColors.glassStrong
-            : AppColors.dayGlassStrong,
+        color: isDark ? AppColors.glassStrong : AppColors.dayGlassStrong,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -710,19 +693,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       final service = ref.read(favoritesServiceProvider);
       final count = await service.importFromJson(jsonString);
 
-      if (mounted) {
-        ref.invalidate(favoritesControllerProvider);
-        setState(() {});
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('成功导入 $count 条收藏')),
-        );
-      }
+      if (!context.mounted) return;
+      ref.invalidate(favoritesControllerProvider);
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('成功导入 $count 条收藏')),
+      );
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('导入失败: $e')),
-        );
-      }
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('导入失败: $e')),
+      );
     }
   }
 
@@ -775,7 +756,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('ChemEdu',
+                  Text('ChemVision',
                       style: Theme.of(context)
                           .textTheme
                           .titleMedium
@@ -789,9 +770,8 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: isDark
-                      ? AppColors.glassStrong
-                      : AppColors.dayGlassStrong,
+                  color:
+                      isDark ? AppColors.glassStrong : AppColors.dayGlassStrong,
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(versionService.platformInfo,
@@ -815,7 +795,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           const SizedBox(height: 16),
           const Divider(height: 1),
           const SizedBox(height: 12),
-          Text('© 2026 ChemEdu Team',
+          Text('© 2026 ChemVision Team',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppColors.textMuted,
                   )),
@@ -827,26 +807,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         ],
       ),
     );
-  }
-
-  List<DropdownMenuItem<String>> _buildTextModelItems() {
-    final items = textGenerationModels
-        .map(
-          (model) => DropdownMenuItem(
-            value: model.name,
-            child: Text('${model.name} · ${model.description}'),
-          ),
-        )
-        .toList();
-
-    items.add(
-      const DropdownMenuItem(
-        value: _customModelValue,
-        child: Text('自定义 · 手动输入模型名'),
-      ),
-    );
-
-    return items;
   }
 
   Widget _buildModelTab(
@@ -869,11 +829,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 ? (isDark
                     ? const LinearGradient(
                         colors: [AppColors.aqua, Color(0xFF9EF5D2)])
-                    : const LinearGradient(
-                        colors: [
-                            AppColors.dayBluePrimary,
-                            AppColors.dayBlueAccent
-                          ]))
+                    : const LinearGradient(colors: [
+                        AppColors.dayBluePrimary,
+                        AppColors.dayBlueAccent
+                      ]))
                 : null,
             color: selected ? null : Colors.transparent,
           ),
@@ -904,25 +863,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     );
   }
 
-  List<DropdownMenuItem<String>> _buildOptionalItems(List<String> models) {
-    return [
-      const DropdownMenuItem(value: '', child: Text('不使用')),
-      ...models.map(
-        (model) => DropdownMenuItem(
-          value: model,
-          child: Text(model),
-        ),
-      ),
-    ];
-  }
-
-  String? _normalizeOptional(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return null;
-    }
-    return value;
-  }
-
   Widget _buildTestResult(BuildContext context) {
     if (_isTesting) {
       return Row(
@@ -933,8 +873,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             child: CircularProgressIndicator(strokeWidth: 2),
           ),
           const SizedBox(width: 10),
-          Text('正在连接测试...',
-              style: Theme.of(context).textTheme.bodySmall),
+          Text('正在连接测试...', style: Theme.of(context).textTheme.bodySmall),
         ],
       );
     }
@@ -991,7 +930,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       ),
     );
   }
-
 }
 
 class ConnectionTestResult {
@@ -1023,15 +961,5 @@ class ConnectionTestResult {
       success: false,
       errorMessage: errorMessage,
     );
-  }
-}
-
-extension<T> on Iterable<T> {
-  T? get firstOrNull {
-    final iterator = this.iterator;
-    if (!iterator.moveNext()) {
-      return null;
-    }
-    return iterator.current;
   }
 }

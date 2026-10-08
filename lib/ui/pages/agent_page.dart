@@ -753,7 +753,7 @@ class _AgentPageState extends ConsumerState<AgentPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'ChemEdu Agent',
+                  'ChemVision Agent',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w700,

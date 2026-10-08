@@ -1,5 +1,5 @@
-name: chemedu
-description: "ChemEdu — 化学 AI 学习助手"
+name: chemvision
+description: "ChemVision — 化学结构解析与可视化学习工具"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -19,7 +19,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.62+63
 
 environment:
-  sdk: '>=3.1.0 <4.0.0'
+  sdk: '>=3.9.0 <4.0.0'
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -50,9 +50,10 @@ dependencies:
   record_linux: ^1.3.0
   shared_preferences: ^2.2.3
   share_plus: ^10.1.4
-  web_socket_channel: ^2.4.0
+  web_socket_channel: ^3.0.3
   flutter_markdown: ^0.7.4+3
   markdown: ^7.2.2
+  supabase_flutter: ^2.18.0
 
 dev_dependencies:
   flutter_test:

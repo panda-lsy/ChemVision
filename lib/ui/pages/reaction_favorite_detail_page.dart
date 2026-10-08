@@ -9,7 +9,6 @@ import '../widgets/accent_pill.dart';
 import '../widgets/app_scaffold.dart';
 import '../widgets/glass_panel.dart';
 import '../widgets/primary_button.dart';
-import 'reaction_editor_page.dart';
 
 class ReactionFavoriteDetailPage extends ConsumerStatefulWidget {
   const ReactionFavoriteDetailPage({super.key, required this.item});
@@ -130,7 +129,7 @@ class _ReactionFavoriteDetailPageState
         children: [
           Row(
             children: [
-              Text('ChemEdu',
+              Text('ChemVision',
                   style: Theme.of(context).textTheme.labelLarge),
               const Spacer(),
               const AccentPill(label: '反应收藏'),

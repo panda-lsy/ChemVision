@@ -126,7 +126,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
               ),
               const SizedBox(height: 12),
               Text(
-                '欢迎使用 ChemEdu',
+                '欢迎使用 ChemVision',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 22,

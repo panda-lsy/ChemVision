@@ -36,7 +36,7 @@ class AsrService {
         .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
         .join('&');
 
-    final url = 'ws://api-ai.vivo.com.cn/asr/v2?$query';
+    final url = 'wss://api-ai.vivo.com.cn/asr/v2?$query';
 
     try {
       // WebSocket 连接需要 Authorization header，使用 IOWebSocketChannel
@@ -49,7 +49,7 @@ class AsrService {
       _channel = ioWebSocket;
 
       // Wait for connection to be ready
-      await _channel!.ready;
+      await _channel!.ready.timeout(const Duration(seconds: 12));
 
       // Send handshake
       final handshake = jsonEncode({
@@ -76,6 +76,7 @@ class AsrService {
         },
       );
     } catch (e) {
+      await close();
       throw Exception('ASR 连接失败: $e');
     }
   }

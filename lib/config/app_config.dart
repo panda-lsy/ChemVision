@@ -9,20 +9,11 @@ class AppConfig {
 
   /// Ketcher 编辑器入口（Web 端，Flutter 构建后实际路径多一层 assets/）
   static const String ketcherWebEntry = 'assets/assets/web/ketcher/index.html';
-  static const String vivoAigcBaseUrl = 'https://api-ai.vivo.com.cn/v1';
-  static const String vivoTextGenerationPath = '/chat/completions';
-  static const String vivoTextGenerationUrl =
-      '$vivoAigcBaseUrl$vivoTextGenerationPath';
   static const String proxyBaseUrl = 'http://localhost:8787';
 
-  /// Cloudflare Worker CORS 代理地址
+  /// Cloudflare Worker address used by the web OPSIN proxy.
   /// 部署方式：cd cloudflare-worker && npx wrangler deploy
-  /// 同时代理 vivo/OpenAI/Anthropic/PubChem/Opsin/DECIMER 多路由
   static const String cloudflareWorkerUrl = 'https://api.chemvision.qzz.io';
-
-  /// Web 端默认使用 Cloudflare Worker 代理（生产环境）
-  /// 本地开发时可在设置页改为 http://localhost:8787
-  static const String webProxyBaseUrl = cloudflareWorkerUrl;
 
   /// OPSIN 代理地址（Web 端需要代理避免 CORS）
   static const String opsinProxyBaseUrl = '$proxyBaseUrl/opsin';
