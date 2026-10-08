@@ -257,7 +257,7 @@ class LlmTool extends AgentTool {
     final baseUrl = settings.baseUrl;
 
     // Some local OpenAI-compatible servers do not require an API key.
-    if (model.isEmpty) {
+    if (model.isEmpty && !settings.useChemVisionAi) {
       return ToolResult.failure('请先在设置中配置 AI 模型');
     }
 

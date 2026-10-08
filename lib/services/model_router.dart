@@ -1,7 +1,9 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'bluelm_service.dart';
+import 'ai_settings_store.dart';
 import 'openai_compatible_client.dart';
+import 'supabase_auth_service.dart';
 
 /// 模型路由器
 ///
@@ -10,11 +12,14 @@ class ModelRouter {
   ModelRouter({
     OpenAiCompatibleClient? apiClient,
     BlueLmService? localService,
+    AiSettingsStore? settingsStore,
   })  : _api = apiClient ?? OpenAiCompatibleClient(),
-        _local = localService ?? BlueLmService();
+        _local = localService ?? BlueLmService(),
+        _aiSettings = settingsStore ?? AiSettingsStore();
 
   final OpenAiCompatibleClient _api;
   final BlueLmService _local;
+  final AiSettingsStore _aiSettings;
 
   Future<String> generateText({
     required String apiKey,
@@ -34,6 +39,13 @@ class ModelRouter {
       }
     }
 
+    final aiSettings = await _aiSettings.load();
+    if (aiSettings.useChemVisionAi) {
+      return SupabaseAuthService.instance.generateChemVisionAi(
+        prompt: prompt,
+      );
+    }
+
     return await _api.generateText(
       apiKey: apiKey,
       model: model,
@@ -49,6 +61,14 @@ class ModelRouter {
     required String baseUrl,
     required String imageBase64,
   }) async {
+    final aiSettings = await _aiSettings.load();
+    if (aiSettings.useChemVisionAi) {
+      return SupabaseAuthService.instance.generateChemVisionAi(
+        prompt: prompt,
+        imageDataUri: imageBase64,
+      );
+    }
+
     return await _api.generateMultimodal(
       apiKey: apiKey,
       model: model,

@@ -1,6 +1,6 @@
 # ChemVision 账号与管理员后端
 
-账号服务使用 Supabase Auth、Postgres RLS 和 Edge Functions。应用支持邮箱密码注册/登录与 GitHub OAuth；本地访客模式仍可使用。当前 Hive 学习记录保存在设备，不会因登录而上传或跨设备同步。
+账号服务使用 Supabase Auth、Postgres RLS 和 Edge Functions。应用支持邮箱密码注册/登录与 GitHub OAuth；游客仍可使用自带 API，但不能调用 ChemVision 托管 AI。当前 Hive 学习记录保存在设备，不会因登录而上传或跨设备同步。
 
 管理员权限只授予通过 GitHub OAuth 验证、GitHub 用户名为 `panda-lsy` 的 identity。数据库不接受客户端提交的角色字段，管理员用户目录也由 Edge Function 在服务端鉴权后读取。
 
@@ -20,6 +20,16 @@
 
    Edge Function 需要 Supabase 自动提供的 `SUPABASE_URL`、`SUPABASE_ANON_KEY` 和 `SUPABASE_SERVICE_ROLE_KEY`。若当前项目没有注入 `SUPABASE_SERVICE_ROLE_KEY`，仅通过 Supabase secrets 配置该密钥。它绝不能进入 Flutter 编译参数或客户端代码。
 
+8. 配置官方 DeepSeek AI 并部署函数：
+
+   ```sh
+   supabase functions deploy chemvision-ai
+   ```
+
+   先在 [Supabase Edge Function Secrets](https://supabase.com/docs/guides/functions/secrets) 中添加 `DEEPSEEK_API_KEY`，再部署函数。不要把密钥放进 GitHub Actions Variables、Flutter `--dart-define`、客户端设置、终端命令记录或仓库。函数固定请求 DeepSeek 官方 `deepseek-flash` 模型，并从经过验证的 Supabase Auth 用户中识别邮箱/GitHub登录。需先应用 `chemvision_ai_quota` 迁移。
+
+   普通邮箱/GitHub账号可成功调用模型共 5 次，不按月重置；失败的上游请求会释放预留额度。Owner 身份由 `is_chemvision_owner()` 判定，不限量。Edge Function 通过数据库行锁预留额度，避免并发请求突破上限；异常终止的预留会在 15 分钟后回收。游客调用服务端接口会被拒绝，只能在应用设置中切换到“自带 API”。
+
 ## 运行应用
 
 Publishable Key 是面向客户端的公开密钥，可以作为构建参数传入；数据库 RLS 与 Edge Function 鉴权负责保护数据和管理操作。不要传入 `service_role` secret key。
@@ -30,7 +40,7 @@ flutter run \
   --dart-define=SUPABASE_PUBLISHABLE_KEY=<publishable-key>
 ```
 
-发布构建也要提供相同的两个 `--dart-define`。没有配置时应用继续以访客模式运行，账号页会提示缺少配置。
+发布构建也要提供相同的两个 `--dart-define`。没有配置时应用继续以访客模式运行，账号页会提示缺少配置；此时 ChemVision 托管 AI 不可用，游客仍可配置自带 API。
 
 GitHub Actions 构建从仓库 **Settings → Secrets and variables → Actions → Variables** 读取 `SUPABASE_URL` 和 `SUPABASE_PUBLISHABLE_KEY`。配置这两个公开变量后，Android、Windows 和 Web 构建会自动注入它们；不要将 `service_role` key 配置为客户端变量。
 

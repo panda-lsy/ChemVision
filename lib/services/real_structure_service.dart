@@ -81,7 +81,7 @@ class NameToStructureService implements StructureService {
     // 端侧模型启用时跳过云端校验
     // Some local OpenAI-compatible servers do not require an API key.
     final useLocal = await _isLocalModelEnabled();
-    if (!useLocal && model.isEmpty) {
+    if (!useLocal && model.isEmpty && !settings.useChemVisionAi) {
       return StructureResult.invalid(message: '请先在设置中配置模型');
     }
 
@@ -237,7 +237,7 @@ class NameToStructureService implements StructureService {
       String? englishName = pubchem.name;
       String? chineseName;
       final aiCandidates = <Map<String, String?>>[];
-      if (settings.textModel.trim().isNotEmpty) {
+      if (settings.useChemVisionAi || settings.textModel.trim().isNotEmpty) {
         aiCandidates.addAll(
           await _inferNamesFromSmilesWithAi(
             normalized,
@@ -256,7 +256,8 @@ class NameToStructureService implements StructureService {
         chineseName = aiCandidates.first['chinese'];
       } else if (englishName != null &&
           englishName.isNotEmpty &&
-          settings.textModel.trim().isNotEmpty) {
+          (settings.useChemVisionAi ||
+              settings.textModel.trim().isNotEmpty)) {
         chineseName = await _translateEnglishNameToChinese(
           englishName,
           settings.apiKey.trim(),

@@ -12,6 +12,7 @@ import '../../services/app_version_service.dart';
 import '../../services/bluelm_service.dart';
 import '../../services/structure_cache_store.dart';
 import '../../services/openai_compatible_client.dart';
+import '../../services/supabase_auth_service.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/favorites_export.dart';
 import '../widgets/accent_pill.dart';
@@ -20,6 +21,7 @@ import '../widgets/compliance/privacy_compliance_panel.dart';
 import '../widgets/glass_panel.dart';
 import '../widgets/primary_button.dart';
 import '../widgets/user_management_section.dart';
+import 'account_page.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -45,6 +47,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _isTesting = false;
   bool _hasLoaded = false;
   bool _useLocalModel = false;
+  bool _useChemVisionAi = true;
+  bool _quotaLoading = false;
+  ChemVisionAiQuota? _hostedAiQuota;
+  String? _quotaError;
   final TextEditingController _modelPathController =
       TextEditingController(text: '/sdcard/1225/1.7.0.4_1225_mtk9500');
   Timer? _saveDebounce;
@@ -78,6 +84,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     _embeddingModelController.text = settings.embeddingModel ?? '';
     _baseUrlController.text = settings.baseUrl;
     _ocsrEndpointController.text = settings.ocsrEndpoint;
+    _useChemVisionAi = settings.useChemVisionAi;
 
     if (_baseUrlController.text.trim().isEmpty) {
       _baseUrlController.text = defaultOpenAiCompatibleBaseUrl;
@@ -88,6 +95,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       _hasLoaded = true;
       _testResult = null;
     });
+    unawaited(_refreshHostedAiQuota());
   }
 
   Future<void> _loadBlueLmSettings() async {
@@ -132,6 +140,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         baseUrl: baseUrl,
         ocsrEndpoint: ocsrEndpoint,
         embeddingModel: _optionalModel(_embeddingModelController.text),
+        useChemVisionAi: _useChemVisionAi,
       ),
     );
     await _saveBlueLmSettings();
@@ -154,6 +163,124 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   String _resolveOcsrEndpoint() {
     final raw = _ocsrEndpointController.text.trim();
     return raw;
+  }
+
+  Future<void> _refreshHostedAiQuota() async {
+    final auth = SupabaseAuthService.instance;
+    if (!SupabaseAuthService.isInitialized ||
+        !auth.hasSupportedAiSignInProvider) {
+      if (!mounted) return;
+      setState(() {
+        _quotaLoading = false;
+        _hostedAiQuota = null;
+        _quotaError = null;
+      });
+      return;
+    }
+
+    setState(() {
+      _quotaLoading = true;
+      _quotaError = null;
+    });
+    try {
+      final quota = await auth.getChemVisionAiQuota();
+      if (!mounted) return;
+      setState(() {
+        _hostedAiQuota = quota;
+        _quotaLoading = false;
+        _quotaError = null;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _hostedAiQuota = null;
+        _quotaLoading = false;
+        _quotaError = error.toString().replaceFirst('Bad state: ', '');
+      });
+    }
+  }
+
+  Future<void> _openAccountPage() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const AccountPage()),
+    );
+    if (!mounted) return;
+    await _refreshHostedAiQuota();
+  }
+
+  Widget _buildHostedAiPanel(BuildContext context) {
+    final auth = SupabaseAuthService.instance;
+    final isSignedIn = SupabaseAuthService.isInitialized &&
+        auth.hasSupportedAiSignInProvider;
+
+    return GlassPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('DeepSeek 官方模型',
+              style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 6),
+          Text(
+            '使用 ChemVision 托管的 DeepSeek AI，输入内容会发送给 DeepSeek 处理。普通邮箱/GitHub账号共 5 次成功模型调用额度，不按月重置；Owner 管理员不限量。',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 14),
+          if (!isSignedIn) ...[
+            Text(
+              '当前为游客模式，不能调用 ChemVision AI。登录或注册后即可使用；游客仍可切换到“自带 API”。',
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: _openAccountPage,
+              icon: const Icon(Icons.login),
+              label: const Text('登录 / 注册'),
+            ),
+          ] else if (_quotaLoading) ...[
+            const LinearProgressIndicator(),
+            const SizedBox(height: 10),
+            Text('正在读取账号额度…',
+                style: Theme.of(context).textTheme.bodySmall),
+          ] else if (_quotaError != null) ...[
+            Text(
+              _quotaError!,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: Theme.of(context).colorScheme.error),
+            ),
+            TextButton.icon(
+              onPressed: () => unawaited(_refreshHostedAiQuota()),
+              icon: const Icon(Icons.refresh),
+              label: const Text('重新读取额度'),
+            ),
+          ] else if (_hostedAiQuota case final quota?) ...[
+            Row(
+              children: [
+                Icon(
+                  quota.unlimited ? Icons.all_inclusive : Icons.bolt,
+                  color: quota.unlimited ? AppColors.aqua : AppColors.amber,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    quota.unlimited
+                        ? 'Owner 管理员：不限量'
+                        : '剩余 ${quota.remaining ?? 0} / ${quota.limit ?? 5} 次模型调用（已用 ${quota.used} 次）',
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ),
+                IconButton(
+                  tooltip: '刷新额度',
+                  onPressed: () => unawaited(_refreshHostedAiQuota()),
+                  icon: const Icon(Icons.refresh),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
   Future<void> _runConnectionTest() async {
@@ -353,8 +480,43 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ),
           ],
 
-          // ── 云端 API 配置 ──
+          // ── 云端 AI 配置 ──
           if (!_useLocalModel) ...[
+            Container(
+              padding: const EdgeInsets.all(3),
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.glassStrong : AppColors.dayGlass,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.10)
+                      : AppColors.dayBluePrimary.withValues(alpha: 0.15),
+                ),
+              ),
+              child: Row(
+                children: [
+                  _buildModelTab(context, isDark,
+                      label: 'ChemVision AI',
+                      icon: Icons.auto_awesome,
+                      selected: _useChemVisionAi, onTap: () {
+                    setState(() => _useChemVisionAi = true);
+                    unawaited(_persistSettings());
+                    unawaited(_refreshHostedAiQuota());
+                  }),
+                  _buildModelTab(context, isDark,
+                      label: '自带 API',
+                      icon: Icons.key_outlined,
+                      selected: !_useChemVisionAi, onTap: () {
+                    setState(() => _useChemVisionAi = false);
+                    unawaited(_persistSettings());
+                  }),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            if (_useChemVisionAi)
+              _buildHostedAiPanel(context)
+            else
             GlassPanel(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

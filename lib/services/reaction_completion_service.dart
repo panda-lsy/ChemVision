@@ -84,7 +84,7 @@ class ReactionCompletionService {
               entry.embeddingModel == embeddingModel &&
               (entry.embedding?.isNotEmpty ?? false),
         );
-    if (hasCompatibleEntryEmbeddings) {
+    if (hasCompatibleEntryEmbeddings && !settings.useChemVisionAi) {
       try {
         queryEmbedding = await _embedText(
           query,

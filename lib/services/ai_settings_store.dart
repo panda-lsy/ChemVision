@@ -11,12 +11,14 @@ class AiSettings {
   final String? embeddingModel;
   final String baseUrl;
   final String ocsrEndpoint;
+  final bool useChemVisionAi;
 
   const AiSettings({
     required this.apiKey,
     required this.textModel,
     required this.baseUrl,
     required this.ocsrEndpoint,
+    this.useChemVisionAi = true,
     this.asrApiKey = '',
     this.embeddingModel,
   });
@@ -28,6 +30,7 @@ class AiSettings {
     String? baseUrl,
     String? ocsrEndpoint,
     String? embeddingModel,
+    bool? useChemVisionAi,
   }) {
     return AiSettings(
       apiKey: apiKey ?? this.apiKey,
@@ -36,6 +39,7 @@ class AiSettings {
       baseUrl: baseUrl ?? this.baseUrl,
       ocsrEndpoint: ocsrEndpoint ?? this.ocsrEndpoint,
       embeddingModel: embeddingModel ?? this.embeddingModel,
+      useChemVisionAi: useChemVisionAi ?? this.useChemVisionAi,
     );
   }
 }
@@ -46,6 +50,7 @@ class AiSettingsStore {
   static const String _textModelKey = 'ai_text_model';
   static const String _embeddingModelKey = 'ai_embedding_model';
   static const String _baseUrlKey = 'ai_base_url';
+  static const String _useChemVisionAiKey = 'ai_use_chemvision_hosted';
 
   // Read old preferences once for migration. The old API key is kept separate
   // because it was also used by the independent speech-recognition service.
@@ -77,6 +82,7 @@ class AiSettingsStore {
     final rawEmbeddingModel = prefs.getString(_embeddingModelKey) ??
         prefs.getString(_legacyEmbeddingModelKey);
     final rawOcsrEndpoint = prefs.getString(_ocsrEndpointKey) ?? '';
+    final useChemVisionAi = prefs.getBool(_useChemVisionAiKey) ?? true;
 
     final textModel =
         migratingLegacyVivoConfig && _isLegacyCatalogModel(rawTextModel.trim())
@@ -112,6 +118,9 @@ class AiSettingsStore {
     if (ocsrEndpoint != rawOcsrEndpoint.trim()) {
       await prefs.setString(_ocsrEndpointKey, ocsrEndpoint);
     }
+    if (!prefs.containsKey(_useChemVisionAiKey)) {
+      await prefs.setBool(_useChemVisionAiKey, useChemVisionAi);
+    }
 
     return AiSettings(
       apiKey: apiKey,
@@ -120,6 +129,7 @@ class AiSettingsStore {
       embeddingModel: embeddingModel,
       baseUrl: baseUrl,
       ocsrEndpoint: ocsrEndpoint,
+      useChemVisionAi: useChemVisionAi,
     );
   }
 
@@ -131,6 +141,7 @@ class AiSettingsStore {
     await _setOptional(prefs, _embeddingModelKey, settings.embeddingModel);
     await prefs.setString(_baseUrlKey, settings.baseUrl);
     await prefs.setString(_ocsrEndpointKey, settings.ocsrEndpoint);
+    await prefs.setBool(_useChemVisionAiKey, settings.useChemVisionAi);
   }
 
   String? _normalizeOptional(String? value) {
