@@ -1,0 +1,5 @@
+# Preserve downloaded upstream license bytes and their recorded hashes.
+third_party/licenses/*.txt -text -whitespace
+# Keep command evidence verbatim, including progress alignment spaces.
+docs/competitions/openatom-2026/evidence/*.txt -whitespace
+docs/competitions/openatom-2026/*.pdf binary

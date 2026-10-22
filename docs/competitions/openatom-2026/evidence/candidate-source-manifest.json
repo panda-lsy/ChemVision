@@ -1,0 +1,168 @@
+{
+  "baseHead": "626e4a6777fb1e73ed4ee09dcfad283c40447fb5",
+  "kind": "clean HEAD archive plus explicitly listed competition edits; excludes original user edits/untracked materials",
+  "sourceDirectory": "F:\\Desktop\\ChemVision\\build\\openatom-candidate-20261022",
+  "overlays": [
+    {
+      "path": ".github/ISSUE_TEMPLATE/bug_report.md",
+      "sha256": "2ff14998742aeaf487a1c325bf76513c64f10d9e0cac0f38e0c5b2042e5fbfb3"
+    },
+    {
+      "path": ".github/ISSUE_TEMPLATE/feature_request.md",
+      "sha256": "b8256fcff32af77398b627b444535db2d7b5ae9963834c94a671c17cf00bf148"
+    },
+    {
+      "path": ".github/PULL_REQUEST_TEMPLATE.md",
+      "sha256": "b95aa0aa4d599dae1fb1921ba40277447f1f5c8a9c25af94c23003bfc0f56689"
+    },
+    {
+      "path": ".github/workflows/quality.yml",
+      "sha256": "1aa92260f6f5b1c7bfe3850bc27bcc919afb4302483909d13765f901461b71f8"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "sha256": "da1a134c2a8dd7226f9aa0f394a45951ac1076e9ed60bcda6ba2e0d8733ba3e2"
+    },
+    {
+      "path": "LICENSE",
+      "sha256": "1ee8eb3d6f849227a3135bffd9c84e54fb60a53de89f2b9d393db7b483fe8b7f"
+    },
+    {
+      "path": "NOTICE",
+      "sha256": "f722aae64f69b0e227318674c797941581554ced148779213467dc8910358ee3"
+    },
+    {
+      "path": "README.md",
+      "sha256": "e462f03dcabdae1f928cab1edc2eb960d7e61ea68b2410eaaf358380e8f284ec"
+    },
+    {
+      "path": "SECURITY.md",
+      "sha256": "717129061e640d7b04d019d97f4c11d440c3bd0291c6970f99baeb265d235158"
+    },
+    {
+      "path": "assets/web/ketcher/index.html",
+      "sha256": "243da0ed905bf6dd7ae5f93a0268f87f7d9147465adfbe341640817b92ac8855"
+    },
+    {
+      "path": "docs/competitions/openatom-2026/00-official-rules.md",
+      "sha256": "1b148fbc9199a6abf563bdf6ce3b6ac389b635fdc42c00644a4fc71fe875f6c6"
+    },
+    {
+      "path": "docs/competitions/openatom-2026/01-audit.md",
+      "sha256": "6b610462852dab8ed94efcb939f04bce89ca6f52aeba29a336619995301c9edf"
+    },
+    {
+      "path": "docs/competitions/openatom-2026/02-project-summary.md",
+      "sha256": "196bb6a3b9ee10b81298feeb1fffa927de07477956a5d316a843aabf4abe1d17"
+    },
+    {
+      "path": "docs/competitions/openatom-2026/03-technical-report.md",
+      "sha256": "2f1aa9c91fb377fa50c6fa04480904015f7223fbb959da67c9dc0086affff890"
+    },
+    {
+      "path": "docs/competitions/openatom-2026/04-architecture.md",
+      "sha256": "feba4a2a9c95d426545bd512cf69b5eac8fccda3a06f8fc2a13d6be016176f29"
+    },
+    {
+      "path": "docs/competitions/openatom-2026/README.md",
+      "sha256": "1e175017ede01de6a1448b6b0458de3876df0723ab808e22cef9e88f144a6729"
+    },
+    {
+      "path": "docs/competitions/openatom-2026/evidence/analyze-before.txt",
+      "sha256": "bd165d92ec019ca7329ce80f1ad182f052ae161c537e3b84f07b80e9f5e664a2"
+    },
+    {
+      "path": "docs/competitions/openatom-2026/evidence/audit-after.json",
+      "sha256": "6583e9aab69511809f4b650f7cdac58d89968df7e4069b82e8e4089be0540812"
+    },
+    {
+      "path": "docs/competitions/openatom-2026/evidence/build-web-before.txt",
+      "sha256": "585ad02f385338c4a4bf7edb3f7457d03473895f2060d8cf43b2874fcddfd31f"
+    },
+    {
+      "path": "docs/competitions/openatom-2026/evidence/initial-worktree.txt",
+      "sha256": "44330b16e7c1143616957f6233c7fb521dcd3181d5602e08a43a4a914c5ba447"
+    },
+    {
+      "path": "docs/competitions/openatom-2026/evidence/live-public-chemistry.json",
+      "sha256": "cb6e554cc1ee8452077a0d2a9d4d3796ad2c0bec0c6463d28ba2adaf9c387e02"
+    },
+    {
+      "path": "docs/competitions/openatom-2026/evidence/tests-after.txt",
+      "sha256": "d97254e7ecb0c23a72310a627e8151408bfea57cf5dd6e2422cfc6293d5152e1"
+    },
+    {
+      "path": "docs/competitions/openatom-2026/evidence/tests-before.txt",
+      "sha256": "e8edca90c51156f78ccbde69fb74bd7cfea0f4ed897ead7d0e8ab97061898ffd"
+    },
+    {
+      "path": "lib/providers/agent_provider.dart",
+      "sha256": "ba4c894e50f34cf428a3f7a65cea51000ebcdb2b6902e814ac1890adad248bcf"
+    },
+    {
+      "path": "lib/services/agent/agent_orchestrator.dart",
+      "sha256": "bfccbbf78fe3435782a32de2e7461b22fd6674761e2b93c862dad09b3654d8eb"
+    },
+    {
+      "path": "lib/services/agent/task_planner.dart",
+      "sha256": "e25371acf2ba34e378eddeb51230aa4f1c209d3332f6e2c2ac6c3f060e8feeb3"
+    },
+    {
+      "path": "lib/services/real_structure_service.dart",
+      "sha256": "c6a85f371f289ba3b71f234005675375cef54ce1aee2d74f2603f6ac7db3187d"
+    },
+    {
+      "path": "lib/services/structure_cache_store.dart",
+      "sha256": "ed2886ed7f5226271e04b005d9ca4de4f063c03b67e2c9156365fef541aaaa06"
+    },
+    {
+      "path": "lib/ui/pages/agent_page.dart",
+      "sha256": "110c4a6df0e2341ceb5a35e6034036e0a1d19a3e1a56ad64f88fbf5629080f47"
+    },
+    {
+      "path": "lib/ui/pages/result_page.dart",
+      "sha256": "3ee4d6b41c5bf526e8857ebced5ee405da1d80d6931bf119ffee3267368c35e4"
+    },
+    {
+      "path": "lib/ui/widgets/agent/agent_usage_notice_dialog.dart",
+      "sha256": "86814cbdcc63838ef5198d99551cb98209a2ec24f05092e14ddb3ccf18d38556"
+    },
+    {
+      "path": "lib/ui/widgets/compliance/privacy_compliance_panel.dart",
+      "sha256": "e2db37f3db3b66ab8d2761d033f6b69214b79ce8778b8a98cc1e3190f3789019"
+    },
+    {
+      "path": "test/competition_regression_test.dart",
+      "sha256": "477ab7457fba17dbfc0ec405d99ef516820ae1bce3bdfb4317f787a2a85cd5af"
+    },
+    {
+      "path": "test/evidence_widget_test.dart",
+      "sha256": "51de73590e32405acf66302d40167545518deaa2a8421280ce77fe204c060305"
+    },
+    {
+      "path": "test/live_public_chemistry_test.dart",
+      "sha256": "c5720ba74b61cff402c9e1ffd7b9a229d23e95172fff62a599a49c768f30c453"
+    },
+    {
+      "path": "third_party/licenses/Ketcher-LICENSE.txt",
+      "sha256": "3d54b234fa88c11d1d96380ff5fe29f3c5d8e1078ef914dfe8185ce4b1fbeac7"
+    },
+    {
+      "path": "third_party/licenses/Ketcher-NOTICE.txt",
+      "sha256": "ab82986438fc66fa2b40836415b734ff018b1e42ee3a18434b27bdf1c42eb368"
+    },
+    {
+      "path": "third_party/licenses/SmilesDrawer-LICENSE.txt",
+      "sha256": "919c7fa7363867d5785a1362aeb1df8ffa62f976db7f963fd57c397c2cbadeb4"
+    },
+    {
+      "path": "third_party/licenses/sources.json",
+      "sha256": "611d17f5aa4cc4b6f38a5e15c50b9615ac5105a318f970a1216bd047622b20e7"
+    },
+    {
+      "path": "tools/competition_audit.py",
+      "sha256": "9d10df4cd4630459c701d15dc0d2c9c1725af86a019ab088c438b8f378e63a6e"
+    }
+  ],
+  "notes": "Local verification snapshot only. Contains existing tracked third-party SDK; not authorized for upload. Documentation may continue to evolve after snapshot."
+}

@@ -1,0 +1,140 @@
+ M lib/models/app_user.dart
+ M lib/models/learning_profile.dart
+ M lib/providers/learning_profile_provider.dart
+ M lib/ui/pages/account_page.dart
+ M lib/ui/pages/edit_hub_page.dart
+ M lib/ui/pages/learning_profile_page.dart
+ M lib/ui/pages/onboarding_page.dart
+ M lib/ui/pages/profile_page.dart
+ M lib/ui/pages/settings_page.dart
+ M lib/ui/widgets/agent/mastery_radar_chart.dart
+ M lib/ui/widgets/user_management_section.dart
+ M lib/utils/svg_export_io.dart
+ M lib/utils/svg_export_web.dart
+ M pubspec.lock
+ M pubspec.yaml
+?? assets/lab_diagram/ATTRIBUTION.md
+?? assets/lab_diagram/equipment/beaker.svg
+?? assets/lab_diagram/equipment/burner.svg
+?? assets/lab_diagram/equipment/clamp.svg
+?? assets/lab_diagram/equipment/dropper-glass.svg
+?? assets/lab_diagram/equipment/erlenmeyer-flask.svg
+?? assets/lab_diagram/equipment/round-bottom-flask.svg
+?? assets/lab_diagram/equipment/scissor-jack.svg
+?? assets/lab_diagram/equipment/support-stand.svg
+?? assets/lab_diagram/licenses/diagram_editor.MIT.txt
+?? lib/ui/pages/apparatus_diagram_page.dart
+?? lib/ui/widgets/avatar_image_provider.dart
+?? lib/ui/widgets/avatar_image_provider_io.dart
+?? lib/ui/widgets/avatar_image_provider_stub.dart
+?? "outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/B3\345\256\214\345\226\204\347\211\210/_work/render/page-01.png"
+?? "outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/B3\345\256\214\345\226\204\347\211\210/_work/render/page-02.png"
+?? "outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/B3\345\256\214\345\226\204\347\211\210/_work/render/page-03.png"
+?? "outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/B3\345\256\214\345\226\204\347\211\210/_work/render/page-04.png"
+?? "outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/B3\345\256\214\345\226\204\347\211\210/_work/render/page-05.png"
+?? "outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/B3\345\256\214\345\226\204\347\211\210/_work/render/page-06.png"
+?? "outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/B3\345\256\214\345\226\204\347\211\210/_work/render/page-07.png"
+?? "outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/B3\345\256\214\345\226\204\347\211\210/_work/render/page-08.png"
+?? "outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/B3\345\256\214\345\226\204\347\211\210/_work/render/page-09.png"
+?? "outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/B3\345\256\214\345\226\204\347\211\210/_work/render/page-10.png"
+?? "outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/B3\345\256\214\345\226\204\347\211\210/_work/render/page-11.png"
+?? "outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/B3\345\256\214\345\226\204\347\211\210/_work/render/page-12.png"
+?? "outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/B3\345\256\214\345\226\204\347\211\210/_work/render/page-13.png"
+?? "outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/B3\345\256\214\345\226\204\347\211\210/_work/render/page-14.png"
+?? "outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/B3\345\256\214\345\226\204\347\211\210/_work/render/page-15.png"
+?? "outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/B3\345\256\214\345\226\204\347\211\210/_work/render/page-16.png"
+?? "outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/B3\345\256\214\345\226\204\347\211\210/_work/render/page-17.png"
+?? "outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/B3\345\256\214\345\226\204\347\211\210/_work/render/page-18.png"
+?? "outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/B3\345\256\214\345\226\204\347\211\210/_work/render/page-19.png"
+?? "outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/B3\345\256\214\345\226\204\347\211\210/_work/render/page-20.png"
+?? "outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/B3\345\256\214\345\226\204\347\211\210/_work/render/review.pdf"
+?? "outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/B3\345\256\214\345\226\204\347\211\210/_work/source_snapshot.docx"
+?? "outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/B3\345\256\214\345\226\204\347\211\210/revise_b3.py"
+?? "outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/B3\345\256\214\345\226\204\347\211\210/revision_audit.json"
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/artifact_edits/edit_summaries.mjs
+?? "outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/artifact_edits/originals/\345\255\246\347\224\237\347\247\221\347\240\224\351\231\204\344\273\2667_\346\231\256\346\203\240\345\236\213_\350\215\211\347\250\277.xlsx"
+?? "outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/artifact_edits/originals/\346\214\221\346\210\230\346\235\257\351\231\204\344\273\2664_\344\270\207\345\214\226\346\236\204\350\261\241_\350\215\211\347\250\277.xlsx"
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/artifact_edits/review/challenge-after.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/artifact_edits/review/challenge-before.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/artifact_edits/review/challenge-roster-1-before.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/artifact_edits/review/challenge-roster-1-saved.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/artifact_edits/review/challenge-roster-2-before.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/artifact_edits/review/challenge-roster-2-saved.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/artifact_edits/review/challenge-roster-3-before.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/artifact_edits/review/challenge-roster-3-saved.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/artifact_edits/review/challenge-roster-4-before.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/artifact_edits/review/challenge-roster-4-saved.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/artifact_edits/review/challenge-roster-5-before.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/artifact_edits/review/challenge-roster-5-saved.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/artifact_edits/review/challenge-roster-6-before.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/artifact_edits/review/challenge-roster-6-saved.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/artifact_edits/review/challenge-saved.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/artifact_edits/review/universal-after.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/artifact_edits/review/universal-before.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/artifact_edits/review/universal-saved.png
+?? "outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/artifact_edits/staged/\345\255\246\347\224\237\347\247\221\347\240\224\351\231\204\344\273\2667_\346\231\256\346\203\240\345\236\213_\350\215\211\347\250\277.xlsx"
+?? "outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/artifact_edits/staged/\345\255\246\347\224\237\347\247\221\347\240\224\351\231\204\344\273\2667_\346\231\256\346\203\240\345\236\213_\350\215\211\347\250\277.xlsx.inspect.ndjson"
+?? "outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/artifact_edits/staged/\346\214\221\346\210\230\346\235\257\351\231\204\344\273\2664_\344\270\207\345\214\226\346\236\204\350\261\241_\350\215\211\347\250\277.xlsx"
+?? "outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/artifact_edits/staged/\346\214\221\346\210\230\346\235\257\351\231\204\344\273\2664_\344\270\207\345\214\226\346\236\204\350\261\241_\350\215\211\347\250\277.xlsx.inspect.ndjson"
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/build_application_form.ps1
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/build_submission_report.py
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/build_submission_sheets.mjs
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_final/application_render/page-01.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_final/application_render/page-02.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_final/application_render/page-03.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_final/application_render/page-04.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_final/application_render/page-05.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_final/application_render/page-06.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_final/application_render/page-07.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_final/application_render/page-08.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_final/application_render/page-09.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_final/application_render/page-10.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_final/application_render/page-11.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_final/application_render/page-12.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_final/application_render/page-13.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_final/application_render/page-14.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_final/application_render/page-15.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_final/application_render/page-16.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_final/application_render/page-17.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_final/application_render/page-18.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_final/application_render/page-19.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_final/application_render/page-20.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_final/application_render/page-21.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_final/application_render/page-22.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_final/application_render/page-23.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_final/application_render/page-24.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_final/application_render/page-25.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_final/application_render/page-26.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_final/application_render/page-27.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_final/application_render/review.pdf
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_final/challenge-a4-main.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_final/challenge-a4-roster.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_final/report_render/page-01.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_final/report_render/page-02.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_final/report_render/page-03.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_final/report_render/review.pdf
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_final/research-development-main.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_final/research-universal-main.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_source/application_template.pdf
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_source/application_template_page-1.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_source/application_template_page-2.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_source/application_template_page-3.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_source/application_template_page-4.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_source/application_template_page-5.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_source/attachment4-basic.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_source/attachment4-roster.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_source/attachment6.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/qa_source/attachment7.png
+?? outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/render_qa.ps1
+?? "outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/\344\270\207\345\214\226\346\236\204\350\261\241_\345\214\277\345\220\215\344\275\234\345\223\201\350\257\264\346\230\216\344\271\246.docx"
+?? "outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/\344\270\207\345\214\226\346\236\204\350\261\241_\351\231\204\344\273\2662\344\275\234\345\223\201\347\224\263\346\212\245\344\271\246_\345\276\205\350\241\245\344\277\241\346\201\257.docx"
+?? "outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/\345\255\246\347\224\237\347\247\221\347\240\224\351\231\204\344\273\2666_\345\217\221\345\261\225\345\236\213_\350\215\211\347\250\277.xlsx"
+?? "outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/\345\255\246\347\224\237\347\247\221\347\240\224\351\231\204\344\273\2666_\345\217\221\345\261\225\345\236\213_\350\215\211\347\250\277.xlsx.inspect.ndjson"
+?? "outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/\345\255\246\347\224\237\347\247\221\347\240\224\351\231\204\344\273\2667_\346\231\256\346\203\240\345\236\213_\350\215\211\347\250\277.xlsx"
+?? "outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/\345\255\246\347\224\237\347\247\221\347\240\224\351\231\204\344\273\2667_\346\231\256\346\203\240\345\236\213_\350\215\211\347\250\277.xlsx.inspect.ndjson"
+?? "outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/\346\214\221\346\210\230\346\235\257\351\231\204\344\273\2664_\344\270\207\345\214\226\346\236\204\350\261\241_\350\215\211\347\250\277.xlsx"
+?? "outputs/01a11203-9558-7112-b6ca-0f21c758bd3f/\346\214\221\346\210\230\346\235\257\351\231\204\344\273\2664_\344\270\207\345\214\226\346\236\204\350\261\241_\350\215\211\347\250\277.xlsx.inspect.ndjson"
+?? "\345\244\247\345\255\246\347\224\237\345\210\233\346\226\260\350\256\255\347\273\203\351\241\271\347\233\256\345\220\210\345\220\214_1.pdf"
+?? "\345\244\247\345\255\246\347\224\237\345\210\233\346\226\260\350\256\255\347\273\203\351\241\271\347\233\256\346\211\277\350\257\272\344\271\246.pdf"
+?? "\351\231\204\344\273\2662.\345\244\247\345\255\246\347\224\237\345\210\233\346\226\260\350\256\255\347\273\203\351\241\271\347\233\256\345\220\210\345\220\214.doc"
+?? "\351\231\204\344\273\2663.\345\244\247\345\255\246\347\224\237\345\210\233\346\226\260\350\256\255\347\273\203\351\241\271\347\233\256\346\211\277\350\257\272\344\271\246.doc"

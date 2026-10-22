@@ -106,14 +106,14 @@ class _AgentUsageNoticeDialogState extends State<AgentUsageNoticeDialog> {
             _NoticeItem(
               icon: Icons.child_care_outlined,
               title: '未成年人使用',
-              description: '中小学生请在家长或教师指导下使用。学习数据仅存于本机,不上传服务器。',
+              description: '中小学生请在家长或教师指导下使用。请勿上传含姓名、班级等个人信息的题目或图片。',
               isDark: isDark,
               accent: const Color(0xFF7986CB),
             ),
             _NoticeItem(
               icon: Icons.security_outlined,
               title: '隐私保护',
-              description: '不收集个人身份信息,不进行用户画像分析。仅 OCSR/LLM 调用时会传输 SMILES/文本。',
+              description: '账号登录会处理邮箱或第三方身份；图像/语音识别上传图片/音频，AI 调用可发送问题、结构、对话和学情汇总。请先检查服务配置。',
               isDark: isDark,
             ),
           ],

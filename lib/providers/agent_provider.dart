@@ -132,7 +132,8 @@ class AgentController extends StateNotifier<AgentControllerState> {
     final profile = _profileController.state.profile;
 
     // 多轮对话:有活跃会话且无新图片 → 只调 LLM
-    if (state.hasActiveSession && dataUri == null) {
+    if (state.hasActiveSession && dataUri == null &&
+        smiles?.trim().isNotEmpty != true && name?.trim().isNotEmpty != true) {
       return _runFollowUp(userInput: userInput, stage: stage, profile: profile);
     }
 

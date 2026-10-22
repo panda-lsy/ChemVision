@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/app_config.dart';
 import '../models/structure_result.dart';
+import '../utils/smiles_validator.dart';
 import 'ai_settings_store.dart';
 import 'model_router.dart';
 import 'structure_cache_store.dart';
@@ -224,6 +225,10 @@ class NameToStructureService implements StructureService {
     final normalized = smiles.trim();
     if (normalized.isEmpty) {
       return StructureResult.invalid(message: 'SMILES 不能为空');
+    }
+    // This is a syntax gate, not proof of chemical validity or identity.
+    if (!SmilesValidator.validate(normalized).isValid) {
+      return StructureResult.invalid(message: 'SMILES 基础语法检查未通过，请检查结构');
     }
     final cached = await _cacheStore.get(normalized, mode: 'reverse_smiles');
     if (cached != null) {

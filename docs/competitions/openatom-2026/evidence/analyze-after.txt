@@ -1,0 +1,45 @@
+Analyzing ChemVision...                                         
+
+   info - Use 'const' with the constructor to improve performance - lib\providers\structure_recognition_controller.dart:61:13 - prefer_const_constructors
+   info - Dangling library doc comment - lib\services\agent\agent_context.dart:1:1 - dangling_library_doc_comments
+   info - Dangling library doc comment - lib\services\agent\agent_tool.dart:1:1 - dangling_library_doc_comments
+   info - Dangling library doc comment - lib\services\agent\task_planner.dart:1:1 - dangling_library_doc_comments
+   info - Dangling library doc comment - lib\services\agent\tool_registry_factory.dart:1:1 - dangling_library_doc_comments
+   info - Dangling library doc comment - lib\services\chemical_knowledge_base.dart:1:1 - dangling_library_doc_comments
+   info - Invalid use of a private type in a public API - lib\services\real_structure_service.dart:859:10 - library_private_types_in_public_api
+   info - Invalid use of a private type in a public API - lib\services\real_structure_service.dart:896:10 - library_private_types_in_public_api
+   info - Invalid use of a private type in a public API - lib\services\real_structure_service.dart:1070:10 - library_private_types_in_public_api
+   info - Use 'const' for final variables initialized to a constant value - lib\services\real_structure_service.dart:1342:10 - prefer_const_declarations
+   info - Invalid use of a private type in a public API - lib\services\real_structure_service.dart:1347:10 - library_private_types_in_public_api
+   info - Unnecessary override - lib\services\real_structure_service.dart:1530:27 - unnecessary_overrides
+   info - Parameters ''settingsStore', 'client', 'pubchemClient', and 'opsinClient'' could be super parameters - lib\services\real_structure_service.dart:1534:3 - use_super_parameters
+   info - 'background' is deprecated and shouldn't be used. Use surface instead. This feature was deprecated after v3.18.0-0.1.pre - lib\theme\app_theme.dart:14:9 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\theme\app_theme.dart:70:54 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\theme\app_theme.dart:79:39 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\theme\app_theme.dart:88:46 - deprecated_member_use
+   info - 'background' is deprecated and shouldn't be used. Use surface instead. This feature was deprecated after v3.18.0-0.1.pre - lib\theme\app_theme.dart:109:9 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\theme\app_theme.dart:174:48 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\ui\pages\reaction_page.dart:378:18 - prefer_const_constructors
+   info - 'value' is deprecated and shouldn't be used. Use initialValue instead. This will set the initial value for the form field. This feature was deprecated after v3.33.0-1.0.pre - lib\ui\pages\reaction_page.dart:921:19 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\ui\pages\smiles_name_resolve_page.dart:159:19 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\ui\pages\smiles_name_resolve_page.dart:160:19 - prefer_const_constructors
+   info - Constructors for public widgets should have a named 'key' parameter - lib\ui\pages\structure_editor_page.dart:316:9 - use_key_in_widget_constructors
+   info - Use 'const' with the constructor to improve performance - lib\ui\pages\structure_editor_page.dart:574:29 - prefer_const_constructors
+   info - Dangling library doc comment - lib\ui\widgets\agent\agent_step_card.dart:1:1 - dangling_library_doc_comments
+   info - Dangling library doc comment - lib\ui\widgets\agent\agent_usage_notice_dialog.dart:1:1 - dangling_library_doc_comments
+   info - Dangling library doc comment - lib\ui\widgets\compliance\privacy_compliance_panel.dart:1:1 - dangling_library_doc_comments
+   info - Use 'const' with the constructor to improve performance - lib\ui\widgets\glass_panel.dart:42:25 - prefer_const_constructors
+   info - 'initialOptions' is deprecated and shouldn't be used. Use initialSettings instead - lib\ui\widgets\ketcher_editor_view_mobile.dart:242:7 - deprecated_member_use
+   info - 'InAppWebViewGroupOptions' is deprecated and shouldn't be used. Use InAppWebViewSettings instead - lib\ui\widgets\ketcher_editor_view_mobile.dart:242:23 - deprecated_member_use
+   info - 'InAppWebViewOptions' is deprecated and shouldn't be used. Use InAppWebViewSettings instead - lib\ui\widgets\ketcher_editor_view_mobile.dart:243:24 - deprecated_member_use
+   info - 'dart:html' is deprecated and shouldn't be used. Use package:web and dart:js_interop instead - lib\ui\widgets\ketcher_editor_view_web.dart:2:1 - deprecated_member_use
+   info - Don't use web-only libraries outside Flutter web plugins - lib\ui\widgets\ketcher_editor_view_web.dart:2:1 - avoid_web_libraries_in_flutter
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\ui\widgets\loading\orbital_particles.dart:156:27 - deprecated_member_use
+   info - 'dart:html' is deprecated and shouldn't be used. Use package:web and dart:js_interop instead - lib\ui\widgets\structure_view_web.dart:2:1 - deprecated_member_use
+   info - Don't use web-only libraries outside Flutter web plugins - lib\ui\widgets\structure_view_web.dart:2:1 - avoid_web_libraries_in_flutter
+   info - 'dart:html' is deprecated and shouldn't be used. Use package:web and dart:js_interop instead - lib\utils\favorites_export_web.dart:2:1 - deprecated_member_use
+   info - Don't use web-only libraries outside Flutter web plugins - lib\utils\favorites_export_web.dart:2:1 - avoid_web_libraries_in_flutter
+   info - 'dart:html' is deprecated and shouldn't be used. Use package:web and dart:js_interop instead - lib\utils\svg_export_web.dart:2:1 - deprecated_member_use
+   info - Don't use web-only libraries outside Flutter web plugins - lib\utils\svg_export_web.dart:2:1 - avoid_web_libraries_in_flutter
+
+41 issues found. (ran in 7.9s)

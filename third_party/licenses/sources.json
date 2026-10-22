@@ -1,0 +1,20 @@
+[
+  {
+    "file": "Ketcher-LICENSE.txt",
+    "source": "https://raw.githubusercontent.com/epam/ketcher/master/LICENSE",
+    "sha256": "3d54b234fa88c11d1d96380ff5fe29f3c5d8e1078ef914dfe8185ce4b1fbeac7",
+    "status": "upstream current text; bundled exact version provenance pending"
+  },
+  {
+    "file": "Ketcher-NOTICE.txt",
+    "source": "https://raw.githubusercontent.com/epam/ketcher/master/NOTICE",
+    "sha256": "ab82986438fc66fa2b40836415b734ff018b1e42ee3a18434b27bdf1c42eb368",
+    "status": "upstream current text; bundled exact version provenance pending"
+  },
+  {
+    "file": "SmilesDrawer-LICENSE.txt",
+    "source": "https://raw.githubusercontent.com/reymond-group/smilesDrawer/master/LICENSE.md",
+    "sha256": "919c7fa7363867d5785a1362aeb1df8ffa62f976db7f963fd57c397c2cbadeb4",
+    "status": "upstream current text; bundled exact version provenance pending"
+  }
+]

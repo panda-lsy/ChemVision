@@ -35,9 +35,9 @@ class AgentOrchestrator {
     required ToolRegistry registry,
     LearningRecordService? recordService,
     TaskPlanner? planner,
-  })  : _registry = registry,
-        _recordService = recordService,
-        _planner = planner ?? const TaskPlanner();
+  }) : _registry = registry,
+       _recordService = recordService,
+       _planner = planner ?? const TaskPlanner();
 
   final ToolRegistry _registry;
   final LearningRecordService? _recordService;
@@ -127,10 +127,7 @@ class AgentOrchestrator {
       final resolvedInput = _resolveReferences(step.toolInput, context);
       ToolResult result;
       try {
-        result = await _registry.invoke(
-          step.toolName ?? 'llm',
-          resolvedInput,
-        );
+        result = await _registry.invoke(step.toolName ?? 'llm', resolvedInput);
       } catch (_) {
         if (_cancelledTaskIds.remove(taskId)) {
           final cancelledStep = executingStep.copyWith(
@@ -138,9 +135,11 @@ class AgentOrchestrator {
             result: '已取消',
             completedAt: DateTime.now(),
           );
-          task = _replaceStep(task, i, cancelledStep).copyWith(
-            status: AgentTaskStatus.cancelled,
-          );
+          task = _replaceStep(
+            task,
+            i,
+            cancelledStep,
+          ).copyWith(status: AgentTaskStatus.cancelled);
           onProgress?.call(task);
           return task;
         }
@@ -153,9 +152,11 @@ class AgentOrchestrator {
           result: '已取消',
           completedAt: DateTime.now(),
         );
-        task = _replaceStep(task, i, cancelledStep).copyWith(
-          status: AgentTaskStatus.cancelled,
-        );
+        task = _replaceStep(
+          task,
+          i,
+          cancelledStep,
+        ).copyWith(status: AgentTaskStatus.cancelled);
         onProgress?.call(task);
         return task;
       }
@@ -198,8 +199,10 @@ class AgentOrchestrator {
         status: AgentTaskStatus.completed,
         result: aggregated,
       );
-      context.addAssistantMessage(aggregated.summary,
-          metadata: {'type': 'final_result'});
+      context.addAssistantMessage(
+        aggregated.summary,
+        metadata: {'type': 'final_result'},
+      );
 
       // 6. 写入学习记录(反馈到学情画像,形成闭环)
       await _recordLearning(task, context);
@@ -216,11 +219,9 @@ class AgentOrchestrator {
   /// 闭环设计:
   /// - homeworkTutor / compoundExplain: 记录 scan + query 行为
   ///   (用户通过 Agent 接触了该化合物和知识点)
-  /// - practice: 记录 practice 行为(默认答对,UI 后续可让用户标记对错)
-  /// - errorAnalysis: 记录 practiceWrong(暴露薄弱点)
+  /// - practice / errorAnalysis: 生成内容不代表用户已经作答，不推断对错
   /// - diagnosis / planning / chat: 不直接产生学习记录
-  Future<void> _recordLearning(
-      AgentTask task, AgentContext context) async {
+  Future<void> _recordLearning(AgentTask task, AgentContext context) async {
     final service = _recordService;
     if (service == null) return;
 
@@ -231,15 +232,11 @@ class AgentOrchestrator {
           await _recordCompoundInteraction(task, context, service);
           break;
         case AgentTaskType.practice:
-          await _recordPracticeResult(task, context, service, correct: true);
-          break;
         case AgentTaskType.errorAnalysis:
-          await _recordPracticeResult(task, context, service, correct: false);
-          break;
         case AgentTaskType.diagnosis:
         case AgentTaskType.planning:
         case AgentTaskType.chat:
-          // 这些任务不直接产生知识点级别的学习记录
+          // 只有用户确认/真实评分流程可以调用 recordPractice。
           break;
       }
     } catch (e) {
@@ -268,11 +265,12 @@ class AgentOrchestrator {
         : (pubchemData?['canonicalSmiles'] as String?) ?? '';
     if (smiles.isEmpty) return;
 
-    final compoundName = (pubchemData?['chineseName'] as String?)?.isNotEmpty == true
+    final compoundName =
+        (pubchemData?['chineseName'] as String?)?.isNotEmpty == true
         ? pubchemData!['chineseName'] as String
         : (pubchemData?['englishName'] as String?)?.isNotEmpty == true
-            ? pubchemData!['englishName'] as String
-            : (pubchemData?['name'] as String?) ?? '';
+        ? pubchemData!['englishName'] as String
+        : (pubchemData?['name'] as String?) ?? '';
 
     // 从知识图谱结果提取知识点 ID
     final kpIds = <String>[];
@@ -303,41 +301,8 @@ class AgentOrchestrator {
 
     if (kDebugMode) {
       debugPrint(
-          '[Agent] 记录 ${task.type.name}: $compoundName ($smiles), kp=${kpIds.length}');
-    }
-  }
-
-  /// 记录练习结果(practice / errorAnalysis)
-  Future<void> _recordPracticeResult(
-    AgentTask task,
-    AgentContext context,
-    LearningRecordService service, {
-    required bool correct,
-  }) async {
-    final ocrData = context.getToolResult('ocr');
-    final knowledgeData = context.getToolResult('knowledge');
-
-    final smiles = (ocrData?['smiles'] as String?) ?? '';
-    final kpIds = <String>[];
-    final points = knowledgeData?['points'];
-    if (points is List) {
-      for (final p in points) {
-        if (p is Map && p['id'] is String) {
-          kpIds.add(p['id'] as String);
-        }
-      }
-    }
-
-    await service.recordPractice(
-      smiles: smiles,
-      compoundName: '',
-      correct: correct,
-      knowledgePointIds: kpIds,
-      notes: task.userInput,
-    );
-
-    if (kDebugMode) {
-      debugPrint('[Agent] 记录练习: correct=$correct, kp=${kpIds.length}');
+        '[Agent] 记录 ${task.type.name}: $compoundName ($smiles), kp=${kpIds.length}',
+      );
     }
   }
 
@@ -433,9 +398,11 @@ class AgentOrchestrator {
           result: '已取消',
           completedAt: DateTime.now(),
         );
-        task = _replaceStep(task, 0, cancelledStep).copyWith(
-          status: AgentTaskStatus.cancelled,
-        );
+        task = _replaceStep(
+          task,
+          0,
+          cancelledStep,
+        ).copyWith(status: AgentTaskStatus.cancelled);
         onProgress?.call(task);
         return task;
       }
@@ -448,9 +415,11 @@ class AgentOrchestrator {
         result: '已取消',
         completedAt: DateTime.now(),
       );
-      task = _replaceStep(task, 0, cancelledStep).copyWith(
-        status: AgentTaskStatus.cancelled,
-      );
+      task = _replaceStep(
+        task,
+        0,
+        cancelledStep,
+      ).copyWith(status: AgentTaskStatus.cancelled);
       onProgress?.call(task);
       return task;
     }
@@ -476,12 +445,11 @@ class AgentOrchestrator {
 
     // 聚合结果
     final aggregated = _aggregateFollowUpResult(task, context, taskType);
-    task = task.copyWith(
-      status: AgentTaskStatus.completed,
-      result: aggregated,
+    task = task.copyWith(status: AgentTaskStatus.completed, result: aggregated);
+    context.addAssistantMessage(
+      aggregated.summary,
+      metadata: {'type': 'followup_result'},
     );
-    context.addAssistantMessage(aggregated.summary,
-        metadata: {'type': 'followup_result'});
 
     onProgress?.call(task);
     return task;
@@ -498,7 +466,8 @@ class AgentOrchestrator {
     final followUpData = task.steps.isNotEmpty
         ? task.steps.last.toolOutput
         : null;
-    final llmText = (followUpData?['text'] as String?) ??
+    final llmText =
+        (followUpData?['text'] as String?) ??
         (llmResult?['text'] as String?) ??
         '';
 
@@ -506,19 +475,19 @@ class AgentOrchestrator {
 
     final sections = <AgentResultSection>[];
     if (llmText.isNotEmpty) {
-      sections.add(AgentResultSection(
-        title: '回答',
-        content: llmText,
-        type: _sectionTypeForTask(taskType),
-      ));
+      sections.add(
+        AgentResultSection(
+          title: '回答',
+          content: llmText,
+          type: _sectionTypeForTask(taskType),
+        ),
+      );
     }
 
     return AgentTaskResult(
       title: title,
       summary: llmText.isNotEmpty
-          ? (llmText.length > 120
-              ? '${llmText.substring(0, 120)}...'
-              : llmText)
+          ? (llmText.length > 120 ? '${llmText.substring(0, 120)}...' : llmText)
           : '已回复',
       sections: sections,
       suggestedActions: const [],
@@ -593,7 +562,19 @@ class AgentOrchestrator {
   dynamic _resolveProfilePath(List<String> path, AgentContext context) {
     final profile = context.profile;
     if (profile == null) return '';
-    if (path.isEmpty) return '';
+    if (path.isEmpty) {
+      // Send only educational aggregates; identifiers/timestamps are unnecessary.
+      return AgentTool.encodeForLlm({
+        'stage': profile.stage,
+        'knowledgeMastery': profile.knowledgeMastery,
+        'weakPoints': profile.weakPoints,
+        'totalScans': profile.totalScans,
+        'totalQueries': profile.totalQueries,
+        'totalPractice': profile.totalPractice,
+        'correctCount': profile.correctCount,
+        'streakDays': profile.streakDays,
+      });
+    }
     final key = path.first;
     switch (key) {
       case 'weakPoints':
@@ -632,12 +613,14 @@ class AgentOrchestrator {
     // 工具结果摘要(化合物信息)
     final pubchem = context.getToolResult('pubchem');
     if (pubchem != null && pubchem.isNotEmpty) {
-      sections.add(AgentResultSection(
-        title: '化合物信息',
-        content: _formatCompoundInfo(pubchem),
-        type: ResultSectionType.formula,
-        metadata: pubchem,
-      ));
+      sections.add(
+        AgentResultSection(
+          title: '化合物信息',
+          content: _formatCompoundInfo(pubchem),
+          type: ResultSectionType.formula,
+          metadata: pubchem,
+        ),
+      );
     }
 
     // 知识点关联
@@ -645,22 +628,26 @@ class AgentOrchestrator {
     if (knowledge != null && knowledge.isNotEmpty) {
       final points = knowledge['points'];
       if (points is List && points.isNotEmpty) {
-        sections.add(AgentResultSection(
-          title: '教材知识点',
-          content: _formatKnowledgePoints(points),
-          type: ResultSectionType.knowledgeMap,
-          metadata: knowledge,
-        ));
+        sections.add(
+          AgentResultSection(
+            title: '教材知识点',
+            content: _formatKnowledgePoints(points),
+            type: ResultSectionType.knowledgeMap,
+            metadata: knowledge,
+          ),
+        );
       }
     }
 
     // LLM 生成的讲解
     if (llmText.isNotEmpty) {
-      sections.add(AgentResultSection(
-        title: title,
-        content: llmText,
-        type: _sectionTypeForTask(task.type),
-      ));
+      sections.add(
+        AgentResultSection(
+          title: title,
+          content: llmText,
+          type: _sectionTypeForTask(task.type),
+        ),
+      );
     }
 
     // 关联的知识点 ID
@@ -677,9 +664,7 @@ class AgentOrchestrator {
     return AgentTaskResult(
       title: title,
       summary: llmText.isNotEmpty
-          ? (llmText.length > 120
-              ? '${llmText.substring(0, 120)}...'
-              : llmText)
+          ? (llmText.length > 120 ? '${llmText.substring(0, 120)}...' : llmText)
           : _defaultSummary(task.type),
       sections: sections,
       relatedKnowledgePoints: kpIds,
@@ -689,31 +674,31 @@ class AgentOrchestrator {
   }
 
   String _taskTitle(AgentTaskType type) => switch (type) {
-        AgentTaskType.homeworkTutor => '作业辅导',
-        AgentTaskType.compoundExplain => '化合物讲解',
-        AgentTaskType.diagnosis => '学情诊断报告',
-        AgentTaskType.planning => '个性化学习规划',
-        AgentTaskType.practice => '同类题训练',
-        AgentTaskType.errorAnalysis => '错因分析',
-        AgentTaskType.chat => '学习对话',
-      };
+    AgentTaskType.homeworkTutor => '作业辅导',
+    AgentTaskType.compoundExplain => '化合物讲解',
+    AgentTaskType.diagnosis => '学情诊断报告',
+    AgentTaskType.planning => '个性化学习规划',
+    AgentTaskType.practice => '同类题训练',
+    AgentTaskType.errorAnalysis => '错因分析',
+    AgentTaskType.chat => '学习对话',
+  };
 
   String _defaultSummary(AgentTaskType type) => switch (type) {
-        AgentTaskType.homeworkTutor => '已完成分步启发讲解',
-        AgentTaskType.compoundExplain => '已完成化合物讲解',
-        AgentTaskType.diagnosis => '已生成学情报告',
-        AgentTaskType.planning => '已生成学习规划',
-        AgentTaskType.practice => '已生成练习题',
-        AgentTaskType.errorAnalysis => '已完成错因分析',
-        AgentTaskType.chat => '已回复',
-      };
+    AgentTaskType.homeworkTutor => '已完成分步启发讲解',
+    AgentTaskType.compoundExplain => '已完成化合物讲解',
+    AgentTaskType.diagnosis => '已生成学情报告',
+    AgentTaskType.planning => '已生成学习规划',
+    AgentTaskType.practice => '已生成练习题',
+    AgentTaskType.errorAnalysis => '已完成错因分析',
+    AgentTaskType.chat => '已回复',
+  };
 
   ResultSectionType _sectionTypeForTask(AgentTaskType type) => switch (type) {
-        AgentTaskType.diagnosis => ResultSectionType.recommendation,
-        AgentTaskType.planning => ResultSectionType.recommendation,
-        AgentTaskType.errorAnalysis => ResultSectionType.warning,
-        _ => ResultSectionType.text,
-      };
+    AgentTaskType.diagnosis => ResultSectionType.recommendation,
+    AgentTaskType.planning => ResultSectionType.recommendation,
+    AgentTaskType.errorAnalysis => ResultSectionType.warning,
+    _ => ResultSectionType.text,
+  };
 
   String _formatCompoundInfo(Map<String, dynamic> data) {
     final name = data['chineseName'] ?? data['englishName'] ?? data['name'];
@@ -740,57 +725,73 @@ class AgentOrchestrator {
   }
 
   List<SuggestedAction> _suggestedActions(
-      AgentTaskType type, List<String> kpIds) {
+    AgentTaskType type,
+    List<String> kpIds,
+  ) {
     final actions = <SuggestedAction>[];
     switch (type) {
       case AgentTaskType.homeworkTutor:
       case AgentTaskType.compoundExplain:
-        actions.add(SuggestedAction(
-          label: '生成同类练习题',
-          actionType: SuggestedActionType.practice,
-          payload: {'knowledgePointIds': kpIds},
-        ));
-        actions.add(SuggestedAction(
-          label: '查看学情诊断',
-          actionType: SuggestedActionType.diagnose,
-        ));
+        actions.add(
+          SuggestedAction(
+            label: '生成同类练习题',
+            actionType: SuggestedActionType.practice,
+            payload: {'knowledgePointIds': kpIds},
+          ),
+        );
+        actions.add(
+          SuggestedAction(
+            label: '查看学情诊断',
+            actionType: SuggestedActionType.diagnose,
+          ),
+        );
         break;
       case AgentTaskType.diagnosis:
-        actions.add(SuggestedAction(
-          label: '生成学习规划',
-          actionType: SuggestedActionType.planLearning,
-          payload: {'knowledgePointIds': kpIds},
-        ));
-        actions.add(SuggestedAction(
-          label: '开始薄弱点复习',
-          actionType: SuggestedActionType.review,
-          payload: {'knowledgePointIds': kpIds},
-        ));
+        actions.add(
+          SuggestedAction(
+            label: '生成学习规划',
+            actionType: SuggestedActionType.planLearning,
+            payload: {'knowledgePointIds': kpIds},
+          ),
+        );
+        actions.add(
+          SuggestedAction(
+            label: '开始薄弱点复习',
+            actionType: SuggestedActionType.review,
+            payload: {'knowledgePointIds': kpIds},
+          ),
+        );
         break;
       case AgentTaskType.planning:
-        actions.add(SuggestedAction(
-          label: '开始按计划学习',
-          actionType: SuggestedActionType.review,
-          payload: {'knowledgePointIds': kpIds},
-        ));
+        actions.add(
+          SuggestedAction(
+            label: '开始按计划学习',
+            actionType: SuggestedActionType.review,
+            payload: {'knowledgePointIds': kpIds},
+          ),
+        );
         break;
       case AgentTaskType.practice:
-        actions.add(SuggestedAction(
-          label: '再来一组练习',
-          actionType: SuggestedActionType.practice,
-          payload: {'knowledgePointIds': kpIds},
-        ));
+        actions.add(
+          SuggestedAction(
+            label: '再来一组练习',
+            actionType: SuggestedActionType.practice,
+            payload: {'knowledgePointIds': kpIds},
+          ),
+        );
         break;
       case AgentTaskType.errorAnalysis:
       case AgentTaskType.chat:
         break;
     }
     if (kpIds.isNotEmpty) {
-      actions.add(SuggestedAction(
-        label: '收藏到错题本',
-        actionType: SuggestedActionType.saveFavorite,
-        payload: {'knowledgePointIds': kpIds},
-      ));
+      actions.add(
+        SuggestedAction(
+          label: '收藏到错题本',
+          actionType: SuggestedActionType.saveFavorite,
+          payload: {'knowledgePointIds': kpIds},
+        ),
+      );
     }
     return actions;
   }

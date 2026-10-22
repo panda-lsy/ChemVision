@@ -55,10 +55,14 @@ class TaskPlanner {
     final lower = userInput.toLowerCase();
     AgentTaskType type = AgentTaskType.chat;
 
-    if (dataUri != null && dataUri.isNotEmpty) {
+    // Explicit learning intent takes priority over the attached structure.
+    // A plain image still defaults to homework tutoring.
+    final hasImage = dataUri != null && dataUri.isNotEmpty;
+    final asksErrorAnalysis = lower.contains('错因') || lower.contains('分析错误');
+    if (hasImage && asksErrorAnalysis) {
+      type = AgentTaskType.errorAnalysis;
+    } else if (hasImage) {
       type = AgentTaskType.homeworkTutor;
-    } else if (smiles != null && smiles.trim().isNotEmpty) {
-      type = AgentTaskType.compoundExplain;
     } else if (lower.contains('诊断') ||
         lower.contains('学情') ||
         lower.contains('薄弱') ||
@@ -76,6 +80,8 @@ class TaskPlanner {
         lower.contains('同类题') ||
         lower.contains('出题')) {
       type = AgentTaskType.practice;
+    } else if (smiles != null && smiles.trim().isNotEmpty) {
+      type = AgentTaskType.compoundExplain;
     } else if (name != null && name.trim().isNotEmpty) {
       type = AgentTaskType.compoundExplain;
     }
@@ -116,42 +122,42 @@ class TaskPlanner {
   ///
   /// 教育伦理:不直接给最终答案,引导用户思考官能团/反应类型。
   List<AgentStep> _planHomework(ParsedInput input) => [
-        AgentStep(
-          id: 'ocr',
-          name: '识别化学结构',
-          description: '从图片中识别 SMILES',
-          toolName: 'ocsr',
-          toolInput: {'dataUri': input.dataUri ?? ''},
-        ),
-        AgentStep(
-          id: 'pubchem',
-          name: '查询化合物信息',
-          description: '从 PubChem 获取名称、分子式',
-          toolName: 'pubchem',
-          toolInput: const {'smiles': '@ocr.smiles'},
-        ),
-        AgentStep(
-          id: 'knowledge',
-          name: '匹配教材知识点',
-          description: '关联官能团到教材章节',
-          toolName: 'knowledge',
-          toolInput: const {'smiles': '@ocr.smiles'},
-        ),
-        AgentStep(
-          id: 'explain',
-          name: '分步启发讲解',
-          description: '不直接给答案,引导思考官能团和反应',
-          toolName: 'llm',
-          toolInput: const {
-            'templateAsset': 'agent_homework_tutor.txt',
-            'smiles': '@ocr.smiles',
-            'compoundInfo': '@pubchem',
-            'knowledgePoints': '@knowledge',
-            'userInput': '@userInput',
-            'userStage': '@userStage',
-          },
-        ),
-      ];
+    AgentStep(
+      id: 'ocr',
+      name: '识别化学结构',
+      description: '从图片中识别 SMILES',
+      toolName: 'ocsr',
+      toolInput: {'dataUri': input.dataUri ?? ''},
+    ),
+    AgentStep(
+      id: 'pubchem',
+      name: '查询化合物信息',
+      description: '从 PubChem 获取名称、分子式',
+      toolName: 'pubchem',
+      toolInput: const {'smiles': '@ocr.smiles'},
+    ),
+    AgentStep(
+      id: 'knowledge',
+      name: '匹配教材知识点',
+      description: '关联官能团到教材章节',
+      toolName: 'knowledge',
+      toolInput: const {'smiles': '@ocr.smiles'},
+    ),
+    AgentStep(
+      id: 'explain',
+      name: '分步启发讲解',
+      description: '不直接给答案,引导思考官能团和反应',
+      toolName: 'llm',
+      toolInput: const {
+        'templateAsset': 'agent_homework_tutor.txt',
+        'smiles': '@ocr.smiles',
+        'compoundInfo': '@pubchem',
+        'knowledgePoints': '@knowledge',
+        'userInput': '@userInput',
+        'userStage': '@userStage',
+      },
+    ),
+  ];
 
   /// 化合物讲解:SMILES/名称 → PubChem → 知识点 → 讲解
   List<AgentStep> _planCompoundExplain(ParsedInput input) {
@@ -171,7 +177,9 @@ class TaskPlanner {
         description: '获取分子式、分子量、IUPAC 名',
         toolName: 'pubchem',
         toolInput: {
-          'smiles': hasSmiles ? input.smiles! : '@pubchem_by_name.canonicalSmiles',
+          'smiles': hasSmiles
+              ? input.smiles!
+              : '@pubchem_by_name.canonicalSmiles',
         },
       ),
       AgentStep(
@@ -180,7 +188,9 @@ class TaskPlanner {
         description: '关联官能团到教材章节',
         toolName: 'knowledge',
         toolInput: {
-          'smiles': hasSmiles ? input.smiles! : '@pubchem_by_name.canonicalSmiles',
+          'smiles': hasSmiles
+              ? input.smiles!
+              : '@pubchem_by_name.canonicalSmiles',
         },
       ),
       AgentStep(
@@ -201,121 +211,121 @@ class TaskPlanner {
 
   /// 学情诊断:加载画像 → 分析薄弱点 → 生成报告
   List<AgentStep> _planDiagnosis(ParsedInput input) => [
-        AgentStep(
-          id: 'knowledge',
-          name: '加载薄弱知识点',
-          description: '从历史学习记录聚合掌握度并查详情',
-          toolName: 'knowledge',
-          toolInput: const {'kpIds': '@profile.weakPoints'},
-        ),
-        AgentStep(
-          id: 'explain',
-          name: '生成学情报告',
-          description: '分析薄弱知识点、提出改进建议',
-          toolName: 'llm',
-          toolInput: const {
-            'templateAsset': 'agent_diagnosis.txt',
-            'knowledgePoints': '@knowledge',
-            'masterySummary': '@profile',
-            'totalScans': '@profile.totalScans',
-            'totalPractice': '@profile.totalPractice',
-            'correctCount': '@profile.correctCount',
-            'streakDays': '@profile.streakDays',
-            'userStage': '@userStage',
-          },
-        ),
-      ];
+    AgentStep(
+      id: 'knowledge',
+      name: '加载薄弱知识点',
+      description: '从历史学习记录聚合掌握度并查详情',
+      toolName: 'knowledge',
+      toolInput: const {'kpIds': '@profile.weakPoints'},
+    ),
+    AgentStep(
+      id: 'explain',
+      name: '生成学情报告',
+      description: '分析薄弱知识点、提出改进建议',
+      toolName: 'llm',
+      toolInput: const {
+        'templateAsset': 'agent_diagnosis.txt',
+        'knowledgePoints': '@knowledge',
+        'masterySummary': '@profile',
+        'totalScans': '@profile.totalScans',
+        'totalPractice': '@profile.totalPractice',
+        'correctCount': '@profile.correctCount',
+        'streakDays': '@profile.streakDays',
+        'userStage': '@userStage',
+      },
+    ),
+  ];
 
   /// 个性化学习规划:基于学情生成学习路径
   List<AgentStep> _planLearning(ParsedInput input) => [
-        AgentStep(
-          id: 'knowledge',
-          name: '加载薄弱知识点',
-          description: '识别已掌握与薄弱知识点并查详情',
-          toolName: 'knowledge',
-          toolInput: const {'kpIds': '@profile.weakPoints'},
-        ),
-        AgentStep(
-          id: 'explain',
-          name: '生成学习规划',
-          description: '基于薄弱点生成学习路径和优先级',
-          toolName: 'llm',
-          toolInput: const {
-            'templateAsset': 'agent_planning.txt',
-            'knowledgePoints': '@knowledge',
-            'masterySummary': '@profile',
-            'userStage': '@userStage',
-          },
-        ),
-      ];
+    AgentStep(
+      id: 'knowledge',
+      name: '加载薄弱知识点',
+      description: '识别已掌握与薄弱知识点并查详情',
+      toolName: 'knowledge',
+      toolInput: const {'kpIds': '@profile.weakPoints'},
+    ),
+    AgentStep(
+      id: 'explain',
+      name: '生成学习规划',
+      description: '基于薄弱点生成学习路径和优先级',
+      toolName: 'llm',
+      toolInput: const {
+        'templateAsset': 'agent_planning.txt',
+        'knowledgePoints': '@knowledge',
+        'masterySummary': '@profile',
+        'userStage': '@userStage',
+      },
+    ),
+  ];
 
   /// 同类题训练:基于官能团生成练习题
   List<AgentStep> _planPractice(ParsedInput input) => [
-        if (input.smiles != null && input.smiles!.isNotEmpty)
-          AgentStep(
-            id: 'knowledge',
-            name: '匹配知识点',
-            description: '识别相关官能团和教材章节',
-            toolName: 'knowledge',
-            toolInput: {'smiles': input.smiles},
-          ),
-        AgentStep(
-          id: 'explain',
-          name: '生成练习题',
-          description: '基于知识点生成同类练习题',
-          toolName: 'llm',
-          toolInput: const {
-            'templateAsset': 'agent_practice.txt',
-            'knowledgePoints': '@knowledge',
-            'userInput': '@userInput',
-            'userStage': '@userStage',
-          },
-        ),
-      ];
+    if (input.smiles != null && input.smiles!.isNotEmpty)
+      AgentStep(
+        id: 'knowledge',
+        name: '匹配知识点',
+        description: '识别相关官能团和教材章节',
+        toolName: 'knowledge',
+        toolInput: {'smiles': input.smiles},
+      ),
+    AgentStep(
+      id: 'explain',
+      name: '生成练习题',
+      description: '基于知识点生成同类练习题',
+      toolName: 'llm',
+      toolInput: const {
+        'templateAsset': 'agent_practice.txt',
+        'knowledgePoints': '@knowledge',
+        'userInput': '@userInput',
+        'userStage': '@userStage',
+      },
+    ),
+  ];
 
   /// 错因分析:对比用户绘制 vs 标准结构
   List<AgentStep> _planErrorAnalysis(ParsedInput input) => [
-        AgentStep(
-          id: 'ocr',
-          name: '识别用户绘制',
-          description: '从用户拍照/绘制中识别 SMILES',
-          toolName: 'ocsr',
-          toolInput: {'dataUri': input.dataUri ?? ''},
-        ),
-        AgentStep(
-          id: 'knowledge',
-          name: '匹配标准知识点',
-          description: '关联到教材章节作为对比基准',
-          toolName: 'knowledge',
-          toolInput: const {'smiles': '@ocr.smiles'},
-        ),
-        AgentStep(
-          id: 'explain',
-          name: '分析错因',
-          description: '对比标准结构,定位错误官能团',
-          toolName: 'llm',
-          toolInput: const {
-            'templateAsset': 'agent_error_analysis.txt',
-            'smiles': '@ocr.smiles',
-            'knowledgePoints': '@knowledge',
-            'userInput': '@userInput',
-            'userStage': '@userStage',
-          },
-        ),
-      ];
+    AgentStep(
+      id: 'ocr',
+      name: '识别用户绘制',
+      description: '从用户拍照/绘制中识别 SMILES',
+      toolName: 'ocsr',
+      toolInput: {'dataUri': input.dataUri ?? ''},
+    ),
+    AgentStep(
+      id: 'knowledge',
+      name: '匹配标准知识点',
+      description: '关联到教材章节作为对比基准',
+      toolName: 'knowledge',
+      toolInput: const {'smiles': '@ocr.smiles'},
+    ),
+    AgentStep(
+      id: 'explain',
+      name: '分析错因',
+      description: '对比标准结构,定位错误官能团',
+      toolName: 'llm',
+      toolInput: const {
+        'templateAsset': 'agent_error_analysis.txt',
+        'smiles': '@ocr.smiles',
+        'knowledgePoints': '@knowledge',
+        'userInput': '@userInput',
+        'userStage': '@userStage',
+      },
+    ),
+  ];
 
   /// 自由对话:直接调用 LLM
   List<AgentStep> _planChat(ParsedInput input) => [
-        AgentStep(
-          id: 'explain',
-          name: '生成回复',
-          description: '多轮对话式学习陪伴',
-          toolName: 'llm',
-          toolInput: const {
-            'templateAsset': 'agent_chat.txt',
-            'userInput': '@userInput',
-            'userStage': '@userStage',
-          },
-        ),
-      ];
+    AgentStep(
+      id: 'explain',
+      name: '生成回复',
+      description: '多轮对话式学习陪伴',
+      toolName: 'llm',
+      toolInput: const {
+        'templateAsset': 'agent_chat.txt',
+        'userInput': '@userInput',
+        'userStage': '@userStage',
+      },
+    ),
+  ];
 }

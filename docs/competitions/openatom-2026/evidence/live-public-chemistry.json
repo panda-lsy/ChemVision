@@ -1,0 +1,42 @@
+{
+  "recordedAt": "2026-10-22T08:27:36.149358Z",
+  "scope": "Real NameToStructureService and public databases. English inputs; no LLM/OCSR call. In-memory SharedPreferences cache.",
+  "observations": [
+    {
+      "input": "ethanol",
+      "expectedFormula": "C2H6O",
+      "actualFormula": "C2H6O",
+      "smiles": "CCO",
+      "isValid": true,
+      "coldElapsedMs": 1631,
+      "warmElapsedMs": 0,
+      "cachePresent": true,
+      "message": null,
+      "passed": true
+    },
+    {
+      "input": "benzoic acid",
+      "expectedFormula": "C7H6O2",
+      "actualFormula": "C7H6O2",
+      "smiles": "C1=CC=C(C=C1)C(=O)O",
+      "isValid": true,
+      "coldElapsedMs": 2115,
+      "warmElapsedMs": 0,
+      "cachePresent": true,
+      "message": null,
+      "passed": true
+    },
+    {
+      "input": "acetone",
+      "expectedFormula": "C3H6O",
+      "actualFormula": "C3H6O",
+      "smiles": "CC(=O)C",
+      "isValid": true,
+      "coldElapsedMs": 1657,
+      "warmElapsedMs": 0,
+      "cachePresent": true,
+      "message": null,
+      "passed": true
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+{
+  "verifiedAt": "2026-10-22T08:45:26.830061+00:00",
+  "method": "Public website, page bundle and its read-only public content endpoints. No registration records read; no form submitted.",
+  "sources": [
+    {
+      "url": "https://apiv1.oschina.net/api/collections/oa2026_config/records?perPage=100",
+      "status": "read-only GET succeeded",
+      "sha256": "d0d3d635443d83ffeb6702ff437b59ee2a5d188b637c5e4357d90db91696b114",
+      "recordCount": 28
+    },
+    {
+      "url": "https://apiv1.oschina.net/api/collections/oa2026_tracks/records?perPage=100",
+      "status": "read-only GET succeeded",
+      "sha256": "0f35641374a3f255f30c3cc8c507e0ae54f7775ee3c0db5bdbc09942e910e666",
+      "recordCount": 3
+    },
+    {
+      "url": "https://apiv1.oschina.net/api/collections/oa2026_criteria/records?perPage=100",
+      "status": "read-only GET succeeded",
+      "sha256": "7fb311aa36bc247c5ea63811b4c7838d9b13100d94e7e2d337b4e36d3b5093d5",
+      "recordCount": 4
+    },
+    {
+      "url": "https://apiv1.oschina.net/api/collections/oa2026_guide_materials/records?perPage=100",
+      "status": "read-only GET succeeded",
+      "sha256": "4dc44b8ae1f4648a2e8d7cd78ca80e49b38e854ba93293e54a0044df384e1ec2",
+      "recordCount": 3
+    },
+    {
+      "url": "https://apiv1.oschina.net/api/collections/oa2026_schedule/records?perPage=100",
+      "status": "read-only GET succeeded",
+      "sha256": "f36f26f3bc959d142ecd4715ba1db7491a9c0129c50b8435ff7fbb330ac77e2f",
+      "recordCount": 3
+    },
+    {
+      "url": "https://www.oschina.net/oa2026/assets/index-c457901b.js",
+      "sha256": "8357639d6a18809c4a64cb33ddc6c661c5bd19b328705c8489b119a42b8ad080",
+      "role": "Official page bundle; fetched previously during this audit"
+    }
+  ],
+  "interpretation": "See 00-official-rules.md for paraphrased rules, conflicts and unresolved eligibility questions."
+}

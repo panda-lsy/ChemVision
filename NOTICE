@@ -11,3 +11,23 @@ This project uses the following open-source libraries:
 
 ## Other Dependencies
 See `pubspec.yaml` for a full list of Dart/Flutter package dependencies and their licenses.
+
+## SmilesDrawer
+- **License**: MIT
+- **Repository**: https://github.com/reymond-group/smilesDrawer
+- **Bundled file**: assets/js/smiles-drawer.js
+- **Use**: SMILES parsing and SVG rendering. This is third-party code, not a ChemVision algorithm.
+
+## License texts and provenance
+- Upstream Ketcher LICENSE/NOTICE and SmilesDrawer LICENSE are in `third_party/licenses/`.
+- `third_party/licenses/sources.json` records retrieval URLs and SHA256. These are current upstream texts retrieved on 2026-10-22; the exact versions of the already-bundled JS files still require provenance confirmation.
+- Preserve all `assets/web/ketcher/static/js/*.LICENSE.txt` files. Ketcher includes additional JavaScript dependencies; its top-level Apache license does not replace their licenses.
+- Resolved Dart/Flutter package license-file presence is inventoried by `tools/competition_audit.py`. The generated report is not a license compatibility or vulnerability certification. Flutter SDK test/web plugin license coverage is at SDK level.
+
+## External services and optional vendor software
+- PubChem and OPSIN are external chemistry services; their data/service terms are separate from this project's MIT license.
+- DECIMER Image Transformer is an external OCSR project (https://github.com/Kohulan/DECIMER-Image_Transformer, upstream MIT); the wrapper does not imply ownership of its model, data or weights. Confirm version/weight and dataset terms before redistribution.
+- `android/app/libs/llm-sdk-release.aar` is a BlueLM vendor SDK. No redistribution license was located in this audit. Its rights must be confirmed before public source/binary distribution. It is not covered by ChemVision's MIT license.
+- Images, icons, experimental-apparatus assets and pre-existing project materials need source/rights confirmation. Private contracts and student/teacher data are not authorized submission materials by default.
+
+Root LICENSE documents the existing MIT choice for project-owned code only. It cannot grant rights that contributors or third-party owners have not authorized. Outstanding provenance and rights checks block a claim of complete open-source compliance.

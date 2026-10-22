@@ -1,0 +1,90 @@
+00:00 +0: loading F:/Desktop/ChemVision/test/competition_regression_test.dart
+00:00 +0: 化学表示与缓存 接受基础语法 CCO
+00:00 +1: 化学表示与缓存 接受基础语法 c1ccccc1
+00:00 +2: 化学表示与缓存 接受基础语法 C(=O)O
+00:00 +3: 化学表示与缓存 接受基础语法 [Na+].[Cl-]
+00:00 +4: 化学表示与缓存 接受基础语法 [13CH4]
+00:00 +5: 化学表示与缓存 接受基础语法 C%12CCCCC%12
+00:00 +6: 化学表示与缓存 拒绝明显语法错误 
+00:00 +7: 化学表示与缓存 拒绝明显语法错误 C(
+00:00 +8: 化学表示与缓存 拒绝明显语法错误 C1CC
+00:00 +9: 化学表示与缓存 拒绝明显语法错误 C==O
+00:00 +10: 化学表示与缓存 拒绝明显语法错误 C.
+00:00 +11: 化学表示与缓存 拒绝明显语法错误 [Invalid]
+00:00 +12: 化学表示与缓存 拒绝明显语法错误 C11
+00:00 +13: 化学表示与缓存 拒绝明显语法错误 C(=)O
+00:00 +14: 化学表示与缓存 反向解析在发出网络请求前拒绝无效 SMILES
+[PubChem:smiles] 400 https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/smiles/C%3D%3DO/property/CanonicalSMILES,IsomericSMILES,MolecularFormula,MolecularWeight,IUPACName/JSON
+00:00 +14 -1: 化学表示与缓存 反向解析在发出网络请求前拒绝无效 SMILES [E]
+  Expected: false
+    Actual: <true>
+  
+  package:matcher                                     expect
+  package:flutter_test/src/widget_tester.dart 473:18  expect
+  test\competition_regression_test.dart 61:7          main.<fn>.<fn>
+  
+Warning: At least one test in this suite creates an HttpClient. When running a test suite that uses
+TestWidgetsFlutterBinding, all HTTP requests will return status code 400, and no network request
+will actually be made. Any test expecting a real network connection and status code will fail.
+To test code that needs an HttpClient, provide your own HttpClient implementation to the code under
+test, so that your test can consistently provide a testable response to the code under test.
+00:00 +14 -1: 化学表示与缓存 芳香原子大小写不同的 SMILES 不得命中同一缓存
+00:00 +14 -2: 化学表示与缓存 芳香原子大小写不同的 SMILES 不得命中同一缓存 [E]
+  Expected: null
+    Actual: <Instance of 'StructureResult'>
+  
+  package:matcher                                     expect
+  package:flutter_test/src/widget_tester.dart 473:18  expect
+  test\competition_regression_test.dart 69:7          main.<fn>.<fn>
+  
+00:00 +14 -2: 任务路由 带结构的出题请求进入练习流程
+00:00 +14 -3: 任务路由 带结构的出题请求进入练习流程 [E]
+  Expected: AgentTaskType:<AgentTaskType.practice>
+    Actual: AgentTaskType:<AgentTaskType.compoundExplain>
+  
+  package:matcher                                     expect
+  package:flutter_test/src/widget_tester.dart 473:18  expect
+  test\competition_regression_test.dart 78:7          main.<fn>.<fn>
+  
+00:00 +14 -3: 任务路由 带图片的错因请求进入错因流程
+00:00 +14 -4: 任务路由 带图片的错因请求进入错因流程 [E]
+  Expected: AgentTaskType:<AgentTaskType.errorAnalysis>
+    Actual: AgentTaskType:<AgentTaskType.homeworkTutor>
+  
+  package:matcher                                     expect
+  package:flutter_test/src/widget_tester.dart 473:18  expect
+  test\competition_regression_test.dart 82:7          main.<fn>.<fn>
+  
+00:00 +14 -4: 任务路由 普通图片仍进入作业辅导
+00:00 +15 -4: Agent 编排与证据真实性（工具桩，无远程 AI） 诊断模型获得画像摘要，不含用户标识
+[AgentTool] knowledge => ok
+[AgentTool] llm => ok
+00:00 +15 -5: Agent 编排与证据真实性（工具桩，无远程 AI） 诊断模型获得画像摘要，不含用户标识 [E]
+  FormatException: Unexpected end of input (at character 1)
+  
+  ^
+  
+  dart:convert                                  jsonDecode
+  test\competition_regression_test.dart 105:23  main.<fn>.<fn>
+  
+00:00 +15 -5: Agent 编排与证据真实性（工具桩，无远程 AI） 生成练习题不等于答对，不写入虚假答题记录
+[AgentTool] llm => ok
+[Agent] 记录练习: correct=true, kp=0
+00:00 +15 -6: Agent 编排与证据真实性（工具桩，无远程 AI） 生成练习题不等于答对，不写入虚假答题记录 [E]
+  Expected: <0>
+    Actual: <1>
+  
+  package:matcher                                     expect
+  package:flutter_test/src/widget_tester.dart 473:18  expect
+  test\competition_regression_test.dart 119:7         main.<fn>.<fn>
+  
+00:00 +15 -6: Agent 编排与证据真实性（工具桩，无远程 AI） 结构查询→知识点→讲解→真实查询记录
+[AgentTool] pubchem => ok
+[AgentTool] knowledge => ok
+[AgentTool] llm => ok
+[Agent] 记录 compoundExplain: ethanol (CCO), kp=1
+00:00 +16 -6: Agent 编排与证据真实性（工具桩，无远程 AI） OCSR 失败中止，不能向模型传递虚构结构
+[AgentTool] ocsr => fail
+00:00 +17 -6: Agent 编排与证据真实性（工具桩，无远程 AI） LLM 失败不能标记成功
+[AgentTool] llm => fail
+00:00 +18 -6: Some tests failed.

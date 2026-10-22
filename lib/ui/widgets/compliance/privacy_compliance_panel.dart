@@ -41,14 +41,14 @@ class PrivacyCompliancePanel extends StatelessWidget {
           _ComplianceItem(
             icon: Icons.storage_outlined,
             title: '本地优先存储',
-            description: '扫描记录、收藏、学情画像等数据全部存储在设备本地 Hive 数据库,不主动上传至任何服务器。',
+            description: '扫描记录、收藏和学习记录保存在本地 Hive。发起 AI 诊断或规划时，会向所选模型发送相关知识点和学情汇总。',
             isDark: isDark,
           ),
           const SizedBox(height: 10),
           _ComplianceItem(
             icon: Icons.child_care_outlined,
             title: '未成年人保护',
-            description: '面向 K12 学生的教育产品:不收集个人身份信息,不进行用户画像分析,不向第三方共享学习数据。',
+            description: '未成年人应在教师或监护人指导下使用。请勿上传含姓名、班级或其他个人信息的题目图片；账号登录会处理邮箱或第三方账号资料。',
             isDark: isDark,
             accent: const Color(0xFF7986CB),
           ),
@@ -56,7 +56,7 @@ class PrivacyCompliancePanel extends StatelessWidget {
           _ComplianceItem(
             icon: Icons.cloud_off_outlined,
             title: '云端数据传输',
-            description: '仅化合物结构识别(OCSR)和大模型(LLM)调用会向已配置的服务端发送 SMILES/文本。可在设置中关闭或更换为本地部署模型。',
+            description: '图像识别上传图片，语音识别上传音频；结构查询发送名称或 SMILES；AI 调用发送问题、结构、相关对话及学情汇总。端侧模型失败可能回退云端。',
             isDark: isDark,
           ),
           const SizedBox(height: 10),
@@ -87,7 +87,7 @@ class PrivacyCompliancePanel extends StatelessWidget {
               const SizedBox(width: 6),
               Expanded(
                 child: Text(
-                  '符合《个人信息保护法》《未成年人保护法》对教育类应用的基本要求',
+                  '请在上传前检查数据内容与所选服务；本说明不代表隐私合规认证',
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: isDark ? AppColors.textMuted : AppColors.dayTextMuted,
                     fontSize: 11,

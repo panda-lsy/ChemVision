@@ -13,6 +13,7 @@ import '../widgets/app_scaffold.dart';
 import '../widgets/bouncy_button.dart';
 import '../widgets/structure_view.dart';
 import 'settings_page.dart';
+import 'agent_page.dart';
 import 'structure_editor_page.dart';
 
 class ResultPage extends ConsumerStatefulWidget {
@@ -528,6 +529,18 @@ class _ResultPageState extends ConsumerState<ResultPage> {
               onPressed: _openEditorPage,
               icon: const Icon(Icons.edit),
               label: const Text('打开结构式编辑器'),
+            ),
+          ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: _currentSmiles.trim().isEmpty ? null : () {
+                Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => AgentPage(initialSmiles: _currentSmiles),
+                ));
+              },
+              icon: const Icon(Icons.school_outlined),
+              label: const Text('AI 讲解此结构'),
             ),
           ),
           if (_resolvingNames) ...[

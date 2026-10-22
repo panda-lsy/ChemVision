@@ -11,6 +11,8 @@ include: package:flutter_lints/flutter.yaml
 
 analyzer:
   exclude:
+    # Generated builds may include an isolated source verification snapshot.
+    - build/**
     # These directories are local MPFlutter framework/build-tool clones,
     # intentionally excluded from the ChemVision application source.
     - tools/mpflutter_src/**

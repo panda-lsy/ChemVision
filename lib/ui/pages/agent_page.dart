@@ -29,7 +29,10 @@ import '../widgets/glass_panel.dart';
 import 'learning_profile_page.dart';
 
 class AgentPage extends ConsumerStatefulWidget {
-  const AgentPage({super.key});
+  const AgentPage({super.key, this.initialSmiles});
+
+  /// 从结构结果页进入时保留精确结构；用户点击发送后才调用模型。
+  final String? initialSmiles;
 
   @override
   ConsumerState<AgentPage> createState() => _AgentPageState();
@@ -43,6 +46,7 @@ class _AgentPageState extends ConsumerState<AgentPage> {
 
   /// 已选图片(作业辅导)
   String? _attachedDataUri;
+  String? _pendingSmiles;
 
   /// 右侧任务进度侧栏是否展开(窄屏时用按钮控制)
   bool _showSidebar = false;
@@ -53,6 +57,10 @@ class _AgentPageState extends ConsumerState<AgentPage> {
   @override
   void initState() {
     super.initState();
+    _pendingSmiles = widget.initialSmiles;
+    if (_pendingSmiles?.trim().isNotEmpty == true) {
+      _inputController.text = '请讲解这个结构的官能团、性质和相关知识点';
+    }
     // 首次进入时展示使用须知
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -240,11 +248,15 @@ class _AgentPageState extends ConsumerState<AgentPage> {
     ref.read(agentControllerProvider.notifier).runTask(
           userInput: text.isEmpty ? '请辅导这道化学题' : text,
           dataUri: _attachedDataUri,
+          smiles: _pendingSmiles,
         );
 
     // 提交后清空输入(保留以便追问)
     _inputController.clear();
-    setState(() => _attachedDataUri = null);
+    setState(() {
+      _attachedDataUri = null;
+      _pendingSmiles = null;
+    });
 
     // 滚动到底部
     WidgetsBinding.instance.addPostFrameCallback((_) {

@@ -1,0 +1,34 @@
+name: Quality checks
+
+on:
+  pull_request:
+  push:
+    branches: [main, 'competition/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.41.8'
+          channel: stable
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: flutter pub get
+      # Historical infos remain visible; errors and warnings are fatal.
+      - run: flutter analyze --no-fatal-infos
+      - run: flutter test --reporter expanded
+      - run: python tools/competition_audit.py --output audit.json
+      - run: flutter build web --release
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: quality-audit
+          path: audit.json

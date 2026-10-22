@@ -1,0 +1,12 @@
+00:00 +0: loading F:/Desktop/ChemVision/test/live_public_chemistry_test.dart
+00:00 +0: 真实英文解析与缓存 ethanol
+[Resolver] Normalized name: ethanol, English: ethanol, Chinese: null
+[PubChem] 200 https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/ethanol/property/CanonicalSMILES,IsomericSMILES,MolecularFormula,MolecularWeight,IUPACName/JSON
+00:01 +1: 真实英文解析与缓存 benzoic acid
+[Resolver] Normalized name: benzoic acid, English: benzoic acid, Chinese: null
+[PubChem] 200 https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/benzoic%20acid/property/CanonicalSMILES,IsomericSMILES,MolecularFormula,MolecularWeight,IUPACName/JSON
+00:03 +2: 真实英文解析与缓存 acetone
+[Resolver] Normalized name: acetone, English: acetone, Chinese: null
+[PubChem] 200 https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/acetone/property/CanonicalSMILES,IsomericSMILES,MolecularFormula,MolecularWeight,IUPACName/JSON
+00:05 +3: (tearDownAll)
+00:05 +3: All tests passed!
