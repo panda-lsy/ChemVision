@@ -18,6 +18,7 @@
 | [治理与维护](09-governance-roadmap.md) | 许可证、维护机制、后续计划 |
 | [提交清单](10-submission-checklist.md) | 内部验收、报名与邮件人工操作 |
 | [变更记录](11-change-log.md) | 本轮修改、验证、遗留风险 |
+| [BlueLM 二次筛查](12-bluelm-rescreen-2026-10-27.md) | 2026-10-27 的源码、公开仓库、安装包及许可筛查 |
 
 所有证据位于 [evidence/](evidence/)。基线提交 `626e4a6`，分支 `competition/openatom-2026`。工作区原有未提交修改另见 `evidence/initial-worktree.txt`；它们不代表本轮创建，也不能假定已被 Git 跟踪。
 

@@ -1,0 +1,62 @@
+{
+  "scannedAt": "2026-10-27T10:33:39.320996+00:00",
+  "scope": "Android release built from archived HEAD plus competition overlay; pre-existing uncommitted user changes excluded. Relevant Android configuration and SDK matched working tree after line-ending normalization. Snapshot Gradle property specified JDK 17.",
+  "apkPath": "build/openatom-candidate-20261022/build/app/outputs/flutter-apk/app-release.apk",
+  "apkBytes": 101431516,
+  "apkSha256": "0da89f93534209c5af82e7a211dafb83f535f41753fa43321c5d89f884fa709b",
+  "sdkDexEntries": [
+    "classes.dex"
+  ],
+  "logMessageDexEntries": [
+    "classes.dex"
+  ],
+  "sdkNativeEntries": [
+    {
+      "path": "lib/arm64-v8a/libllm_apu_7b.so",
+      "sha256": "d42c4382d6d50cfebda0b8308f7e95551042c1d378088417a847344b43fb2298",
+      "matchesAarBytes": true
+    },
+    {
+      "path": "lib/arm64-v8a/libllm_base_7b.so",
+      "sha256": "f1acda1365d18fb5b879d708f943b24dc3df687cd74e18d2385c2abbdbfe4255",
+      "matchesAarBytes": true
+    },
+    {
+      "path": "lib/arm64-v8a/libllm_jni.so",
+      "sha256": "926720995c88a6e18616f841edff6074874e98b3b3e1f57e4d73c1757b2faba6",
+      "matchesAarBytes": true
+    },
+    {
+      "path": "lib/arm64-v8a/libvivo_tokenizer.so",
+      "sha256": "e1364dfbb514a8be0ad1269700fdb9b77b873928a9e71537cb97b949130ffb17",
+      "matchesAarBytes": true
+    },
+    {
+      "path": "lib/arm64-v8a/libcvkit_camera.so",
+      "sha256": "78e8fb87ec7787d97efea03703d83222fbdde3b06a4af7e31f3cbcf0f75e3620",
+      "matchesAarBytes": true
+    }
+  ],
+  "remoteLatestRelease": {
+    "tag": "v1.0.64+65",
+    "publicApkBytes": 101545460,
+    "rangeInspection": "ZIP central directory plus uncompressed libllm_jni.so compared with local AAR",
+    "nativeLibraryNames": [
+      "libllm_apu_7b.so",
+      "libllm_base_7b.so",
+      "libllm_jni.so",
+      "libvivo_tokenizer.so"
+    ],
+    "jniSha256": "926720995c88a6e18616f841edff6074874e98b3b3e1f57e4d73c1757b2faba6",
+    "jniMatchesLocalAarBytes": true
+  },
+  "limitations": "No device execution; no complete download or DEX inspection of remote APK; license and model weights not established.",
+  "apkDeclaredRelevantPermissions": [
+    "android.permission.READ_EXTERNAL_STORAGE (maxSdkVersion=32)",
+    "android.permission.WRITE_EXTERNAL_STORAGE (maxSdkVersion=32)",
+    "android.permission.MANAGE_EXTERNAL_STORAGE",
+    "mediatek.permission.ACCESS_APU_SYS",
+    "vivo.aiservice.permission.AISERVICE_ACCESS"
+  ],
+  "modelWeightSearch": "No files matching gguf/safetensors/onnx/tflite/pth/pt in lib, android, assets, tools excluding build and .gradle; not an exhaustive format/device search."
+}
