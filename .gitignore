@@ -117,3 +117,10 @@ supabase/.temp/
 # Competition branch hygiene
 SECURITY.md
 *.prproj
+
+# Local competition contracts / promise letters — never publish
+*合同*
+*承诺书*
+附件2.*
+附件3.*
+大学生创新训练项目*
