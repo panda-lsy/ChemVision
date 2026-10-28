@@ -2,14 +2,12 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../main.dart';
 import '../../providers/theme_mode_provider.dart';
 import '../../config/ai_models.dart';
 import '../../services/ai_settings_store.dart';
 import '../../services/app_version_service.dart';
-import '../../services/bluelm_service.dart';
 import '../../services/structure_cache_store.dart';
 import '../../services/openai_compatible_client.dart';
 import '../../services/supabase_auth_service.dart';
@@ -46,13 +44,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   bool _obscureAsrKey = true;
   bool _isTesting = false;
   bool _hasLoaded = false;
-  bool _useLocalModel = false;
   bool _useChemVisionAi = true;
   bool _quotaLoading = false;
   ChemVisionAiQuota? _hostedAiQuota;
   String? _quotaError;
-  final TextEditingController _modelPathController =
-      TextEditingController(text: '/sdcard/1225/1.7.0.4_1225_mtk9500');
   Timer? _saveDebounce;
   ConnectionTestResult? _testResult;
 
@@ -60,7 +55,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   void initState() {
     super.initState();
     _loadSettings();
-    _loadBlueLmSettings();
   }
 
   @override
@@ -72,7 +66,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     _embeddingModelController.dispose();
     _baseUrlController.dispose();
     _ocsrEndpointController.dispose();
-    _modelPathController.dispose();
     super.dispose();
   }
 
@@ -96,23 +89,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       _testResult = null;
     });
     unawaited(_refreshHostedAiQuota());
-  }
-
-  Future<void> _loadBlueLmSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    if (!mounted) return;
-    setState(() {
-      _useLocalModel = prefs.getBool('bluelm_use_local') ?? false;
-      _modelPathController.text = prefs.getString('bluelm_model_path') ??
-          '/sdcard/1225/1.7.0.4_1225_mtk9500';
-    });
-  }
-
-  Future<void> _saveBlueLmSettings() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('bluelm_use_local', _useLocalModel);
-    await prefs.setString(
-        'bluelm_model_path', _modelPathController.text.trim());
   }
 
   void _scheduleSave() {
@@ -143,7 +119,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         useChemVisionAi: _useChemVisionAi,
       ),
     );
-    await _saveBlueLmSettings();
   }
 
   String _resolveTextModel() {
@@ -289,41 +264,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       _testResult = null;
     });
 
-    if (_useLocalModel) {
-      setState(() {
-        _isTesting = true;
-      });
-      try {
-        final service = BlueLmService();
-        final ok = await service.init(
-          modelPath: _modelPathController.text.trim(),
-        );
-        if (ok) {
-          final response = await service.generate('测试');
-          setState(() {
-            _testResult = ConnectionTestResult.success(
-              responseText:
-                  '端侧模型连接成功: ${response.substring(0, response.length.clamp(0, 50))}...',
-              latencyMs: 0,
-            );
-          });
-          await service.release();
-        } else {
-          setState(() {
-            _testResult = ConnectionTestResult.failure('端侧模型初始化失败');
-          });
-        }
-      } catch (e) {
-        setState(() {
-          _testResult = ConnectionTestResult.failure('端侧模型测试失败: $e');
-        });
-      }
-      setState(() {
-        _isTesting = false;
-      });
-      return;
-    }
-
     final apiKey = _apiKeyController.text.trim();
     final textModel = _resolveTextModel();
     // Key is optional for local OpenAI-compatible servers; validate the model.
@@ -419,69 +359,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           Text('模型设置', style: Theme.of(context).textTheme.headlineMedium),
           const SizedBox(height: 16),
 
-          // ── 模型类型切换 ──
-          Container(
-            padding: const EdgeInsets.all(3),
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.glassStrong : AppColors.dayGlass,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.10)
-                    : AppColors.dayBluePrimary.withValues(alpha: 0.15),
-              ),
-            ),
-            child: Row(
-              children: [
-                _buildModelTab(context, isDark,
-                    label: '云端 API',
-                    icon: Icons.cloud_outlined,
-                    selected: !_useLocalModel, onTap: () {
-                  setState(() => _useLocalModel = false);
-                  _scheduleSave();
-                }),
-                _buildModelTab(context, isDark,
-                    label: '端侧模型',
-                    icon: Icons.phone_android,
-                    selected: _useLocalModel, onTap: () {
-                  setState(() => _useLocalModel = true);
-                  _scheduleSave();
-                }),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // ── 端侧模型配置 ──
-          if (_useLocalModel) ...[
-            GlassPanel(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('模型路径', style: Theme.of(context).textTheme.titleSmall),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _modelPathController,
-                    decoration: const InputDecoration(
-                      hintText: '/sdcard/1225/1.7.0.4_1225_mtk9500',
-                      isDense: true,
-                    ),
-                    onChanged: (_) => _scheduleSave(),
-                  ),
-                  const SizedBox(height: 12),
-                  PrimaryButton(
-                    label: _isTesting ? '正在测试...' : '测试连接',
-                    onPressed: _isTesting ? null : _runConnectionTest,
-                  ),
-                  const SizedBox(height: 8),
-                  _buildTestResult(context),
-                ],
-              ),
-            ),
-          ],
-
           // ── 云端 AI 配置 ──
-          if (!_useLocalModel) ...[
             Container(
               padding: const EdgeInsets.all(3),
               decoration: BoxDecoration(
@@ -569,7 +447,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 ],
               ),
             ),
-          ],
           const SizedBox(height: 16),
           GlassPanel(
             padding: EdgeInsets.zero,

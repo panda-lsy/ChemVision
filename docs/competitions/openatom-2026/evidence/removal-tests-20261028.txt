@@ -1,0 +1,57 @@
+Candidate tree f0bf01db757919d8e890093e44ee1112870d1968
+Command: flutter test --no-pub --reporter expanded
+
+00:00 +0: loading <candidate>/test/cloud_model_routing_test.dart
+00:00 +0: <candidate>/test/cloud_model_routing_test.dart: 旧端侧开关为真时，自带 API 仍收到完整文本请求
+00:00 +1: <candidate>/test/cloud_model_routing_test.dart: 旧端侧开关不能绕过自带 API 的模型配置检查
+00:00 +2: <candidate>/test/cloud_model_routing_test.dart: 选择托管 AI 时不会错误调用自带 API
+00:00 +3: <candidate>/test/cloud_model_routing_test.dart: 自带 API 多模态路径保留图片和其他参数
+00:00 +4: <candidate>/test/competition_regression_test.dart: 化学表示与缓存 接受基础语法 CCO
+00:00 +5: <candidate>/test/competition_regression_test.dart: 化学表示与缓存 接受基础语法 c1ccccc1
+00:00 +6: <candidate>/test/competition_regression_test.dart: 化学表示与缓存 接受基础语法 C(=O)O
+00:00 +7: <candidate>/test/competition_regression_test.dart: 化学表示与缓存 接受基础语法 [Na+].[Cl-]
+00:00 +8: <candidate>/test/competition_regression_test.dart: 化学表示与缓存 接受基础语法 [13CH4]
+00:00 +9: <candidate>/test/competition_regression_test.dart: 化学表示与缓存 接受基础语法 C%12CCCCC%12
+00:00 +10: <candidate>/test/competition_regression_test.dart: 化学表示与缓存 拒绝明显语法错误 
+00:00 +11: <candidate>/test/competition_regression_test.dart: 化学表示与缓存 拒绝明显语法错误 C(
+00:00 +12: <candidate>/test/competition_regression_test.dart: 化学表示与缓存 拒绝明显语法错误 C1CC
+00:00 +13: <candidate>/test/competition_regression_test.dart: 化学表示与缓存 拒绝明显语法错误 C==O
+00:00 +14: <candidate>/test/competition_regression_test.dart: 化学表示与缓存 拒绝明显语法错误 C.
+00:00 +15: <candidate>/test/competition_regression_test.dart: 化学表示与缓存 拒绝明显语法错误 [Invalid]
+00:00 +16: <candidate>/test/competition_regression_test.dart: 化学表示与缓存 拒绝明显语法错误 C11
+00:00 +17: <candidate>/test/competition_regression_test.dart: 化学表示与缓存 拒绝明显语法错误 C(=)O
+00:00 +18: <candidate>/test/competition_regression_test.dart: 化学表示与缓存 反向解析在发出网络请求前拒绝无效 SMILES
+00:00 +19: <candidate>/test/competition_regression_test.dart: 化学表示与缓存 芳香原子大小写不同的 SMILES 不得命中同一缓存
+00:00 +20: <candidate>/test/competition_regression_test.dart: 任务路由 带结构的出题请求进入练习流程
+00:00 +21: <candidate>/test/competition_regression_test.dart: 任务路由 带图片的错因请求进入错因流程
+00:00 +22: <candidate>/test/competition_regression_test.dart: 任务路由 普通图片仍进入作业辅导
+00:00 +23: <candidate>/test/competition_regression_test.dart: Agent 编排与证据真实性（工具桩，无远程 AI） 诊断模型获得画像摘要，不含用户标识
+[AgentTool] knowledge => ok
+[AgentTool] llm => ok
+00:00 +24: <candidate>/test/competition_regression_test.dart: Agent 编排与证据真实性（工具桩，无远程 AI） 生成练习题不等于答对，不写入虚假答题记录
+[AgentTool] llm => ok
+00:00 +25: <candidate>/test/competition_regression_test.dart: Agent 编排与证据真实性（工具桩，无远程 AI） 结构查询→知识点→讲解→真实查询记录
+[AgentTool] pubchem => ok
+[AgentTool] knowledge => ok
+[AgentTool] llm => ok
+[Agent] 记录 compoundExplain: ethanol (CCO), kp=1
+00:00 +26: <candidate>/test/competition_regression_test.dart: Agent 编排与证据真实性（工具桩，无远程 AI） OCSR 失败中止，不能向模型传递虚构结构
+[AgentTool] ocsr => fail
+00:00 +27: <candidate>/test/competition_regression_test.dart: Agent 编排与证据真实性（工具桩，无远程 AI） LLM 失败不能标记成功
+[AgentTool] llm => fail
+00:00 +28: <candidate>/test/competition_regression_test.dart: Agent 编排与证据真实性（工具桩，无远程 AI） 已有会话后选择新结构仍执行完整工具链，普通追问复用上下文
+[AgentTool] llm => ok
+[AgentSessionStore] save 失败: box 未初始化
+[AgentTool] pubchem => ok
+[AgentTool] knowledge => ok
+[AgentTool] llm => ok
+[AgentSessionStore] save 失败: box 未初始化
+[AgentTool] llm => ok
+[AgentSessionStore] saveFollowUp 失败: box 未初始化
+00:00 +29: <candidate>/test/evidence_widget_test.dart: (setUpAll)
+00:00 +29: <candidate>/test/evidence_widget_test.dart: 真实结果组件展示结构、知识点与安全提示（模拟数据）
+00:00 +29 ~1: <candidate>/test/evidence_widget_test.dart: 真实结果组件展示结构、知识点与安全提示（模拟数据）
+00:00 +29 ~2: <candidate>/test/evidence_widget_test.dart: 真实结果组件展示结构、知识点与安全提示（模拟数据）
+00:00 +29 ~3: <candidate>/test/evidence_widget_test.dart: 真实结果组件展示结构、知识点与安全提示（模拟数据）
+00:01 +30 ~3: <candidate>/test/evidence_widget_test.dart: (tearDownAll)
+00:01 +30 ~3: All tests passed!

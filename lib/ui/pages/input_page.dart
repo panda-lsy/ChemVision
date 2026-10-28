@@ -138,7 +138,7 @@ class _InputPageState extends ConsumerState<InputPage> {
                   color: isDark ? AppColors.textMuted : AppColors.dayBluePrimary,
                 ),
               ),
-              const AccentPill(label: '端侧意图识别'),
+              const AccentPill(label: '模式识别'),
             ],
           ),
           const SizedBox(height: 18),

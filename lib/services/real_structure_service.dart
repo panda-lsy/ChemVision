@@ -4,8 +4,6 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
-import 'package:shared_preferences/shared_preferences.dart';
-
 import '../config/app_config.dart';
 import '../models/structure_result.dart';
 import '../utils/smiles_validator.dart';
@@ -79,10 +77,8 @@ class NameToStructureService implements StructureService {
     final apiKey = settings.apiKey.trim();
     final model = settings.textModel.trim();
 
-    // 端侧模型启用时跳过云端校验
     // Some local OpenAI-compatible servers do not require an API key.
-    final useLocal = await _isLocalModelEnabled();
-    if (!useLocal && model.isEmpty && !settings.useChemVisionAi) {
+    if (model.isEmpty && !settings.useChemVisionAi) {
       return StructureResult.invalid(message: '请先在设置中配置模型');
     }
 
@@ -748,15 +744,6 @@ English name: $englishName
       }
     }
     return error.message ?? '连接失败';
-  }
-
-  Future<bool> _isLocalModelEnabled() async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      return prefs.getBool('bluelm_use_local') ?? false;
-    } catch (_) {
-      return false;
-    }
   }
 
   bool _looksLikeDescription(String text) {

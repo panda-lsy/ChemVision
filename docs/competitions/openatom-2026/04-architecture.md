@@ -26,11 +26,9 @@ flowchart TD
   LP -->|学情汇总| AO
   MR --> API[OpenAI 兼容 API]
   MR --> SB[Supabase chemvision-ai]
-  MR --> BL[可选 BlueLM / Android]
-  BL -->|失败后可回退| API
 ```
 
-注：上图最后一条为“云端回退”的概念表达；实际 `ModelRouter` 会先判断托管设置，可能回退 Supabase，也可能回退自带 API，并非固定同一服务。
+`ModelRouter` 按设置选择托管 AI 或用户配置的 OpenAI 兼容服务；后者也可指向用户自行运行的本机兼容服务。当前分支不再集成原生端侧推理 SDK，候选快照构建和拆包结果见[验证记录](13-current-removal-status.md)。
 
 ## 代码职责
 
@@ -40,7 +38,7 @@ flowchart TD
 | `lib/services/real_structure_service.dart` | 名称规范化、数据库/OPSIN 查询、反向命名 |
 | `lib/services/structure_cache_store.dart` | 模式隔离缓存；反向 SMILES 保留大小写、v2 命名空间 |
 | `lib/services/openai_compatible_client.dart` | Chat/多模态/Embedding 协议与重试 |
-| `lib/services/model_router.dart` | 托管/自带 API/端侧路径选择 |
+| `lib/services/model_router.dart` | 托管 AI / 用户自配 OpenAI 兼容 API 路径选择 |
 | `lib/services/agent/*` | 固定计划、工具调用、数据槽位、上下文与结果汇总 |
 | `lib/services/chemical_knowledge_base.dart` | 手工节点和子串/关键词匹配 |
 | `lib/providers/learning_profile_provider.dart` | 依学习记录计算启发式掌握度；存在本轮开始前的用户改动，已保留 |
@@ -53,7 +51,7 @@ Chat 接口为 `POST <base>/chat/completions`（通常 Base URL 含 `/v1`）；m
 
 托管 AI 由 `SupabaseAuthService` 携带当前访问令牌调用 `chemvision-ai`；Edge Function `getUser` 识别用户，Owner RPC 决定管理权限，数据库 RPC 预留/结算用量，服务器持有上游密钥。源码硬编码托管模型标识 `deepseek-flash`，是否在上游可调用需要真实部署验证；不代表自有模型。默认普通账号配额为总计 5 次，不是每日 5 次。
 
-端侧 BlueLM 通过 Android MethodChannel/Kotlin/AAR；没有在本次环境验证推理或获得再分发许可。服务失败可能进入云端回退，不能标为强制离线。
+历史版本曾集成原生端侧 SDK；2026-10-27 已启动当前分支移除工作。旧提交和已发布版本保留历史状态，见 [历史筛查](12-bluelm-rescreen-2026-10-27.md)。新版本依赖所选 AI 服务，不能标为强制离线。
 
 ## 外部接口契约（源代码层面）
 
@@ -78,4 +76,4 @@ Hive 按本地用户标识区分学习/收藏等 box；SharedPreferences 保存�
 
 使用根 README 命令与锁文件。Web 先构建，再用 `python -m http.server 8080 --directory build/web --bind 127.0.0.1`，在 `http://127.0.0.1:8080` 验证；该命令是本地启动示例，非已部署服务证明。自带模型需 CORS、可用模型和授权专用密钥。
 
-最终验收必须从待提交 Git 版本干净检出执行，而非只验证混有未提交页面/素材的当前目录。Android 签名和厂商 SDK 授权未完成时优先交付已验证的 Web 源码与产物，不能擅自删除现有 Android 功能。
+最终验收必须从待提交 Git 版本干净检出执行，而非只验证混有未提交页面/素材的当前目录。应重新构建并检查 Android 和 Web 产物；Android 正式签名仍待配置。

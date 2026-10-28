@@ -1,6 +1,6 @@
 # ChemVision · 开放原子 2026 参赛工作包
 
-核验日期：2026-10-22（北京时间）。目标冻结日：10-29。状态：**本地候选改造与材料草稿，尚未满足最终提交条件**。
+初始核验日期：2026-10-22（北京时间）；SDK 移除验证更新：2026-10-28。目标冻结日：10-29。状态：**本地候选改造与材料草稿，尚未满足最终提交条件**。
 
 这是基于真实工作区的审计与交付记录，不是报名成功证明或教学效果认证。不得将测试桩结果当作线上 AI/OCSR 效果。
 
@@ -19,9 +19,10 @@
 | [提交清单](10-submission-checklist.md) | 内部验收、报名与邮件人工操作 |
 | [变更记录](11-change-log.md) | 本轮修改、验证、遗留风险 |
 | [BlueLM 二次筛查](12-bluelm-rescreen-2026-10-27.md) | 2026-10-27 的源码、公开仓库、安装包及许可筛查 |
+| [当前分支 SDK 移除状态](13-current-removal-status.md) | 本次变更范围、验证与历史版本边界 |
 
 所有证据位于 [evidence/](evidence/)。基线提交 `626e4a6`，分支 `competition/openatom-2026`。工作区原有未提交修改另见 `evidence/initial-worktree.txt`；它们不代表本轮创建，也不能假定已被 Git 跟踪。
 
-另有 [15 页作品说明 PDF 审阅稿](chemvision-openatom-2026-review.pdf)，已渲染检查；主体、授权和真实演示待补，尚非正式提交文件。可用 `tools/build_openatom_review_pdf.py` 从文档重新生成。
+另有 [作品说明 PDF 审阅稿](chemvision-openatom-2026-review.pdf)；主体、授权和真实演示待补，尚非正式提交文件。可用 `tools/build_openatom_review_pdf.py` 从文档重新生成。
 
 禁止直接把整个工作区压缩上传：根目录合同、承诺书、`doc/`、`outputs/`、密钥配置及未授权素材不属于默认提交物。仓库公开、推送、报名和发邮件均需用户另行授权。

@@ -17,7 +17,7 @@
 | 知识库 | 31 个手工知识点，SMILES 子串与名称关键词匹配；存在误匹配，不是化学子图检索 |
 | 反应补全 | 本地反应库、可选 Embedding 检索和 LLM；化学方程式、机理和引用必须人工核对 |
 | 账号与托管 AI | 可选 Supabase Auth、RLS 与 Edge Functions；需按后端指南配置/部署，不能仅因源码存在宣称线上可用 |
-| 端侧/语音 | BlueLM/ASR 集成代码；需适配设备、厂商授权与服务配置。端侧失败可能回退云端，不保证全离线 |
+| 语音输入 | vivo 云端 ASR 是独立功能，需配置服务和授权；当前版本已移除内嵌端侧推理 SDK |
 
 没有真实用户规模、教学收益或性能提升的公开验证结论。生成练习题/分析错误不会自动计为学生已答对/答错；掌握度为行为启发式汇总，不能替代正式评价。
 
@@ -41,7 +41,7 @@ flutter build windows --release
 flutter build apk --release
 ```
 
-Web 产物在 `build/web/`；使用 HTTP 静态服务运行，不要双击本地 HTML。Ketcher/SmilesDrawer 资源随 Flutter assets 打包。Android 当前 release 使用调试签名，不能称正式签名发行；BlueLM AAR 的再分发授权仍需负责人确认。
+Web 产物在 `build/web/`；使用 HTTP 静态服务运行，不要双击本地 HTML。Ketcher/SmilesDrawer 资源随 Flutter assets 打包。Android 当前 release 使用调试签名，不能称正式签名发行；端侧 SDK 移除后的候选快照构建和拆包结果见[验证记录](docs/competitions/openatom-2026/13-current-removal-status.md)。
 
 账号与托管 AI 配置详见 [后端指南](docs/backend-auth.md)。前端仅注入 Supabase URL/publishable key；service-role/上游 AI 密钥仅可置于服务端。DECIMER 可部署入口为 `tools/decimer_hf_space/Dockerfile` 与其锁定依赖；权重首次下载、服务健康和资源配额需实际验证。
 
@@ -67,7 +67,7 @@ Flutter UI / Riverpod
   ├─ Ketcher / SmilesDrawer → SMILES / SVG → 收藏与历史
   └─ TaskPlanner → AgentOrchestrator → ToolRegistry
        ├─ OCSR / 化合物查询 / 手工知识库
-       ├─ ModelRouter → OpenAI 兼容 API / Supabase AI / 可选 BlueLM
+       ├─ ModelRouter → OpenAI 兼容 API / Supabase AI
        └─ LearningRecordService → 画像汇总 → 诊断与规划上下文
 ```
 
@@ -79,6 +79,6 @@ Flutter UI / Riverpod
 
 ## 开源与贡献
 
-自有代码沿用既有 README 的 MIT 选择，标准文本见 [LICENSE](LICENSE)；第三方文件与厂商二进制不因此变成 MIT。依赖、来源和待核验项见 [NOTICE](NOTICE) 及 [治理计划](docs/competitions/openatom-2026/09-governance-roadmap.md)。在全部权利人、素材与厂商 SDK 授权确认前，不应将整个工作区公开。
+自有代码沿用既有 README 的 MIT 选择，标准文本见 [LICENSE](LICENSE)；第三方文件不因此变成 MIT。依赖、来源和待核验项见 [NOTICE](NOTICE) 及 [治理计划](docs/competitions/openatom-2026/09-governance-roadmap.md)。历史提交和已有 Release 保留此前参赛版本，不等于当前源码仍依赖其中的 SDK；全部权利人和素材来源仍须核验。
 
 贡献步骤见 [CONTRIBUTING.md](CONTRIBUTING.md)。未来计划包括严格化学校验、教材关联改进与教师实测，均尚未完成；不在本次短周期进行框架迁移或大规模重构。

@@ -27,7 +27,7 @@ See `pubspec.yaml` for a full list of Dart/Flutter package dependencies and thei
 ## External services and optional vendor software
 - PubChem and OPSIN are external chemistry services; their data/service terms are separate from this project's MIT license.
 - DECIMER Image Transformer is an external OCSR project (https://github.com/Kohulan/DECIMER-Image_Transformer, upstream MIT); the wrapper does not imply ownership of its model, data or weights. Confirm version/weight and dataset terms before redistribution.
-- `android/app/libs/llm-sdk-release.aar` is a BlueLM vendor SDK. No redistribution license was located in this audit. Its rights must be confirmed before public source/binary distribution. It is not covered by ChemVision's MIT license.
+- Historical versions included a BlueLM vendor SDK AAR; current branch source removes that integration. Older Git history, tags and previously published releases remain unchanged. The historical audit did not establish redistribution permission, and the project's MIT license does not grant third-party rights. See `docs/competitions/openatom-2026/12-bluelm-rescreen-2026-10-27.md` for the dated evidence; verify clean builds and artifacts before distributing a new release.
 - Images, icons, experimental-apparatus assets and pre-existing project materials need source/rights confirmation. Private contracts and student/teacher data are not authorized submission materials by default.
 
 Root LICENSE documents the existing MIT choice for project-owned code only. It cannot grant rights that contributors or third-party owners have not authorized. Outstanding provenance and rights checks block a claim of complete open-source compliance.

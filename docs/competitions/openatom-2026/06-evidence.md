@@ -1,6 +1,8 @@
 # 应用案例、测试与证据
 
-记录日期：2026-10-22。全部为本轮本地执行证据；没有虚构真实学生、学校部署、用户规模、教育收益或加速百分比。
+记录日期：2026-10-22。以下是当日版本的本地执行证据，不能自动证明后续源码变更后的结果；当前移除工作见 [状态记录](13-current-removal-status.md)。没有虚构真实学生、学校部署、用户规模、教育收益或加速百分比。
+
+2026-10-28 的独立候选快照新增 30 项通过、3 项跳过的回归结果，Web/Android 构建和拆包检查也已完成；分析/测试与最终 Android 构建所用树的区别、产物哈希和验证边界见 [移除与验证记录](13-current-removal-status.md)。这不代表真实设备或真实模型服务已经验证。
 
 ## 已执行
 
@@ -9,7 +11,7 @@
 | 基线静态分析 | `flutter analyze` | 41 info、无 error/warning；默认退出 1，[日志](evidence/analyze-before.txt) |
 | 初始 Web release | `flutter build web --release --no-pub` | 成功，编译日志 75.5 秒；仅为一次本机编译时间，[日志](evidence/build-web-before.txt) |
 | 缺陷复现 | 新增回归测试、修复前执行 | 24 用例中 6 失败，覆盖错误缓存、无效结构、任务路由、画像丢失和虚假成绩，[日志](evidence/tests-before.txt) |
-| 修复后基础回归 | `flutter test --no-pub --reporter expanded` | 当前 26 通过，3 个真实网络用例默认跳过；包括编排、失败路径、新结构会话与真实结果组件渲染，[日志](evidence/tests-after.txt) |
+| 历史修复后基础回归 | `flutter test --no-pub --reporter expanded` | 当时 26 通过，3 个真实网络用例默认跳过；包括编排、失败路径、新结构会话与真实结果组件渲染，[日志](evidence/tests-after.txt) |
 | 保留历史提示的分析 | `flutter analyze --no-pub --no-fatal-infos` | 此阶段 41 info，error/warning 仍阻断，[日志](evidence/analyze-after.txt)。后续快照结果另记 |
 | 有界源码安全/资源/许可证盘点 | `python tools/competition_audit.py --history --output ...` | 当前跟踪源码与限定 Git 历史扫描无凭据命中，HTML 资源无缺失；本机 161 个 Dart/Flutter 包许可证文件盘点，[JSON](evidence/audit-after.json) |
 | 真实公共化学服务 | `flutter test test/live_public_chemistry_test.dart --no-pub --dart-define=LIVE_CHEMISTRY=true --reporter expanded` | 3/3 通过；实际调用 `NameToStructureService`/PubChem，未调用 LLM/OCSR；[日志](evidence/live-public-chemistry.txt)、[样本结果](evidence/live-public-chemistry.json) |

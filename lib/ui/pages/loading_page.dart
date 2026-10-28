@@ -38,8 +38,8 @@ class _LoadingPageState extends ConsumerState<LoadingPage> {
   static const _defaultStages = [
     _StageInfo(
       statusText: '意图识别中...',
-      pillText: '端侧模型',
-      subtle: '端侧路由 · 延迟 <100ms',
+      pillText: '模式识别',
+      subtle: '根据输入内容选择解析模式',
     ),
     _StageInfo(
       statusText: 'SMILES 生成中...',
@@ -49,7 +49,7 @@ class _LoadingPageState extends ConsumerState<LoadingPage> {
     _StageInfo(
       statusText: '规则校验中...',
       pillText: '规则校验中',
-      subtle: 'RDKit 校验层 · 价态/键合法性验证',
+      subtle: '结构基础检查 · 请结合化学知识复核',
     ),
     _StageInfo(
       statusText: '渲染输出中...',

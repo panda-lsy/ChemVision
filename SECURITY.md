@@ -9,7 +9,7 @@
 - 自带模型 API Key 存于 SharedPreferences，**不是加密保险箱**；Web 用户和同源脚本可访问本机配置。不得将生产共享密钥编入前端或上传示例。
 - Supabase 客户端仅接收 URL 与 publishable key；service-role、托管 AI 上游密钥只放服务端。RLS 和 Edge Function 的真实部署仍须独立验证。
 - OCSR 上传图片；LLM 可能收到问题、结构、工具结果、对话及学情汇总；ASR 上传音频；PubChem/OPSIN 接收结构或名称。请使用无个人信息的授权示例。
-- 本地文件、数据库与日志不构成教学隐私合规认证。端侧模型失败可能回退云端，不能将开关等同于完全离线。
+- 本地文件、数据库与日志不构成教学隐私合规认证。当前模型调用由配置选择托管服务或 OpenAI 兼容 API，不能将其视作默认离线；用户配置本机兼容服务时仍应核实其网络和数据策略。
 - `tools/openai_compatible_proxy.js` 默认仅监听回环地址，属于开发工具，不应直接暴露公网。
 
 `python tools/competition_audit.py --history` 提供有范围限制、只输出位置的模式扫描，不是完整漏洞检测或密钥检测替代品。第三方二进制与忽略目录不在该扫描保证范围内。

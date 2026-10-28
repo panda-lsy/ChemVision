@@ -1,0 +1,43 @@
+{
+  "date": "2026-10-28",
+  "candidate_git_tree": "8cc3ac13385de23afe9eec8b557b52d7d80ba8d2",
+  "web_and_test_git_tree": "f0bf01db757919d8e890093e44ee1112870d1968",
+  "scope": "Web/tests and final APK use isolated snapshots; their trees differ only in Android version configuration. User pre-existing worktree changes excluded. Historical releases unchanged.",
+  "commands": [
+    "flutter pub get --offline --enforce-lockfile",
+    "flutter analyze --no-pub --no-fatal-infos",
+    "flutter test --no-pub --reporter expanded",
+    "flutter build web --release --no-pub",
+    "flutter build apk --release --no-pub"
+  ],
+  "jdk": "17; org.gradle.java.home overridden only in isolated snapshot",
+  "tree_difference": [
+    "android/app/build.gradle.kts"
+  ],
+  "web": {
+    "file": "build/web/main.dart.js",
+    "sha256": "2370c7f14ecf61b2dda3b720d53362170f23260b96457420229454f96d7ff73f",
+    "marker_hits": []
+  },
+  "apk": {
+    "file": "build/app/outputs/flutter-apk/app-release.apk",
+    "bytes": 97007112,
+    "sha256": "2f39e9708880a33e83da89d568a0d9dc83cfad419c9964d8eeeb698a1bd25f70",
+    "code_entries_scanned": 13,
+    "marker_hits": [],
+    "historical_library_name_matches": [],
+    "historical_library_hash_matches": [],
+    "permissions": [
+      "android.permission.INTERNET",
+      "android.permission.ACCESS_NETWORK_STATE",
+      "android.permission.RECORD_AUDIO",
+      "android.permission.CAMERA",
+      "com.chemvision.chemvision.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+    ],
+    "prohibited_permissions": [],
+    "package_line": "package: name='com.chemvision.chemvision' versionCode='65' versionName='1.0.64' platformBuildVersionName='16' platformBuildVersionCode='36' compileSdkVersion='36' compileSdkVersionCodename='16'",
+    "expected_pubspec_version": "1.0.64+65",
+    "version_matches_pubspec": true
+  },
+  "all_artifact_checks_passed": true
+}

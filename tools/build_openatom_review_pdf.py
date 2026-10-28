@@ -27,7 +27,7 @@ DOCS = ROOT / 'docs/competitions/openatom-2026'
 FILES = [
     '02-project-summary.md', '03-technical-report.md', '04-architecture.md',
     '05-comparison.md', '06-evidence.md', '09-governance-roadmap.md',
-    '10-submission-checklist.md',
+    '10-submission-checklist.md', '13-current-removal-status.md',
 ]
 TEAL = colors.HexColor('#147D78')
 INK = colors.HexColor('#17334A')
@@ -57,8 +57,8 @@ def create(font: Path, output: Path) -> None:
             Spacer(1, 28), Paragraph('作品说明 · 内部审阅稿', h1),
             Paragraph('核验日期：2026-10-22<br/>目标冻结日期：2026-10-29<br/>官方截止：2026-10-31 24:00（北京时间）', body),
             Spacer(1, 22), Paragraph('状态声明', h2),
-            Paragraph('本文件由仓库 Markdown 草稿生成。参赛主体、全部权利人和厂商 SDK/素材授权、中文 AI 与完整浏览器演示仍待核验；未报名、未发送材料。不能将本稿作为最终已合规或已提交的证明。', body),
-            Paragraph('已执行证据：26 项离线/组件测试通过，3 个真实英文公共化学查询样本通过；独立源码快照 Web 编译成功。模型和 OCSR 效果未验证。', body),
+            Paragraph('本文件由仓库 Markdown 草稿生成。参赛主体、全部权利人和第三方素材授权、中文 AI 与完整浏览器演示仍待核验；未报名、未发送材料。当前分支已移除原生端侧 SDK；构建与拆包结果、历史版本边界以状态记录为准。不能将本稿作为最终已合规或已提交的证明。', body),
+            Paragraph('历史基线证据：26 项离线/组件测试通过，3 个真实英文公共化学查询样本通过；移除后的验证结果见当前状态记录。模型和 OCSR 效果未验证。', body),
             PageBreak(), Paragraph('阅读与证据索引', h1)]
     for name in FILES:
         title = (DOCS / name).read_text('utf-8').splitlines()[0].lstrip('# ')

@@ -390,7 +390,7 @@ def add_tech_architecture_slide(prs: Presentation) -> None:
     )
     _set_text(
         tb,
-        "技术栈:Flutter 3.x · Riverpod 2.6 · Hive · Dio · flutter_markdown · BlueLM/OpenAI 兼容 API · DECIMER OCSR · PubChem PUG REST · 31 个预置知识点",
+        "技术栈:Flutter 3.x · Riverpod 2.6 · Hive · Dio · flutter_markdown · OpenAI 兼容 API · DECIMER OCSR · PubChem PUG REST · 31 个预置知识点",
         font_size=11,
         color=TEXT_MUTED,
     )

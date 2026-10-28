@@ -11,13 +11,13 @@ val flutterVersionCode: Int by lazy {
     (
         providers.gradleProperty("FLUTTER_VERSION_CODE").orNull
             ?: providers.gradleProperty("flutter.versionCode").orNull
-            ?: "1"
+            ?: flutter.versionCode.toString()
     ).toInt()
 }
 val flutterVersionName: String by lazy {
     providers.gradleProperty("FLUTTER_VERSION_NAME").orNull
         ?: providers.gradleProperty("flutter.versionName").orNull
-        ?: "1.0.0"
+        ?: flutter.versionName
 }
 
 android {
@@ -32,7 +32,7 @@ android {
 
     defaultConfig {
         applicationId = "com.chemvision.chemvision"
-        minSdk = 28 // BlueLM SDK 最低要求
+        minSdk = 28
         targetSdk = flutter.targetSdkVersion
         versionCode = flutterVersionCode
         versionName = flutterVersionName
@@ -46,8 +46,6 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
-            // vivo BlueLM SDK 通过反射访问 LlmConfig/LlmManager 的字段和方法，
-            // 必须用 proguard-rules.pro 保留这些类的符号，避免被 R8 混淆
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }
     }
@@ -61,11 +59,4 @@ kotlin {
 
 flutter {
     source = "../.."
-}
-
-dependencies {
-    // BlueLM 端侧 LLM SDK（需下载 AAR 放入 libs/）
-    // 下载地址见 doc/APIS/BlueLM/BlueLMText.md
-    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar"))))
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")
 }
