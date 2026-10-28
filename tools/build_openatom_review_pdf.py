@@ -1,4 +1,4 @@
-"""Render the competition Markdown drafts into a locally reviewable PDF.
+﻿"""Render the competition Markdown drafts into a locally reviewable PDF.
 
 Requires reportlab and a local CJK TrueType font (not copied into source).
 Example: python tools/build_openatom_review_pdf.py --font C:/Windows/Fonts/simhei.ttf
@@ -58,7 +58,7 @@ def create(font: Path, output: Path) -> None:
             Spacer(1, 28), Paragraph('作品说明 · 内部审阅稿', h1),
             Paragraph('核验日期：2026-10-22<br/>目标冻结日期：2026-10-29<br/>官方截止：2026-10-31 24:00（北京时间）', body),
             Spacer(1, 22), Paragraph('状态声明（审阅稿 · 非正式提交件）', h2),
-            Paragraph('本文件由仓库 Markdown 草稿生成，页眉页脚均标注「内部审阅稿 - 未提交」。官网报名审核已通过（OSChina 确认邮件 2026-10-22 18:25）；参赛主体海南师范大学、负责人刘舜尧、联系邮箱 shengxia23@hainnu.edu.cn。正式作品 PDF、可访问仓库链接与演示视频链接仍待齐备；材料截止 2026-10-31 24:00（北京时间），收件 bjoscc@oschina.cn。本稿不得当作已发参赛邮件或已公开仓库的证明。', body),
+            Paragraph('本文件由仓库 Markdown 草稿生成，页眉页脚均标注「内部审阅稿 - 未提交」。官网报名审核已通过（OSChina 确认邮件 2026-10-22 18:25）；参赛主体海南师范大学、负责人刘舜尧、联系邮箱见报名确认邮件（公开仓脱敏）。正式作品 PDF、可访问仓库链接与演示视频链接仍待齐备；材料截止 2026-10-31 24:00（北京时间），收件 bjoscc@oschina.cn。本稿不得当作已发参赛邮件或已公开仓库的证明。', body),
             Paragraph('工程证据边界：历史基线含离线/组件回归与 3 个英文公共化学查询样本；2026-10-28 候选快照完成 SDK 移除后的分析/测试/Web·Android 构建与拆包检查。中文 AI、完整浏览器编辑—收藏—讲解—诊断闭环、真实设备语音与 OCSR 推理效果均未在本稿中声称已验证。私人合同/承诺书不纳入本稿。', body),
             PageBreak(), Paragraph('阅读与证据索引', h1)]
     for name in FILES:

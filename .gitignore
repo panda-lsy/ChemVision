@@ -1,4 +1,4 @@
-node_modules/
+﻿node_modules/
 doc/
 .venv/
 
@@ -31,9 +31,6 @@ flutter_*.log
 # IDE
 .idea/
 .vscode/
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
 *.iml
 
 # Android
@@ -116,3 +113,7 @@ supabase/.temp/
 .dev.vars*
 !.dev.vars.example
 !.env.example
+
+# Competition branch hygiene
+SECURITY.md
+*.prproj
