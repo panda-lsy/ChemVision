@@ -75,3 +75,7 @@
 ## 提交 staging 与审阅 PDF 刷新
 
 日期：2026-10-28 20:50 Asia/Shanghai。在本机创建 `outputs/openatom-2026-submission/`（位于未跟踪 `outputs/`，不含合同/承诺书）：复制 intro Markdown、写入 MANIFEST / 视频盘点 / 推送计划 / 阻塞说明；用 `tools/build_openatom_review_pdf.py` 更新封面状态（报名已通过、联系邮箱、截止与收件、证据边界）并重生成审阅 PDF 至 docs 与 staging（约 17 页，页脚仍标「内部审阅稿 - 未提交」）。盘点 `doc/` 下 5 个既有 mp4 的时长/分辨率，结论为不可直接当作开放原子终稿，建议按 `07-demo-script.md` 重录或严格审片。整理显式 `git add` 推送计划；**未** push、**未**改仓库可见性、**未**发送参赛邮件、**未**将合同纳入任何包。
+
+## 参赛分支已推送
+
+日期：2026-10-28 20:53 Asia/Shanghai。显式提交并推送 `competition/openatom-2026` → `abd7fac`。未纳入合同/承诺书/outputs/doc。仓库公开：https://github.com/panda-lsy/ChemVision/tree/competition/openatom-2026
