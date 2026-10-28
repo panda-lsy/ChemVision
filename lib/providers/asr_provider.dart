@@ -1,15 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:record/record.dart';
-
-import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
-
-import '../services/ai_settings_store.dart';
-import '../services/asr_service.dart';
-import '../utils/platform_file_reader.dart';
+import 'package:speech_to_text/speech_to_text.dart' as speech;
 
 enum AsrStatus { idle, recording, processing, done, error }
 
@@ -34,243 +26,244 @@ class AsrState {
     String? finalText,
     String? error,
     int? elapsedSeconds,
-    bool clearError = false,
-    bool clearFinal = false,
+  }) => AsrState(
+    status: status ?? this.status,
+    partialText: partialText ?? this.partialText,
+    finalText: finalText ?? this.finalText,
+    error: error ?? this.error,
+    elapsedSeconds: elapsedSeconds ?? this.elapsedSeconds,
+  );
+}
+
+/// Platform recognition can use a system or browser service and may be online.
+/// The interface keeps session handling testable without accessing a microphone.
+abstract interface class SpeechRecognitionBackend {
+  Future<bool> initialize({
+    required void Function(String) onStatus,
+    required void Function(String) onError,
+  });
+  Future<void> listen({required void Function(String, bool) onResult});
+  Future<void> stop();
+  Future<void> cancel();
+}
+
+class SystemSpeechRecognitionBackend implements SpeechRecognitionBackend {
+  SystemSpeechRecognitionBackend._();
+  static final SystemSpeechRecognitionBackend instance =
+      SystemSpeechRecognitionBackend._();
+
+  final speech.SpeechToText _speech = speech.SpeechToText();
+  void Function(String)? _onStatus;
+  void Function(String)? _onError;
+
+  @override
+  Future<bool> initialize({
+    required void Function(String) onStatus,
+    required void Function(String) onError,
   }) {
-    return AsrState(
-      status: status ?? this.status,
-      partialText: partialText ?? this.partialText,
-      finalText: clearFinal ? null : (finalText ?? this.finalText),
-      error: clearError ? null : (error ?? this.error),
-      elapsedSeconds: elapsedSeconds ?? this.elapsedSeconds,
+    _onStatus = onStatus;
+    _onError = onError;
+    return _speech.initialize(
+      onStatus: (status) => _onStatus?.call(status),
+      onError: (error) => _onError?.call(error.errorMsg),
+      options: [speech.SpeechToText.androidNoBluetooth],
     );
   }
+
+  @override
+  Future<void> listen({required void Function(String, bool) onResult}) async {
+    await _speech.listen(
+      onResult: (result) =>
+          onResult(result.recognizedWords, result.finalResult),
+      listenOptions: speech.SpeechListenOptions(
+        partialResults: true,
+        cancelOnError: true,
+        listenMode: speech.ListenMode.dictation,
+        listenFor: const Duration(seconds: 30),
+      ),
+    );
+  }
+
+  @override
+  Future<void> stop() => _speech.stop();
+
+  @override
+  Future<void> cancel() => _speech.cancel();
 }
 
 class AsrController extends StateNotifier<AsrState> {
-  AsrController() : super(const AsrState());
+  AsrController({
+    SpeechRecognitionBackend? backend,
+    this.finalResultTimeout = const Duration(seconds: 4),
+    this.maxDuration = const Duration(seconds: 30),
+  }) : _backend = backend ?? SystemSpeechRecognitionBackend.instance,
+       super(const AsrState());
 
-  final AudioRecorder _recorder = AudioRecorder();
-  AsrService? _asrService;
-  StreamSubscription<String>? _resultSubscription;
+  final SpeechRecognitionBackend _backend;
+  final Duration finalResultTimeout;
+  final Duration maxDuration;
+  bool _initialized = false;
+  bool _active = false;
+  bool _starting = false;
+  int _generation = 0;
   Timer? _timer;
-  String? _filePath;
+  Timer? _maxTimer;
+  Timer? _finalTimer;
+  Completer<String?>? _completion;
 
-  Future<bool> checkPermission() async {
-    if (kIsWeb) {
-      debugPrint('[ASR] Web 平台：跳过权限检查');
-      return true;
-    }
-
+  Future<bool> start() async {
+    if (_active || _starting) return false;
+    _starting = true;
+    final generation = ++_generation;
+    state = const AsrState(status: AsrStatus.processing);
     try {
-      final status = await Permission.microphone.status;
-      if (status.isGranted) return true;
-      final result = await Permission.microphone.request();
-      return result.isGranted;
-    } catch (e) {
-      debugPrint('[ASR] 权限检查失败：$e');
-      return false;
-    }
-  }
-
-  Future<void> init() async {
-    if (!kIsWeb) {
-      try {
-        final dir = await getTemporaryDirectory();
-        _filePath = '${dir.path}/asr_recording.wav';
-        debugPrint('[ASR] 录音文件路径：$_filePath');
-      } catch (e) {
-        debugPrint('[ASR] 获取临时目录失败：$e');
-        _filePath = 'asr_recording.wav';
-      }
-    } else {
-      debugPrint('[ASR] Web 平台：使用内存录音');
-    }
-  }
-
-  Future<void> start() async {
-    state = state.copyWith(
-      status: AsrStatus.recording,
-      partialText: '',
-      clearFinal: true,
-      clearError: true,
-      elapsedSeconds: 0,
-    );
-
-    // Start recording
-    if (kIsWeb) {
-      await _recorder.start(
-        const RecordConfig(
-          encoder: AudioEncoder.pcm16bits,
-          sampleRate: 16000,
-          numChannels: 1,
-        ),
-        path: 'asr_recording.wav',
+      _initialized = await _backend.initialize(
+        onStatus: _handleStatus,
+        onError: _handleError,
       );
-    } else {
-      await _recorder.start(
-        const RecordConfig(
-          encoder: AudioEncoder.pcm16bits,
-          sampleRate: 16000,
-          numChannels: 1,
-        ),
-        path: _filePath!,
-      );
-    }
-
-    // Start timer
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      state = state.copyWith(elapsedSeconds: state.elapsedSeconds + 1);
-    });
-
-    // Connect ASR service
-    try {
-      final settings = await AiSettingsStore().load();
-      final apiKey = settings.asrApiKey;
-      if (apiKey.isEmpty) {
-        state = state.copyWith(
+      if (!mounted || generation != _generation) return false;
+      if (!_initialized) {
+        state = const AsrState(
           status: AsrStatus.error,
-          error: '请先配置语音识别 API Key',
+          error: '语音识别不可用，请检查麦克风权限和系统或浏览器的语音服务。',
         );
-        return;
+        return false;
       }
-
-      final requestId = _generateUuid();
-      _asrService = AsrService();
-
-      _resultSubscription = _asrService!.results.listen(
-        (text) {
+      _completion = Completer<String?>();
+      _active = true;
+      state = const AsrState(status: AsrStatus.recording);
+      await _backend.listen(
+        onResult: (text, isFinal) {
+          if (!mounted || !_active || generation != _generation) return;
           state = state.copyWith(partialText: text);
-        },
-        onError: (error) {
-          state = state.copyWith(
-            status: AsrStatus.error,
-            error: '$error',
-          );
+          if (isFinal) _finish(text);
         },
       );
-
-      await _asrService!.connect(
-        apiKey: apiKey,
-        requestId: requestId,
-      );
-    } catch (e) {
-      state = state.copyWith(
-        status: AsrStatus.error,
-        error: 'ASR 连接失败: $e',
-      );
+      if (!mounted || generation != _generation) return false;
+      if (!_active) return state.status == AsrStatus.done;
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (mounted && _active) {
+          state = state.copyWith(elapsedSeconds: state.elapsedSeconds + 1);
+        }
+      });
+      // A backend may return without issuing a start/end event; never leave
+      // the microphone UI running indefinitely in that case.
+      _maxTimer = Timer(maxDuration, () => unawaited(stop()));
+      return true;
+    } catch (_) {
+      if (mounted && generation == _generation) {
+        _fail('无法启动语音识别，请检查系统语音服务和麦克风权限。');
+      }
+      if (_initialized) {
+        try {
+          await _backend.cancel().timeout(finalResultTimeout);
+        } catch (_) {}
+      }
+      return false;
+    } finally {
+      if (generation == _generation) _starting = false;
     }
+  }
+
+  void _handleStatus(String status) {
+    if (!mounted || !_active) return;
+    if (status == 'notListening') {
+      _timer?.cancel();
+      state = state.copyWith(status: AsrStatus.processing);
+      _scheduleFinalFallback();
+    } else if (status == 'done') {
+      _finish(state.partialText);
+    }
+  }
+
+  void _handleError(String error) {
+    if (!mounted || !_active) return;
+    final message = switch (error) {
+      'error_no_match' || 'error_speech_timeout' => '没有听清，请再试一次。',
+      'error_network' || 'error_network_timeout' => '语音服务网络不可用，请检查网络后重试。',
+      'error_permission' ||
+      'error_insufficient_permissions' => '请在设备或浏览器设置中允许麦克风和语音识别权限。',
+      _ => '语音识别暂不可用，请检查设备或浏览器的语音服务。',
+    };
+    _fail(message);
+    unawaited(_backend.cancel().catchError((_) {}));
+  }
+
+  void _scheduleFinalFallback() {
+    _finalTimer?.cancel();
+    _finalTimer = Timer(finalResultTimeout, () {
+      if (mounted && _active) _finish(state.partialText);
+    });
   }
 
   Future<String?> stop() async {
-    debugPrint('[ASR] 停止录音...');
-    _timer?.cancel();
-    debugPrint('[ASR] 计时器已停止');
-
+    if (!_active) return state.finalText;
+    final completion = _completion!;
     state = state.copyWith(status: AsrStatus.processing);
-    debugPrint('[ASR] 状态：处理中');
-
+    _timer?.cancel();
+    _maxTimer?.cancel();
+    _scheduleFinalFallback();
     try {
-      // Stop recording
-      final path = await _recorder.stop();
-      debugPrint('[ASR] 录音已停止，路径：$path');
-
-      if (path != null && !kIsWeb) {
-        try {
-          // 通过平台抽象读取文件，避免直接使用 dart:io
-          final bytes = await readFileBytes(path);
-          debugPrint('[ASR] 音频文件大小：${bytes.length} bytes');
-          await _asrService?.sendAudio(bytes);
-          debugPrint('[ASR] 音频数据已发送');
-        } catch (e) {
-          debugPrint('[ASR] 发送音频失败：$e');
-        }
-      } else if (kIsWeb) {
-        debugPrint('[ASR] Web ASR: 音频处理待实现');
-        // Web 平台暂时不发送音频，仅显示提示
-        state = state.copyWith(
-          status: AsrStatus.done,
-          finalText: 'Web 端录音功能待完善',
-          error: null,
-        );
-        return 'Web 端录音功能待完善';
-      }
-
-      // 等待 ASR 结果（带超时，最多 3 秒）
-      debugPrint('[ASR] 开始等待识别结果...');
-      final stopwatch = Stopwatch()..start();
-      while (stopwatch.elapsedMilliseconds < 3000) {
-        await Future<void>.delayed(const Duration(milliseconds: 100));
-        // 只要有部分结果就认为成功
-        if (state.partialText.isNotEmpty || state.status == AsrStatus.done) {
-          debugPrint('[ASR] 在 ${stopwatch.elapsedMilliseconds}ms 后收到结果');
-          break;
-        }
-      }
-      stopwatch.stop();
-      debugPrint('[ASR] 等待结束，耗时：${stopwatch.elapsedMilliseconds}ms');
-
-      // 关闭 ASR 服务
-      await _asrService?.close();
-      debugPrint('[ASR] ASR 服务已关闭');
-
-      // 确保状态更新为 done
-      final text = state.partialText.isNotEmpty
-          ? state.partialText
-          : (state.finalText ?? '');
-
-      debugPrint('[ASR] 最终识别结果：" $text"');
-
-      state = state.copyWith(
-        status: AsrStatus.done, // 即使出错也设置为 done，避免黑屏
-        finalText: text,
-        error: text.isEmpty ? '未识别到内容' : null,
-      );
-
-      return text.isNotEmpty ? text : null;
-    } catch (e) {
-      debugPrint('[ASR] 停止录音异常：$e');
-      state = state.copyWith(
-        status: AsrStatus.done, // 即使出错也设置为 done，避免黑屏
-        error: '录音处理失败：$e',
-      );
-      return null;
+      await _backend.stop().timeout(finalResultTimeout);
+    } catch (_) {
+      if (mounted && _active) _fail('结束语音识别失败，请重试。');
     }
+    return completion.future;
+  }
+
+  void _finish(String text) {
+    if (!_active) return;
+    final result = text.trim();
+    if (result.isEmpty) {
+      _fail('没有识别到语音，请再试一次。');
+      return;
+    }
+    _active = false;
+    _cancelTimers();
+    state = state.copyWith(status: AsrStatus.done, finalText: result);
+    if (!(_completion?.isCompleted ?? true)) _completion!.complete(result);
+  }
+
+  void _fail(String message) {
+    _active = false;
+    _cancelTimers();
+    if (mounted) state = AsrState(status: AsrStatus.error, error: message);
+    if (!(_completion?.isCompleted ?? true)) _completion!.complete(null);
+  }
+
+  void _cancelTimers() {
+    _timer?.cancel();
+    _maxTimer?.cancel();
+    _finalTimer?.cancel();
   }
 
   Future<void> cancel() async {
-    _timer?.cancel();
-    await _resultSubscription?.cancel();
-    await _recorder.stop();
-    await _asrService?.close();
-    state = const AsrState();
+    ++_generation;
+    _active = false;
+    _starting = false;
+    _cancelTimers();
+    if (!(_completion?.isCompleted ?? true)) _completion!.complete(null);
+    if (mounted) state = const AsrState();
+    if (_initialized) {
+      try {
+        await _backend.cancel().timeout(finalResultTimeout);
+      } catch (_) {
+        // Closing the sheet should remain safe when a platform service fails.
+      }
+    }
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
-    _resultSubscription?.cancel();
-    _recorder.dispose();
-    _asrService?.dispose();
+    ++_generation;
+    _active = false;
+    _cancelTimers();
+    if (!(_completion?.isCompleted ?? true)) _completion!.complete(null);
+    if (_initialized) unawaited(_backend.cancel().catchError((_) {}));
     super.dispose();
-  }
-
-  String _generateUuid() {
-    final random = DateTime.now().microsecondsSinceEpoch;
-    const chars = '0123456789abcdef';
-    String hex(int seed, int length) {
-      var value = seed;
-      return List.generate(length, (_) {
-        value = (value * 9301 + 49297) % 233280;
-        return chars[value % 16];
-      }).join();
-    }
-
-    return '${hex(random, 8)}-${hex(random + 1, 4)}-${hex(random + 2, 4)}-${hex(random + 3, 4)}-${hex(random + 4, 12)}';
   }
 }
 
-final asrControllerProvider =
-    StateNotifierProvider<AsrController, AsrState>((ref) {
-  return AsrController();
-});
+final asrControllerProvider = StateNotifierProvider<AsrController, AsrState>(
+  (ref) => AsrController(),
+);

@@ -20,6 +20,7 @@
 | [变更记录](11-change-log.md) | 本轮修改、验证、遗留风险 |
 | [BlueLM 二次筛查](12-bluelm-rescreen-2026-10-27.md) | 2026-10-27 的源码、公开仓库、安装包及许可筛查 |
 | [当前分支 SDK 移除状态](13-current-removal-status.md) | 本次变更范围、验证与历史版本边界 |
+| [语音识别替换](14-speech-replacement.md) | 平台能力、验证及真实设备限制 |
 
 所有证据位于 [evidence/](evidence/)。基线提交 `626e4a6`，分支 `competition/openatom-2026`。工作区原有未提交修改另见 `evidence/initial-worktree.txt`；它们不代表本轮创建，也不能假定已被 Git 跟踪。
 

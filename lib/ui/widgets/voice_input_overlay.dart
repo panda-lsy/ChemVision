@@ -4,28 +4,28 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/asr_provider.dart';
 import '../../theme/app_colors.dart';
 
-Future<String?> showVoiceInputOverlay(BuildContext context, WidgetRef ref) async {
+Future<String?> showVoiceInputOverlay(
+  BuildContext context,
+  WidgetRef ref,
+) async {
   final controller = ref.read(asrControllerProvider.notifier);
 
-  final hasPermission = await controller.checkPermission();
-  if (!hasPermission) {
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('需要麦克风权限才能使用语音输入')),
-      );
-    }
+  final started = await controller.start();
+  if (!context.mounted) {
+    await controller.cancel();
     return null;
   }
-
-  await controller.init();
-  await controller.start();
-
-  if (!context.mounted) return null;
+  if (!started) {
+    final error = ref.read(asrControllerProvider).error ?? '语音识别暂不可用';
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(error)));
+    return null;
+  }
 
   return showModalBottomSheet<String>(
     context: context,
     isDismissible: false,
     enableDrag: false,
+    isScrollControlled: true,
     backgroundColor: Colors.transparent,
     builder: (_) => const _VoiceInputSheet(),
   );
@@ -76,7 +76,6 @@ class _VoiceInputSheetState extends ConsumerState<_VoiceInputSheet>
     if (!_hasHandledResult) {
       if (state.status == AsrStatus.done && state.finalText != null) {
         _hasHandledResult = true;
-        debugPrint('[语音弹窗] 识别完成，准备关闭弹窗：${state.finalText}');
         // 使用延迟确保状态已完全更新
         Future.delayed(const Duration(milliseconds: 300), () {
           if (context.mounted) {
@@ -86,12 +85,11 @@ class _VoiceInputSheetState extends ConsumerState<_VoiceInputSheet>
       }
       if (state.status == AsrStatus.error && state.error != null) {
         _hasHandledResult = true;
-        debugPrint('[语音弹窗] 识别错误：${state.error}');
         Future.delayed(const Duration(milliseconds: 300), () {
           if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.error!)),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(state.error!)));
             Navigator.of(context).pop();
           }
         });
@@ -100,8 +98,6 @@ class _VoiceInputSheetState extends ConsumerState<_VoiceInputSheet>
 
     final isRecording = state.status == AsrStatus.recording;
     final isProcessing = state.status == AsrStatus.processing;
-    
-    debugPrint('[语音弹窗] 当前状态：${state.status}, finalText: ${state.finalText}');
 
     return Container(
       decoration: const BoxDecoration(
@@ -110,156 +106,156 @@ class _VoiceInputSheetState extends ConsumerState<_VoiceInputSheet>
       ),
       child: SafeArea(
         top: false,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Handle bar
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.textMuted,
-                  borderRadius: BorderRadius.circular(2),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle bar
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.textMuted,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 24),
+                const SizedBox(height: 24),
 
-              // Microphone icon with pulse
-              AnimatedBuilder(
-                animation: _pulseController,
-                builder: (context, child) {
-                  final scale = isRecording
-                      ? 1.0 + _pulseController.value * 0.15
-                      : 1.0;
-                  return Transform.scale(
-                    scale: scale,
-                    child: Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: isRecording
-                            ? AppColors.aqua.withValues(alpha: 0.2)
-                            : AppColors.glassStrong,
-                        border: Border.all(
+                // Microphone icon with pulse
+                AnimatedBuilder(
+                  animation: _pulseController,
+                  builder: (context, child) {
+                    final scale = isRecording
+                        ? 1.0 + _pulseController.value * 0.15
+                        : 1.0;
+                    return Transform.scale(
+                      scale: scale,
+                      child: Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isRecording
+                              ? AppColors.aqua.withValues(alpha: 0.2)
+                              : AppColors.glassStrong,
+                          border: Border.all(
+                            color: isRecording
+                                ? AppColors.aqua
+                                : AppColors.textMuted,
+                            width: 2,
+                          ),
+                        ),
+                        child: Icon(
+                          isProcessing ? Icons.hourglass_top : Icons.mic,
+                          size: 36,
                           color: isRecording
                               ? AppColors.aqua
-                              : AppColors.textMuted,
-                          width: 2,
+                              : AppColors.textSecondary,
                         ),
                       ),
-                      child: Icon(
-                        isProcessing ? Icons.hourglass_top : Icons.mic,
-                        size: 36,
-                        color: isRecording
-                            ? AppColors.aqua
-                            : AppColors.textSecondary,
-                      ),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: 16),
+                    );
+                  },
+                ),
+                const SizedBox(height: 16),
 
-              // Status text
-              Text(
-                isProcessing
-                    ? '正在识别...'
-                    : isRecording
-                        ? '正在录音'
-                        : '准备中',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: AppColors.textPrimary,
-                    ),
-              ),
-              const SizedBox(height: 8),
-
-              // Duration
-              Text(
-                _formatDuration(state.elapsedSeconds),
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      color: AppColors.aqua,
-                      fontWeight: FontWeight.w700,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    ),
-              ),
-              const SizedBox(height: 16),
-
-              // Partial result
-              if (state.partialText.isNotEmpty)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.glass,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    state.partialText,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: AppColors.textPrimary,
-                        ),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
+                // Status text
+                Text(
+                  isProcessing
+                      ? '正在识别...'
+                      : isRecording
+                      ? '正在录音'
+                      : '准备中',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: AppColors.textPrimary,
                   ),
                 ),
+                const SizedBox(height: 8),
 
-              const SizedBox(height: 20),
+                // Duration
+                Text(
+                  _formatDuration(state.elapsedSeconds),
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: AppColors.aqua,
+                    fontWeight: FontWeight.w700,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+                const SizedBox(height: 16),
 
-              // Buttons
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.textSecondary,
-                        side: BorderSide(
-                            color: Colors.white.withValues(alpha: 0.2)),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                // Partial result
+                if (state.partialText.isNotEmpty)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.glass,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      state.partialText,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: AppColors.textPrimary,
                       ),
-                      onPressed: () async {
-                        await ref
-                            .read(asrControllerProvider.notifier)
-                            .cancel();
-                        if (context.mounted) {
-                          Navigator.of(context).pop();
-                        }
-                      },
-                      child: const Text('取消'),
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.aqua,
-                        foregroundColor: AppColors.ink,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18),
+
+                const SizedBox(height: 20),
+
+                // Buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.textSecondary,
+                          side: BorderSide(
+                            color: Colors.white.withValues(alpha: 0.2),
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        onPressed: () async {
+                          await ref
+                              .read(asrControllerProvider.notifier)
+                              .cancel();
+                          if (context.mounted) {
+                            Navigator.of(context).pop();
+                          }
+                        },
+                        child: const Text('取消'),
                       ),
-                      onPressed: isProcessing
-                          ? null
-                          : () async {
-                              final result = await ref
-                                  .read(asrControllerProvider.notifier)
-                                  .stop();
-                              if (context.mounted) {
-                                Navigator.of(context).pop(result);
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.aqua,
+                          foregroundColor: AppColors.ink,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        onPressed: isRecording
+                            ? () async {
+                                await ref
+                                    .read(asrControllerProvider.notifier)
+                                    .stop();
                               }
-                            },
-                      child: Text(isProcessing ? '处理中...' : '完成'),
+                            : null,
+                        child: Text(isProcessing ? '处理中...' : '完成'),
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

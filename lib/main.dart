@@ -351,12 +351,6 @@ Future<void> _requestPermissions() async {
   }
 
   try {
-    // 请求麦克风权限（用于语音识别）
-    final micStatus = await Permission.microphone.status;
-    if (micStatus.isDenied) {
-      await Permission.microphone.request();
-    }
-
     // 请求相机权限（用于图像识别）
     final cameraStatus = await Permission.camera.status;
     if (cameraStatus.isDenied) {

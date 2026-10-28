@@ -12,6 +12,10 @@ This project uses the following open-source libraries:
 ## Other Dependencies
 See `pubspec.yaml` for a full list of Dart/Flutter package dependencies and their licenses.
 
+## Speech recognition
+- `speech_to_text` 7.4.0, `speech_to_text_platform_interface` 2.5.0 and `speech_to_text_windows` 1.0.1 use BSD-3-Clause licenses. Their license texts are in `third_party/licenses/`. The Windows adapter is vendored with privacy and lifecycle changes documented in `third_party/speech_to_text_windows/CHEMVISION_CHANGES.md`.
+- Recognition uses the operating system or browser service, whose availability and data handling are separate from this project's license.
+
 ## SmilesDrawer
 - **License**: MIT
 - **Repository**: https://github.com/reymond-group/smilesDrawer

@@ -8,7 +8,7 @@
 
 - 自带模型 API Key 存于 SharedPreferences，**不是加密保险箱**；Web 用户和同源脚本可访问本机配置。不得将生产共享密钥编入前端或上传示例。
 - Supabase 客户端仅接收 URL 与 publishable key；service-role、托管 AI 上游密钥只放服务端。RLS 和 Edge Function 的真实部署仍须独立验证。
-- OCSR 上传图片；LLM 可能收到问题、结构、工具结果、对话及学情汇总；ASR 上传音频；PubChem/OPSIN 接收结构或名称。请使用无个人信息的授权示例。
+- OCSR 上传图片；LLM 可能收到问题、结构、工具结果、对话及学情汇总；语音识别使用系统或浏览器的服务，可能上传音频；PubChem/OPSIN 接收结构或名称。请使用无个人信息的授权示例。
 - 本地文件、数据库与日志不构成教学隐私合规认证。当前模型调用由配置选择托管服务或 OpenAI 兼容 API，不能将其视作默认离线；用户配置本机兼容服务时仍应核实其网络和数据策略。
 - `tools/openai_compatible_proxy.js` 默认仅监听回环地址，属于开发工具，不应直接暴露公网。
 

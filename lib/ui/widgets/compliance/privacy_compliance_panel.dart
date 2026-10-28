@@ -56,7 +56,7 @@ class PrivacyCompliancePanel extends StatelessWidget {
           _ComplianceItem(
             icon: Icons.cloud_off_outlined,
             title: '云端数据传输',
-            description: '图像识别上传图片，语音识别上传音频；结构查询发送名称或 SMILES；AI 调用发送问题、结构、相关对话及学情汇总。',
+            description: '图像识别上传图片；语音由系统或浏览器的识别服务处理，可能上传音频。结构查询发送名称或 SMILES；AI 调用发送问题、结构、相关对话及学情汇总。',
             isDark: isDark,
           ),
           const SizedBox(height: 10),

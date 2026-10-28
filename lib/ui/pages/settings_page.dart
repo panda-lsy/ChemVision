@@ -30,7 +30,6 @@ class SettingsPage extends ConsumerStatefulWidget {
 
 class _SettingsPageState extends ConsumerState<SettingsPage> {
   final TextEditingController _apiKeyController = TextEditingController();
-  final TextEditingController _asrApiKeyController = TextEditingController();
   final TextEditingController _textModelController = TextEditingController();
   final TextEditingController _embeddingModelController =
       TextEditingController();
@@ -41,7 +40,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   final OpenAiCompatibleClient _client = OpenAiCompatibleClient();
 
   bool _obscureKey = true;
-  bool _obscureAsrKey = true;
   bool _isTesting = false;
   bool _hasLoaded = false;
   bool _useChemVisionAi = true;
@@ -61,7 +59,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   void dispose() {
     _saveDebounce?.cancel();
     _apiKeyController.dispose();
-    _asrApiKeyController.dispose();
     _textModelController.dispose();
     _embeddingModelController.dispose();
     _baseUrlController.dispose();
@@ -72,7 +69,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   Future<void> _loadSettings() async {
     final settings = await _settingsStore.load();
     _apiKeyController.text = settings.apiKey;
-    _asrApiKeyController.text = settings.asrApiKey;
     _textModelController.text = settings.textModel;
     _embeddingModelController.text = settings.embeddingModel ?? '';
     _baseUrlController.text = settings.baseUrl;
@@ -103,7 +99,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   Future<void> _persistSettings() async {
     final apiKey = _apiKeyController.text.trim();
-    final asrApiKey = _asrApiKeyController.text.trim();
     final textModel = _resolveTextModel();
     final baseUrl = _resolveBaseUrl();
     final ocsrEndpoint = _resolveOcsrEndpoint();
@@ -111,7 +106,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     await _settingsStore.save(
       AiSettings(
         apiKey: apiKey,
-        asrApiKey: asrApiKey,
         textModel: textModel,
         baseUrl: baseUrl,
         ocsrEndpoint: ocsrEndpoint,
@@ -460,33 +454,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               childrenPadding:
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               children: [
-                Text('语音识别 API Key',
-                    style: Theme.of(context).textTheme.titleMedium),
-                const SizedBox(height: 10),
-                TextField(
-                  controller: _asrApiKeyController,
-                  obscureText: _obscureAsrKey,
-                  onChanged: (_) => _scheduleSave(),
-                  decoration: InputDecoration(
-                    hintText: '语音识别服务使用的 Key',
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _obscureAsrKey
-                            ? Icons.visibility_off
-                            : Icons.visibility,
-                        color: AppColors.textMuted,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          _obscureAsrKey = !_obscureAsrKey;
-                        });
-                      },
-                    ),
-                  ),
-                ),
+                Text('语音输入', style: Theme.of(context).textTheme.titleMedium),
                 const SizedBox(height: 6),
                 Text(
-                  '独立用于语音识别，不会发送给文本模型 API。',
+                  '使用设备或浏览器的语音服务，无需单独配置 API Key；语音可能由服务商联网处理。',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 16),

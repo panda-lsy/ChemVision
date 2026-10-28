@@ -6,7 +6,6 @@ import '../config/app_config.dart';
 
 class AiSettings {
   final String apiKey;
-  final String asrApiKey;
   final String textModel;
   final String? embeddingModel;
   final String baseUrl;
@@ -19,13 +18,11 @@ class AiSettings {
     required this.baseUrl,
     required this.ocsrEndpoint,
     this.useChemVisionAi = true,
-    this.asrApiKey = '',
     this.embeddingModel,
   });
 
   AiSettings copyWith({
     String? apiKey,
-    String? asrApiKey,
     String? textModel,
     String? baseUrl,
     String? ocsrEndpoint,
@@ -34,7 +31,6 @@ class AiSettings {
   }) {
     return AiSettings(
       apiKey: apiKey ?? this.apiKey,
-      asrApiKey: asrApiKey ?? this.asrApiKey,
       textModel: textModel ?? this.textModel,
       baseUrl: baseUrl ?? this.baseUrl,
       ocsrEndpoint: ocsrEndpoint ?? this.ocsrEndpoint,
@@ -46,14 +42,12 @@ class AiSettings {
 
 class AiSettingsStore {
   static const String _apiKeyKey = 'ai_api_key';
-  static const String _asrApiKeyKey = 'asr_api_key';
   static const String _textModelKey = 'ai_text_model';
   static const String _embeddingModelKey = 'ai_embedding_model';
   static const String _baseUrlKey = 'ai_base_url';
   static const String _useChemVisionAiKey = 'ai_use_chemvision_hosted';
 
-  // Read old preferences once for migration. The old API key is kept separate
-  // because it was also used by the independent speech-recognition service.
+  // Read legacy text-model preferences without deleting old stored keys.
   static const String _legacyApiKeyKey = 'vivo_api_key';
   static const String _legacyTextModelKey = 'vivo_text_model';
   static const String _legacyEmbeddingModelKey = 'vivo_embedding_model';
@@ -70,8 +64,6 @@ class AiSettingsStore {
         (legacyBaseUrlIsMissing || _isLegacyVivoBaseUrl(rawLegacyBaseUrl));
     final apiKey = prefs.getString(_apiKeyKey) ??
         (migratingLegacyVivoConfig ? '' : rawLegacyApiKey);
-    final asrApiKey = prefs.getString(_asrApiKeyKey) ??
-        (migratingLegacyVivoConfig ? rawLegacyApiKey : '');
     final rawBaseUrl = prefs.getString(_baseUrlKey) ??
         (migratingLegacyVivoConfig
             ? defaultOpenAiCompatibleBaseUrl
@@ -105,9 +97,6 @@ class AiSettingsStore {
     if (!prefs.containsKey(_apiKeyKey)) {
       await prefs.setString(_apiKeyKey, apiKey);
     }
-    if (!prefs.containsKey(_asrApiKeyKey)) {
-      await prefs.setString(_asrApiKeyKey, asrApiKey);
-    }
     if (!prefs.containsKey(_embeddingModelKey)) {
       if (embeddingModel != null) {
         await prefs.setString(_embeddingModelKey, embeddingModel);
@@ -124,7 +113,6 @@ class AiSettingsStore {
 
     return AiSettings(
       apiKey: apiKey,
-      asrApiKey: asrApiKey,
       textModel: textModel,
       embeddingModel: embeddingModel,
       baseUrl: baseUrl,
@@ -136,7 +124,6 @@ class AiSettingsStore {
   Future<void> save(AiSettings settings) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_apiKeyKey, settings.apiKey);
-    await prefs.setString(_asrApiKeyKey, settings.asrApiKey);
     await prefs.setString(_textModelKey, settings.textModel);
     await _setOptional(prefs, _embeddingModelKey, settings.embeddingModel);
     await prefs.setString(_baseUrlKey, settings.baseUrl);

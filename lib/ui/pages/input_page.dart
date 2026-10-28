@@ -64,7 +64,6 @@ class _InputPageState extends ConsumerState<InputPage> {
     try {
       debugPrint('[语音输入] 开始语音输入流程');
       final result = await showVoiceInputOverlay(context, ref);
-      debugPrint('[语音输入] 返回结果：$result');
       
       if (result != null && result.isNotEmpty) {
         if (mounted) {

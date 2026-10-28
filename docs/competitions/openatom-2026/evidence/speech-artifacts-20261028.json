@@ -1,0 +1,21 @@
+{
+  "apk_sha256": "f4acb2652adcea5ce7248ef4fb72dc621fdf0f66f70b5711f985bb64c735a32b",
+  "apk_bytes": 96978026,
+  "apk_code_entries": 13,
+  "apk_marker_hits": [],
+  "old_libraries": [],
+  "speech_discovery_declared": true,
+  "permissions": [
+    "android.permission.INTERNET",
+    "android.permission.ACCESS_NETWORK_STATE",
+    "android.permission.RECORD_AUDIO",
+    "android.permission.CAMERA",
+    "com.chemvision.chemvision.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+  ],
+  "apk_version": "package: name='com.chemvision.chemvision' versionCode='65' versionName='1.0.64' platformBuildVersionName='16' platformBuildVersionCode='36' compileSdkVersion='36' compileSdkVersionCodename='16'",
+  "web_sha256": "07a375805a00014fd25e59d97f868cfa6927e28fb1c7d7c6db6a7be853a09d9f",
+  "web_marker_hits": [],
+  "windows_plugin_sha256": "181f9ba23ba4f990157219afe47d6e1797a35aa142b1ef11331da1560db503db",
+  "windows_sensitive_logging_markers": [],
+  "windows_json_escape_check": "Compiled the actual helper separately; quotes, backslash, control characters, and UTF-8 passed; unavailable confidence uses -1.0."
+}

@@ -46,14 +46,17 @@ dependencies:
   package_info_plus: ^8.1.2
   path_provider: ^2.1.1
   permission_handler: ^11.0.1
-  record: ^6.2.0
-  record_linux: ^1.3.0
   shared_preferences: ^2.2.3
   share_plus: ^10.1.4
-  web_socket_channel: ^3.0.3
   flutter_markdown: ^0.7.4+3
   markdown: ^7.2.2
   supabase_flutter: ^2.18.0
+  speech_to_text: 7.4.0
+
+dependency_overrides:
+  # BSD-licensed Windows adapter with privacy and lifecycle fixes.
+  speech_to_text_windows:
+    path: third_party/speech_to_text_windows
 
 dev_dependencies:
   flutter_test:

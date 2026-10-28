@@ -16,5 +16,23 @@
     "source": "https://raw.githubusercontent.com/reymond-group/smilesDrawer/master/LICENSE.md",
     "sha256": "919c7fa7363867d5785a1362aeb1df8ffa62f976db7f963fd57c397c2cbadeb4",
     "status": "upstream current text; bundled exact version provenance pending"
+  },
+  {
+    "file": "speech_to_text-7.4.0-LICENSE.txt",
+    "source": "https://pub.dev/packages/speech_to_text/versions/7.4.0",
+    "sha256": "93c167d88e0073150ec077ce1a04052032e4a811a589b724a6a9bb157ac75152",
+    "status": "license from resolved package archive"
+  },
+  {
+    "file": "speech_to_text_platform_interface-2.5.0-LICENSE.txt",
+    "source": "https://pub.dev/packages/speech_to_text_platform_interface/versions/2.5.0",
+    "sha256": "93c167d88e0073150ec077ce1a04052032e4a811a589b724a6a9bb157ac75152",
+    "status": "license from resolved package archive"
+  },
+  {
+    "file": "speech_to_text_windows-1.0.1-LICENSE.txt",
+    "source": "https://pub.dev/packages/speech_to_text_windows/versions/1.0.1",
+    "sha256": "d909ce2bb1e39a78df3beedc414cd9fe192fded499db2929d16a26a3854183ae",
+    "status": "license from resolved package archive"
   }
 ]
