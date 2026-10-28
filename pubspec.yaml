@@ -52,6 +52,7 @@ dependencies:
   markdown: ^7.2.2
   supabase_flutter: ^2.18.0
   speech_to_text: 7.4.0
+  diagram_editor: ^1.0.0
 
 dependency_overrides:
   # BSD-licensed Windows adapter with privacy and lifecycle fixes.
@@ -94,6 +95,7 @@ flutter:
     - assets/web/ketcher/static/js/
     - assets/js/
     - assets/prompts/
+    - assets/lab_diagram/equipment/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

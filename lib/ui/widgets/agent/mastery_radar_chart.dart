@@ -2,6 +2,8 @@
 ///
 /// 对应赛题"学情诊断 Agent"评审加分项:用雷达图直观展示知识点掌握度分布。
 /// 每个轴代表一个化学分类(有机/无机/物理/分析/生化学),显示平均掌握度。
+library;
+
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -10,11 +12,7 @@ import '../../../theme/app_colors.dart';
 
 /// 雷达图数据点
 class RadarEntry {
-  const RadarEntry({
-    required this.label,
-    required this.value,
-    this.subtitle,
-  });
+  const RadarEntry({required this.label, required this.value, this.subtitle});
 
   /// 轴标签(如"有机化学")
   final String label;
@@ -72,12 +70,12 @@ class _RadarChartPainter extends CustomPainter {
   final double maxValue;
 
   static const int _gridLevels = 4;
-  static const double _labelPadding = 28;
+  static const double _labelPadding = 44;
 
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
-    final radius = (size.width / 2) - _labelPadding;
+    final radius = math.max(0.0, (size.width / 2) - _labelPadding).toDouble();
     final axisCount = entries.length;
     if (axisCount < 3) {
       _drawEmpty(canvas, center, radius);
@@ -143,8 +141,9 @@ class _RadarChartPainter extends CustomPainter {
     dataPath.close();
 
     final fillPaint = Paint()
-      ..color = (isDark ? AppColors.aqua : AppColors.dayBluePrimary)
-          .withValues(alpha: 0.25)
+      ..color = (isDark ? AppColors.aqua : AppColors.dayBluePrimary).withValues(
+        alpha: 0.25,
+      )
       ..style = PaintingStyle.fill;
     canvas.drawPath(dataPath, fillPaint);
 
@@ -188,8 +187,10 @@ class _RadarChartPainter extends CustomPainter {
       // 标签放在垂直轴上(即 0 度方向,顶部)
       scalePainter.paint(
         canvas,
-        Offset(center.dx - scalePainter.width / 2 + 2,
-            center.dy - radius * level / _gridLevels - 6),
+        Offset(
+          center.dx - scalePainter.width / 2 + 2,
+          center.dy - radius * level / _gridLevels - 6,
+        ),
       );
     }
 
@@ -203,6 +204,23 @@ class _RadarChartPainter extends CustomPainter {
         center.dx + labelOffset * math.cos(angle),
         center.dy + labelOffset * math.sin(angle),
       );
+      final alignment = _labelAlignment(angle);
+      final availableWidth = math
+          .max(
+            1.0,
+            (alignment > 0
+                    ? size.width - labelPoint.dx - 8
+                    : alignment < 0
+                    ? labelPoint.dx - 8
+                    : 2.0 *
+                              math.min(
+                                labelPoint.dx,
+                                size.width - labelPoint.dx,
+                              ) -
+                          8)
+                .toDouble(),
+          )
+          .toDouble();
 
       // 主标签
       labelPainter.text = TextSpan(
@@ -213,13 +231,15 @@ class _RadarChartPainter extends CustomPainter {
           color: isDark ? AppColors.textPrimary : AppColors.dayTextPrimary,
         ),
       );
-      labelPainter.layout();
-      // 根据 x 位置对齐
-      final alignment = _labelAlignment(angle);
-      final dx = labelPoint.dx -
+      labelPainter.layout(maxWidth: availableWidth);
+      final dx =
+          labelPoint.dx -
           labelPainter.width / 2 +
           alignment * labelPainter.width / 2;
-      labelPainter.paint(canvas, Offset(dx, labelPoint.dy - 6));
+      labelPainter.paint(
+        canvas,
+        Offset(dx, labelPoint.dy - labelPainter.height / 2),
+      );
 
       // 副标签(数值或详情)
       if (entry.subtitle != null) {
@@ -231,11 +251,15 @@ class _RadarChartPainter extends CustomPainter {
             color: _valueColor(entry.value, isDark),
           ),
         );
-        subPainter.layout();
-        final subDx = labelPoint.dx -
+        subPainter.layout(maxWidth: availableWidth);
+        final subDx =
+            labelPoint.dx -
             subPainter.width / 2 +
             alignment * subPainter.width / 2;
-        subPainter.paint(canvas, Offset(subDx, labelPoint.dy + 8));
+        subPainter.paint(
+          canvas,
+          Offset(subDx, labelPoint.dy + labelPainter.height / 2 + 2),
+        );
       }
     }
   }

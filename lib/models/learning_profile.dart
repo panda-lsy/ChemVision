@@ -18,8 +18,8 @@ class LearningProfile {
     required this.correctCount,
     required this.lastActiveAt,
     required this.createdAt,
-    this.streakDays = 1,
-    this.totalLearningDays = 1,
+    this.streakDays = 0,
+    this.totalLearningDays = 0,
   });
 
   /// 用户 ID(本地生成,持久化)
@@ -153,9 +153,9 @@ class LearningProfile {
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'] as String)
           : DateTime.now(),
-      streakDays: (json['streakDays'] as num?)?.toInt() ?? 1,
+      streakDays: (json['streakDays'] as num?)?.toInt() ?? 0,
       totalLearningDays:
-          (json['totalLearningDays'] as num?)?.toInt() ?? 1,
+          (json['totalLearningDays'] as num?)?.toInt() ?? 0,
     );
   }
 

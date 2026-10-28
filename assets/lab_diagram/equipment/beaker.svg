@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 90 110">
+  <defs>
+    <clipPath id="beaker-body"><path d="M19 12h52l-5 81c-.3 6-4 9-10 9H34c-6 0-9.7-3-10-9z"/></clipPath>
+  </defs>
+  <path d="M15 12h60v8H15z" fill="#e2e8f0" stroke="#334155" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M19 17h52l-5 76c-.3 6-4 9-10 9H34c-6 0-9.7-3-10-9z" fill="#f8fbff" stroke="#334155" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M22 65c13 3 33 3 47 0l-3 31c-.3 4-3 6-8 6H34c-5 0-8-2-8-6z" fill="#93c5fd" opacity=".58" clip-path="url(#beaker-body)"/>
+  <path d="M57 37h10M56 47h10M55 57h10M25 65c13 3 30 3 44 0" fill="none" stroke="#4f83aa" stroke-width="2" stroke-linecap="round"/>
+</svg>

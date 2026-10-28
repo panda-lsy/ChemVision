@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 120">
+  <defs>
+    <clipPath id="flask-body"><path d="M38 9h24v35l24 51c3 7-2 13-10 13H24c-8 0-13-6-10-13l24-51z"/></clipPath>
+  </defs>
+  <path d="M38 9h24v35l24 51c3 7-2 13-10 13H24c-8 0-13-6-10-13l24-51z" fill="#f8fbff" stroke="#334155" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M18 82c18 4 43 4 64 0l7 15c3 7-2 11-9 11H23c-7 0-12-4-9-11z" fill="#93c5fd" opacity=".62" clip-path="url(#flask-body)"/>
+  <path d="M37 15h26" fill="none" stroke="#334155" stroke-width="3" stroke-linecap="round"/>
+  <path d="M29 96c12 3 28 3 42 0" fill="none" stroke="#60a5fa" stroke-width="2" stroke-linecap="round"/>
+</svg>

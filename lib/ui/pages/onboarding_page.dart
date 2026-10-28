@@ -4,6 +4,8 @@
 /// 完成后更新当前用户并写入标记,避免重复显示。
 library;
 
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
@@ -11,17 +13,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../services/user_service.dart';
 import '../../theme/app_colors.dart';
+import '../widgets/avatar_image_provider.dart';
 
 /// 学段选项
 const _stageOptions = <String>['middle', 'highschool', 'college', 'research'];
 
 String _stageLabel(String stage) => switch (stage) {
-      'middle' => '初中',
-      'highschool' => '高中',
-      'college' => '大学本科/研究生/博士',
-      'research' => '科研工作',
-      _ => stage,
-    };
+  'middle' => '初中',
+  'highschool' => '高中',
+  'college' => '大学本科/研究生/博士',
+  'research' => '科研工作',
+  _ => stage,
+};
 
 const _onboardingKey = 'onboarding_completed';
 
@@ -62,16 +65,24 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
       imageQuality: 80,
     );
     if (image != null) {
-      setState(() => _avatarPath = image.path);
+      final bytes = await image.readAsBytes();
+      if (!mounted) return;
+      final mimeType = image.mimeType;
+      final contentType = mimeType != null && mimeType.startsWith('image/')
+          ? mimeType
+          : 'image/jpeg';
+      setState(() {
+        _avatarPath = 'data:$contentType;base64,${base64Encode(bytes)}';
+      });
     }
   }
 
   Future<void> _complete() async {
     final nickname = _nicknameController.text.trim();
     if (nickname.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('请输入昵称')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('请输入昵称')));
       return;
     }
 
@@ -81,11 +92,13 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
       final userService = ref.read(userServiceProvider);
       final currentUser = userService.currentUser;
       if (currentUser != null) {
-        await userService.updateUser(currentUser.copyWith(
-          nickname: nickname,
-          stage: _selectedStage,
-          avatarPath: _avatarPath,
-        ));
+        await userService.updateUser(
+          currentUser.copyWith(
+            nickname: nickname,
+            stage: _selectedStage,
+            avatarPath: _avatarPath,
+          ),
+        );
       }
 
       final prefs = await SharedPreferences.getInstance();
@@ -96,9 +109,9 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('保存失败: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('保存失败: $e')));
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -108,6 +121,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final avatarProvider = avatarImageProvider(_avatarPath);
     final accent = isDark ? AppColors.aqua : AppColors.dayBluePrimary;
 
     return Scaffold(
@@ -119,11 +133,7 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               // 头部
-              Icon(
-                Icons.science,
-                size: 48,
-                color: accent,
-              ),
+              Icon(Icons.science, size: 48, color: accent),
               const SizedBox(height: 12),
               Text(
                 '欢迎使用 ChemVision',
@@ -131,7 +141,9 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w700,
-                  color: isDark ? AppColors.textPrimary : AppColors.dayTextPrimary,
+                  color: isDark
+                      ? AppColors.textPrimary
+                      : AppColors.dayTextPrimary,
                 ),
               ),
               const SizedBox(height: 6),
@@ -141,7 +153,9 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                 style: TextStyle(
                   fontSize: 13,
                   height: 1.6,
-                  color: isDark ? AppColors.textSecondary : AppColors.dayTextSecondary,
+                  color: isDark
+                      ? AppColors.textSecondary
+                      : AppColors.dayTextSecondary,
                 ),
               ),
               const SizedBox(height: 28),
@@ -161,9 +175,9 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                       ),
                     ),
                     child: ClipOval(
-                      child: _avatarPath != null
-                          ? Image.network(
-                              _avatarPath!,
+                      child: avatarProvider != null
+                          ? Image(
+                              image: avatarProvider,
                               fit: BoxFit.cover,
                               errorBuilder: (_, __, ___) =>
                                   _avatarPlaceholder(accent, isDark),
@@ -208,7 +222,9 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
-                  color: isDark ? AppColors.textSecondary : AppColors.dayTextSecondary,
+                  color: isDark
+                      ? AppColors.textSecondary
+                      : AppColors.dayTextSecondary,
                 ),
               ),
               const SizedBox(height: 8),
@@ -227,12 +243,16 @@ class _OnboardingPageState extends ConsumerState<OnboardingPage> {
                       fontWeight: FontWeight.w600,
                       color: selected
                           ? accent
-                          : (isDark ? AppColors.textSecondary : AppColors.dayTextSecondary),
+                          : (isDark
+                                ? AppColors.textSecondary
+                                : AppColors.dayTextSecondary),
                     ),
                     side: BorderSide(
                       color: selected ? accent : accent.withValues(alpha: 0.2),
                     ),
-                    backgroundColor: isDark ? AppColors.glass : AppColors.dayGlass,
+                    backgroundColor: isDark
+                        ? AppColors.glass
+                        : AppColors.dayGlass,
                   );
                 }).toList(),
               ),

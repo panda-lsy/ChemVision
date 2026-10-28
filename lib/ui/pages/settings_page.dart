@@ -18,7 +18,6 @@ import '../widgets/app_scaffold.dart';
 import '../widgets/compliance/privacy_compliance_panel.dart';
 import '../widgets/glass_panel.dart';
 import '../widgets/primary_button.dart';
-import '../widgets/user_management_section.dart';
 import 'account_page.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
@@ -346,9 +345,18 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ),
           ),
           const SizedBox(height: 16),
-          Text('用户', style: Theme.of(context).textTheme.headlineMedium),
+          Text('账户中心', style: Theme.of(context).textTheme.headlineMedium),
           const SizedBox(height: 14),
-          const UserManagementSection(),
+          GlassPanel(
+            child: ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.account_circle_outlined),
+              title: const Text('在线登录与本机学习档案'),
+              subtitle: const Text('邮箱 / GitHub 登录、档案切换和管理员页面'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: _openAccountPage,
+            ),
+          ),
           const SizedBox(height: 16),
           Text('模型设置', style: Theme.of(context).textTheme.headlineMedium),
           const SizedBox(height: 16),

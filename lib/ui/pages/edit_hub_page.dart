@@ -11,6 +11,7 @@ import '../widgets/app_scaffold.dart';
 import '../widgets/glass_panel.dart';
 import 'structure_editor_page.dart';
 import 'reaction_page.dart';
+import 'apparatus_diagram_page.dart';
 
 /// 编辑入口页
 ///
@@ -112,6 +113,19 @@ class EditHubPage extends ConsumerWidget {
             onTap: () => Navigator.of(context).push(
               MaterialPageRoute(
                 builder: (_) => const ReactionPage(),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          _buildEntryCard(
+            context,
+            isDark: isDark,
+            icon: Icons.science_outlined,
+            title: '实验装置图',
+            subtitle: '组合实验器材、连接导管并导出矢量图',
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const ApparatusDiagramPage(),
               ),
             ),
           ),

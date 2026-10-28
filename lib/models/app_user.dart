@@ -19,7 +19,7 @@ class AppUser {
   /// 学段: middle / highschool / college / research
   final String stage;
 
-  /// 头像本地路径(可为空,使用默认头像)
+  /// 头像数据 URI、远程 URL 或旧版本地文件路径(可为空,使用默认头像)
   final String? avatarPath;
 
   /// 创建时间

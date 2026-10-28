@@ -57,9 +57,9 @@ def create(font: Path, output: Path) -> None:
             Spacer(1, 24), Paragraph('第四届开放原子大赛 · 2026<br/>开源行业解决方案创新赛 / 赛道一', body),
             Spacer(1, 28), Paragraph('作品说明 · 内部审阅稿', h1),
             Paragraph('核验日期：2026-10-22<br/>目标冻结日期：2026-10-29<br/>官方截止：2026-10-31 24:00（北京时间）', body),
-            Spacer(1, 22), Paragraph('状态声明', h2),
-            Paragraph('本文件由仓库 Markdown 草稿生成。参赛主体、全部权利人和第三方素材授权、中文 AI 与完整浏览器演示仍待核验；未报名、未发送材料。当前分支已移除原生端侧 SDK，语音改用系统或浏览器服务；构建结果和真机验证边界以状态记录为准。不能将本稿作为最终已合规或已提交的证明。', body),
-            Paragraph('历史基线证据：26 项离线/组件测试通过，3 个真实英文公共化学查询样本通过；移除后的验证结果见当前状态记录。模型和 OCSR 效果未验证。', body),
+            Spacer(1, 22), Paragraph('状态声明（审阅稿 · 非正式提交件）', h2),
+            Paragraph('本文件由仓库 Markdown 草稿生成，页眉页脚均标注「内部审阅稿 - 未提交」。官网报名审核已通过（OSChina 确认邮件 2026-10-22 18:25）；参赛主体海南师范大学、负责人刘舜尧、联系邮箱 shengxia23@hainnu.edu.cn。正式作品 PDF、可访问仓库链接与演示视频链接仍待齐备；材料截止 2026-10-31 24:00（北京时间），收件 bjoscc@oschina.cn。本稿不得当作已发参赛邮件或已公开仓库的证明。', body),
+            Paragraph('工程证据边界：历史基线含离线/组件回归与 3 个英文公共化学查询样本；2026-10-28 候选快照完成 SDK 移除后的分析/测试/Web·Android 构建与拆包检查。中文 AI、完整浏览器编辑—收藏—讲解—诊断闭环、真实设备语音与 OCSR 推理效果均未在本稿中声称已验证。私人合同/承诺书不纳入本稿。', body),
             PageBreak(), Paragraph('阅读与证据索引', h1)]
     for name in FILES:
         title = (DOCS / name).read_text('utf-8').splitlines()[0].lstrip('# ')

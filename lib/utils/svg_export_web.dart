@@ -2,7 +2,11 @@ import 'dart:convert';
 import 'dart:html' as html;
 
 /// Web 端 SVG 导出（Blob + AnchorElement 触发浏览器下载）
-Future<void> downloadSvg(String svgString, String filename) async {
+Future<void> downloadSvg(
+  String svgString,
+  String filename, {
+  String shareText = 'ChemVision SVG',
+}) async {
   final bytes = utf8.encode(svgString);
   final blob = html.Blob([bytes], 'image/svg+xml');
   final url = html.Url.createObjectUrlFromBlob(blob);

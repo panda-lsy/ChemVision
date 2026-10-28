@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../services/supabase_auth_service.dart';
+import '../widgets/user_management_section.dart';
 
 class AccountPage extends StatefulWidget {
   const AccountPage({super.key});
@@ -104,8 +105,7 @@ class _AccountPageState extends State<AccountPage> {
     try {
       final launched = await _authService.signInWithGitHub();
       if (!launched && mounted) {
-        _showMessage('未能打开 GitHub 登录页面，请检查系统浏览器设置。',
-            isError: true);
+        _showMessage('未能打开 GitHub 登录页面，请检查系统浏览器设置。', isError: true);
       }
     } on AuthException catch (error) {
       if (mounted) _showMessage(error.message, isError: true);
@@ -140,7 +140,7 @@ class _AccountPageState extends State<AccountPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('账号与管理')),
+      appBar: AppBar(title: const Text('账户中心')),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 560),
@@ -156,14 +156,25 @@ class _AccountPageState extends State<AccountPage> {
                 _buildSignedInAccount(),
               if (_message != null) ...[
                 const SizedBox(height: 16),
-                _MessageBanner(
-                  message: _message!,
-                  isError: _messageIsError,
-                ),
+                _MessageBanner(message: _message!, isError: _messageIsError),
               ],
+              const SizedBox(height: 28),
+              Text(
+                '本机学习档案',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                '管理本设备上的学习档案、学段和头像。切换档案会切换本机学习记录，不会更改上方的在线登录账号。',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: 12),
+              const UserManagementSection(),
               const SizedBox(height: 20),
               const Text(
-                '学习记录仍保存在当前设备；登录账号用于身份验证和管理员权限。',
+                '在线账号用于 ChemVision AI 和管理员权限；本机学习档案用于设备内数据隔离。学习记录不会随在线登录上传或同步。',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 12, color: Colors.grey),
               ),
@@ -188,8 +199,7 @@ class _AccountPageState extends State<AccountPage> {
           children: [
             const Icon(Icons.cloud_off_outlined, size: 32),
             const SizedBox(height: 12),
-            Text('登录服务未就绪',
-                style: Theme.of(context).textTheme.titleLarge),
+            Text('登录服务未就绪', style: Theme.of(context).textTheme.titleLarge),
             const SizedBox(height: 8),
             SelectableText(description),
           ],
@@ -207,8 +217,11 @@ class _AccountPageState extends State<AccountPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Icon(Icons.science_outlined,
-                  size: 36, color: Theme.of(context).colorScheme.primary),
+              Icon(
+                Icons.science_outlined,
+                size: 36,
+                color: Theme.of(context).colorScheme.primary,
+              ),
               const SizedBox(height: 12),
               Text(
                 _isSigningUp ? '创建 ChemVision 账号' : '登录 ChemVision',
@@ -228,8 +241,7 @@ class _AccountPageState extends State<AccountPage> {
                 ),
                 validator: (value) {
                   final email = value?.trim() ?? '';
-                  if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$')
-                      .hasMatch(email)) {
+                  if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email)) {
                     return '请输入有效邮箱地址';
                   }
                   return null;
@@ -277,9 +289,9 @@ class _AccountPageState extends State<AccountPage> {
                 onPressed: _isBusy
                     ? null
                     : () => setState(() {
-                          _isSigningUp = !_isSigningUp;
-                          _message = null;
-                        }),
+                        _isSigningUp = !_isSigningUp;
+                        _message = null;
+                      }),
                 child: Text(_isSigningUp ? '已有账号？返回登录' : '还没有账号？邮箱注册'),
               ),
             ],
@@ -291,7 +303,8 @@ class _AccountPageState extends State<AccountPage> {
 
   Widget _buildSignedInAccount() {
     final user = _user!;
-    final githubUsername = user.userMetadata?['user_name'] ??
+    final githubUsername =
+        user.userMetadata?['user_name'] ??
         user.userMetadata?['preferred_username'];
     return Card(
       child: Padding(
@@ -342,9 +355,9 @@ class _AccountPageState extends State<AccountPage> {
   }
 
   void _openAdminPage() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const AdminUsersPage()),
-    );
+    Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const AdminUsersPage()));
   }
 }
 
@@ -408,7 +421,9 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
                 child: Align(
                   alignment: Alignment.centerLeft,
-                  child: Text('第 ${result.page} 页 · ${result.users.length} 位用户'),
+                  child: Text(
+                    '第 ${result.page} 页 · ${result.users.length} 位用户',
+                  ),
                 ),
               ),
               Expanded(
@@ -432,9 +447,9 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                       OutlinedButton.icon(
                         onPressed: _page > 1
                             ? () => setState(() {
-                                  _page -= 1;
-                                  _usersFuture = _fetchUsers();
-                                })
+                                _page -= 1;
+                                _usersFuture = _fetchUsers();
+                              })
                             : null,
                         icon: const Icon(Icons.chevron_left),
                         label: const Text('上一页'),
@@ -442,9 +457,9 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
                       OutlinedButton.icon(
                         onPressed: result.hasMore
                             ? () => setState(() {
-                                  _page += 1;
-                                  _usersFuture = _fetchUsers();
-                                })
+                                _page += 1;
+                                _usersFuture = _fetchUsers();
+                              })
                             : null,
                         icon: const Icon(Icons.chevron_right),
                         label: const Text('下一页'),

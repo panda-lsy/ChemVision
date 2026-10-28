@@ -1,8 +1,10 @@
-/// 用户管理区域 — 多用户切换、创建、编辑、删除
+/// 学习档案区域 — 多档案切换、创建、编辑、删除
 ///
-/// 在设置页中展示当前用户信息,点击进入用户管理底部弹窗。
-/// 切换用户后通过 ref.invalidate() 刷新所有数据 Provider。
+/// 在账户中心展示当前学习档案,点击进入档案管理底部弹窗。
+/// 切换档案后通过 ref.invalidate() 刷新所有数据 Provider。
 library;
+
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,18 +18,19 @@ import '../../providers/scan_history_provider.dart';
 import '../../providers/error_book_provider.dart';
 import '../../services/user_service.dart';
 import '../../theme/app_colors.dart';
+import 'avatar_image_provider.dart';
 import '../widgets/glass_panel.dart';
 
 /// 学段选项
 const _stageOptions = <String>['middle', 'highschool', 'college', 'research'];
 
 String _stageLabel(String stage) => switch (stage) {
-      'middle' => '初中',
-      'highschool' => '高中',
-      'college' => '大学本科/研究生/博士',
-      'research' => '科研工作',
-      _ => stage,
-    };
+  'middle' => '初中',
+  'highschool' => '高中',
+  'college' => '大学本科/研究生/博士',
+  'research' => '科研工作',
+  _ => stage,
+};
 
 class UserManagementSection extends ConsumerWidget {
   const UserManagementSection({super.key});
@@ -35,7 +38,8 @@ class UserManagementSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final userService = ref.watch(userServiceProvider);
-    final currentUser = userService.currentUser;
+    final currentUser =
+        ref.watch(currentUserProvider) ?? userService.currentUser;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     if (currentUser == null) {
@@ -62,17 +66,17 @@ class UserManagementSection extends ConsumerWidget {
                   Text(
                     currentUser.nickname,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(
                     _stageLabel(currentUser.stage),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: isDark
-                              ? AppColors.textSecondary
-                              : AppColors.dayTextSecondary,
-                        ),
+                      color: isDark
+                          ? AppColors.textSecondary
+                          : AppColors.dayTextSecondary,
+                    ),
                   ),
                 ],
               ),
@@ -124,7 +128,7 @@ class UserManagementSection extends ConsumerWidget {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      '用户管理',
+                      '学习档案管理',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
@@ -137,10 +141,11 @@ class UserManagementSection extends ConsumerWidget {
                     TextButton.icon(
                       onPressed: () => _showCreateUserDialog(context, ref),
                       icon: const Icon(Icons.person_add_alt_1, size: 16),
-                      label: const Text('新建'),
+                      label: const Text('新建档案'),
                       style: TextButton.styleFrom(
-                        foregroundColor:
-                            isDark ? AppColors.aqua : AppColors.dayBluePrimary,
+                        foregroundColor: isDark
+                            ? AppColors.aqua
+                            : AppColors.dayBluePrimary,
                       ),
                     ),
                   ],
@@ -151,7 +156,7 @@ class UserManagementSection extends ConsumerWidget {
                     ? Colors.white12
                     : AppColors.dayBluePrimary.withValues(alpha: 0.08),
               ),
-              // 用户列表
+              // 学习档案列表
               Expanded(child: _UserList(isDark: isDark)),
             ],
           ),
@@ -235,11 +240,13 @@ class _UserList extends ConsumerWidget {
         initialAvatarPath: user.avatarPath,
         onSaved: (nickname, stage, avatarPath) async {
           final userService = ref.read(userServiceProvider);
-          await userService.updateUser(user.copyWith(
-            nickname: nickname,
-            stage: stage,
-            avatarPath: avatarPath,
-          ));
+          await userService.updateUser(
+            user.copyWith(
+              nickname: nickname,
+              stage: stage,
+              avatarPath: avatarPath,
+            ),
+          );
           _refreshAllProviders(ref);
           if (context.mounted) {
             Navigator.of(context).pop(); // 关闭底部弹窗
@@ -254,8 +261,8 @@ class _UserList extends ConsumerWidget {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.navy,
-        title: const Text('删除用户'),
-        content: Text('确定要删除用户「${user.nickname}」吗?\n该用户的所有数据将被清除。'),
+        title: const Text('删除学习档案'),
+        content: Text('确定要删除「${user.nickname}」的学习档案吗？\n该档案的本机学习数据也会被清除。'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -271,13 +278,15 @@ class _UserList extends ConsumerWidget {
                 Navigator.of(context).pop(); // 关闭底部弹窗
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text('已删除用户 ${user.nickname}'),
+                    content: Text('已删除学习档案 ${user.nickname}'),
                     duration: const Duration(seconds: 2),
                   ),
                 );
               }
             },
-            style: TextButton.styleFrom(foregroundColor: const Color(0xFFE57373)),
+            style: TextButton.styleFrom(
+              foregroundColor: const Color(0xFFE57373),
+            ),
             child: const Text('删除'),
           ),
         ],
@@ -285,8 +294,11 @@ class _UserList extends ConsumerWidget {
     );
   }
 
-  /// 切换/编辑/删除用户后刷新所有数据 Provider
+  /// 切换/编辑/删除档案后刷新所有数据 Provider
   void _refreshAllProviders(WidgetRef ref) {
+    ref.read(currentUserProvider.notifier).state = ref
+        .read(userServiceProvider)
+        .currentUser;
     ref.invalidate(scanHistoryControllerProvider);
     ref.invalidate(favoritesControllerProvider);
     ref.invalidate(reactionFavoritesControllerProvider);
@@ -318,8 +330,9 @@ class _UserListTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: isCurrent
-            ? (isDark ? AppColors.aqua : AppColors.dayBluePrimary)
-                .withValues(alpha: 0.08)
+            ? (isDark ? AppColors.aqua : AppColors.dayBluePrimary).withValues(
+                alpha: 0.08,
+              )
             : null,
         borderRadius: BorderRadius.circular(12),
         border: isCurrent
@@ -345,7 +358,9 @@ class _UserListTile extends StatelessWidget {
               user.nickname,
               style: TextStyle(
                 fontWeight: FontWeight.w600,
-                color: isDark ? AppColors.textPrimary : AppColors.dayTextPrimary,
+                color: isDark
+                    ? AppColors.textPrimary
+                    : AppColors.dayTextPrimary,
               ),
             ),
             if (isCurrent) ...[
@@ -362,8 +377,7 @@ class _UserListTile extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
-                    color:
-                        isDark ? AppColors.aqua : AppColors.dayBluePrimary,
+                    color: isDark ? AppColors.aqua : AppColors.dayBluePrimary,
                   ),
                 ),
               ),
@@ -375,12 +389,14 @@ class _UserListTile extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             IconButton(
+              tooltip: '编辑档案',
               icon: const Icon(Icons.edit_outlined, size: 18),
               onPressed: onEdit,
               color: isDark ? AppColors.textMuted : AppColors.dayTextMuted,
             ),
             if (onDelete != null)
               IconButton(
+                tooltip: '删除档案',
                 icon: const Icon(Icons.delete_outline, size: 18),
                 onPressed: onDelete,
                 color: const Color(0xFFE57373),
@@ -407,11 +423,12 @@ class _UserAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (avatarPath != null && avatarPath!.isNotEmpty) {
+    final imageProvider = avatarImageProvider(avatarPath);
+    if (imageProvider != null) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(size / 2),
-        child: Image.network(
-          avatarPath!,
+        child: Image(
+          image: imageProvider,
           width: size,
           height: size,
           fit: BoxFit.cover,
@@ -449,7 +466,7 @@ class _UserAvatar extends StatelessWidget {
   }
 }
 
-/// 创建/编辑用户对话框
+/// 创建/编辑学习档案对话框
 class _UserEditDialog extends ConsumerStatefulWidget {
   const _UserEditDialog({
     required this.isCreate,
@@ -461,7 +478,7 @@ class _UserEditDialog extends ConsumerStatefulWidget {
 
   final bool isCreate;
   final void Function(String nickname, String stage, String? avatarPath)
-      onSaved;
+  onSaved;
   final String? initialNickname;
   final String? initialStage;
   final String? initialAvatarPath;
@@ -478,10 +495,12 @@ class _UserEditDialogState extends ConsumerState<_UserEditDialog> {
   @override
   void initState() {
     super.initState();
-    _nicknameController =
-        TextEditingController(text: widget.initialNickname ?? '');
-    _avatarController =
-        TextEditingController(text: widget.initialAvatarPath ?? '');
+    _nicknameController = TextEditingController(
+      text: widget.initialNickname ?? '',
+    );
+    _avatarController = TextEditingController(
+      text: widget.initialAvatarPath ?? '',
+    );
     _selectedStage = widget.initialStage ?? 'highschool';
   }
 
@@ -501,7 +520,13 @@ class _UserEditDialogState extends ConsumerState<_UserEditDialog> {
       imageQuality: 80,
     );
     if (image != null) {
-      _avatarController.text = image.path;
+      final bytes = await image.readAsBytes();
+      final mimeType = image.mimeType;
+      final contentType = mimeType != null && mimeType.startsWith('image/')
+          ? mimeType
+          : 'image/jpeg';
+      _avatarController.text =
+          'data:$contentType;base64,${base64Encode(bytes)}';
       setState(() {});
     }
   }
@@ -509,9 +534,10 @@ class _UserEditDialogState extends ConsumerState<_UserEditDialog> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final avatarProvider = avatarImageProvider(_avatarController.text);
     return AlertDialog(
       backgroundColor: isDark ? AppColors.navy : Colors.white,
-      title: Text(widget.isCreate ? '创建新用户' : '编辑用户'),
+      title: Text(widget.isCreate ? '创建学习档案' : '编辑学习档案'),
       content: SizedBox(
         width: double.maxFinite,
         child: SingleChildScrollView(
@@ -533,9 +559,9 @@ class _UserEditDialogState extends ConsumerState<_UserEditDialog> {
                     ),
                   ),
                   child: ClipOval(
-                    child: _avatarController.text.isNotEmpty
-                        ? Image.network(
-                            _avatarController.text,
+                    child: avatarProvider != null
+                        ? Image(
+                            image: avatarProvider,
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) =>
                                 _buildAvatarPlaceholder(isDark),
@@ -597,15 +623,18 @@ class _UserEditDialogState extends ConsumerState<_UserEditDialog> {
           onPressed: () {
             final nickname = _nicknameController.text.trim();
             if (nickname.isEmpty) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('请输入昵称')),
-              );
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('请输入昵称')));
               return;
             }
             final avatarPath = _avatarController.text.trim();
             Navigator.pop(context);
-            widget.onSaved(nickname, _selectedStage,
-                avatarPath.isEmpty ? null : avatarPath);
+            widget.onSaved(
+              nickname,
+              _selectedStage,
+              avatarPath.isEmpty ? null : avatarPath,
+            );
           },
           child: Text(widget.isCreate ? '创建' : '保存'),
         ),

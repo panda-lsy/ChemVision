@@ -13,18 +13,12 @@ final learningRecordServiceProvider = Provider<LearningRecordService>((ref) {
 
 /// 学情画像状态
 class LearningProfileState {
-  const LearningProfileState({
-    this.profile,
-    this.isLoading = true,
-  });
+  const LearningProfileState({this.profile, this.isLoading = true});
 
   final LearningProfile? profile;
   final bool isLoading;
 
-  LearningProfileState copyWith({
-    LearningProfile? profile,
-    bool? isLoading,
-  }) {
+  LearningProfileState copyWith({LearningProfile? profile, bool? isLoading}) {
     return LearningProfileState(
       profile: profile ?? this.profile,
       isLoading: isLoading ?? this.isLoading,
@@ -40,10 +34,9 @@ class LearningProfileState {
 /// - 练习答错 → -0.10(暴露薄弱)
 /// - 标记掌握 → 直接设为 0.95
 /// - 掌握度范围 [0.0, 1.0]
-class LearningProfileController
-    extends StateNotifier<LearningProfileState> {
+class LearningProfileController extends StateNotifier<LearningProfileState> {
   LearningProfileController(this._service, this._userService)
-      : super(const LearningProfileState()) {
+    : super(const LearningProfileState()) {
     _rebuild();
   }
 
@@ -64,12 +57,12 @@ class LearningProfileController
     var totalQueries = 0;
     var totalPractice = 0;
     var correctCount = 0;
-    final activeDays = <String>{};
+    final activeDays = <DateTime>{};
+    final orderedRecords = List<LearningRecord>.of(records)
+      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
-    for (final r in records) {
-      final dayKey =
-          '${r.createdAt.year}-${r.createdAt.month}-${r.createdAt.day}';
-      activeDays.add(dayKey);
+    for (final r in orderedRecords) {
+      activeDays.add(_dateOnly(r.createdAt));
 
       switch (r.action) {
         case LearningAction.scan:
@@ -91,37 +84,81 @@ class LearningProfileController
           break;
       }
 
-      // 累计知识点掌握度
+      // 按时间顺序应用知识点掌握度变化，避免较早的“标记掌握”覆盖后续练习。
       for (final kpId in r.knowledgePointIds) {
-        mastery[kpId] = (mastery[kpId] ?? 0) + r.masteryDelta;
+        final current = mastery[kpId] ?? 0.0;
+        switch (r.action) {
+          case LearningAction.scan:
+          case LearningAction.query:
+            final delta = r.masteryDelta == 0 ? 0.05 : r.masteryDelta;
+            mastery[kpId] = _clampMastery(current + delta);
+            break;
+          case LearningAction.practice:
+            final delta = r.masteryDelta == 0 ? 0.15 : r.masteryDelta;
+            mastery[kpId] = _clampMastery(current + delta);
+            break;
+          case LearningAction.practiceWrong:
+            final delta = r.masteryDelta == 0 ? -0.1 : r.masteryDelta;
+            mastery[kpId] = _clampMastery(current + delta);
+            break;
+          case LearningAction.mastered:
+            mastery[kpId] = 0.95;
+            break;
+          case LearningAction.review:
+            mastery[kpId] = _clampMastery(current + r.masteryDelta);
+            break;
+        }
       }
     }
 
-    // clamp 到 [0, 1]
-    final clamped = mastery.map((k, v) => MapEntry(k, v.clamp(0.0, 1.0)));
-
-    // 连续学习天数(简化:有记录的不同日期数)
-    final streak = activeDays.length;
-
-    final firstRecord = records.isNotEmpty
-        ? records.reduce((a, b) =>
-            a.createdAt.isBefore(b.createdAt) ? a : b).createdAt
-        : DateTime.now();
+    final sortedDays = activeDays.toList()..sort((a, b) => b.compareTo(a));
+    final streak = _currentStreak(sortedDays);
+    final now = DateTime.now();
+    final firstRecord = orderedRecords.isNotEmpty
+        ? orderedRecords.first.createdAt
+        : now;
+    final lastActiveAt = orderedRecords.isNotEmpty
+        ? orderedRecords.last.createdAt
+        : now;
 
     return LearningProfile(
       userId: _userService.currentUserId,
       stage: _userService.currentUser?.stage ?? 'highschool',
-      knowledgeMastery: clamped,
+      knowledgeMastery: mastery,
       totalScans: totalScans,
       totalQueries: totalQueries,
       totalPractice: totalPractice,
       correctCount: correctCount,
-      lastActiveAt: records.isNotEmpty ? records.first.createdAt : DateTime.now(),
+      lastActiveAt: lastActiveAt,
       createdAt: firstRecord,
       streakDays: streak,
-      totalLearningDays: streak,
+      totalLearningDays: activeDays.length,
     );
   }
+
+  DateTime _dateOnly(DateTime value) {
+    final local = value.toLocal();
+    return DateTime.utc(local.year, local.month, local.day);
+  }
+
+  int _currentStreak(List<DateTime> sortedDays) {
+    if (sortedDays.isEmpty) return 0;
+
+    final today = _dateOnly(DateTime.now());
+    final daysSinceLastActivity = today.difference(sortedDays.first).inDays;
+    if (daysSinceLastActivity < 0 || daysSinceLastActivity > 1) return 0;
+
+    var streak = 1;
+    for (var index = 1; index < sortedDays.length; index++) {
+      if (sortedDays[index - 1].difference(sortedDays[index]).inDays != 1) {
+        break;
+      }
+      streak++;
+    }
+    return streak;
+  }
+
+  double _clampMastery(double value) => value.clamp(0.0, 1.0).toDouble();
 
   /// 添加学习记录并刷新画像
   Future<void> addRecord(LearningRecord record) async {
@@ -199,9 +236,11 @@ class LearningProfileController
   }
 }
 
-final learningProfileControllerProvider = StateNotifierProvider<
-    LearningProfileController, LearningProfileState>((ref) {
-  final service = ref.watch(learningRecordServiceProvider);
-  final userService = ref.watch(userServiceProvider);
-  return LearningProfileController(service, userService);
-}, dependencies: [learningRecordServiceProvider, userServiceProvider]);
+final learningProfileControllerProvider =
+    StateNotifierProvider<LearningProfileController, LearningProfileState>((
+      ref,
+    ) {
+      final service = ref.watch(learningRecordServiceProvider);
+      final userService = ref.watch(userServiceProvider);
+      return LearningProfileController(service, userService);
+    }, dependencies: [learningRecordServiceProvider, userServiceProvider]);

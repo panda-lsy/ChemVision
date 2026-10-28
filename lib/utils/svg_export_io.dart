@@ -5,11 +5,15 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 /// 移动端/桌面端 SVG 导出
-Future<void> downloadSvg(String svgString, String filename) async {
+Future<void> downloadSvg(
+  String svgString,
+  String filename, {
+  String shareText = 'ChemVision SVG',
+}) async {
   final dir = await getTemporaryDirectory();
   final file = File('${dir.path}/$filename');
   await file.writeAsString(svgString);
-  await Share.shareXFiles([XFile(file.path)], text: 'ChemVision 结构式 SVG');
+  await Share.shareXFiles([XFile(file.path)], text: shareText);
 }
 
 /// 移动端/桌面端 data URL 下载（用于 PNG 等 base64 数据）
