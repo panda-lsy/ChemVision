@@ -121,12 +121,21 @@ jobs:
       - run: flutter pub get
       - name: Build Web
         run: >-
-          flutter build web --release --base-href "/"
+          flutter build web --release --base-href "/" --no-web-resources-cdn
           --dart-define="SUPABASE_URL=$SUPABASE_URL"
           --dart-define="SUPABASE_PUBLISHABLE_KEY=$SUPABASE_PUBLISHABLE_KEY"
-      - name: 给 flutter_bootstrap.js 加版本查询参数以打破微信/CDN 缓存
+      - name: Restore Flutter fallback fonts
+        uses: actions/cache@v4
+        with:
+          path: build/web/font-fallback
+          key: flutter-web-fonts-${{ runner.os }}-${{ hashFiles('.github/workflows/flutter-build.yml', 'tools/prepare_web_fonts.py') }}
+      - name: Bundle Flutter fallback fonts
+        run: python3 tools/prepare_web_fonts.py --flutter-root "$FLUTTER_ROOT" --destination build/web/font-fallback
+      - name: 给启动脚本加版本查询参数以打破内置浏览器/CDN 缓存
         run: |
           sed -i 's|flutter_bootstrap\.js|flutter_bootstrap.js?v=${{ github.sha }}|g' build/web/index.html
+          sed -i 's|"mainJsPath":"main.dart.js"|"mainJsPath":"main.dart.js?v=${{ github.sha }}"|g' build/web/flutter_bootstrap.js
+          grep -q '"mainJsPath":"main.dart.js?v=${{ github.sha }}"' build/web/flutter_bootstrap.js
       - uses: actions/upload-artifact@v4
         with:
           name: web-build

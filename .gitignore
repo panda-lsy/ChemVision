@@ -48,8 +48,7 @@ android/local.properties
 **/ios/Flutter/Flutter.framework/
 **/ios/Flutter/Flutter.podspec
 
-# Web
-web/flutter_bootstrap.js
+# web/flutter_bootstrap.js is the source bootstrap, so keep it tracked.
 
 # Windows
 windows/flutter/ephemeral/
